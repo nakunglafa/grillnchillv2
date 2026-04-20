@@ -21,6 +21,8 @@ import { SpecialMenusTab } from "@/components/owner/SpecialMenusTab";
 import { TablesTab } from "@/components/owner/TablesTab";
 import { ReservationsTab } from "@/components/owner/ReservationsTab";
 import { SettingsTab } from "@/components/owner/SettingsTab";
+import { TestimonialsTab } from "@/components/owner/TestimonialsTab";
+import { WebsiteContentTab } from "@/components/owner/WebsiteContentTab";
 
 const iconClass = "text-owner-success";
 const iconSize = 18;
@@ -83,12 +85,32 @@ const TABS = [
     ),
   },
   {
+    id: "website-content",
+    label: "Website content",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
+        <rect x="3" y="3" width="18" height="14" rx="2" />
+        <path d="M8 21h8" />
+        <path d="M12 17v4" />
+      </svg>
+    ),
+  },
+  {
     id: "settings",
     label: "Settings",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
         <circle cx="12" cy="12" r="3" />
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    ),
+  },
+  {
+    id: "testimonials",
+    label: "Testimonials",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
   },
@@ -345,6 +367,21 @@ export default function OwnerDashboardRestaurantPage() {
             keepScreenOn={keepScreenOn}
             onKeepScreenOnChange={setKeepScreenOn}
           />
+        )}
+        {activeTab === "testimonials" && (
+          <TestimonialsTab
+            restaurantId={restaurantId}
+            token={token}
+            restaurant={restaurant}
+            onRestaurantUpdate={(updated) => {
+              if (updated && typeof updated === "object") {
+                setRestaurant((prev) => (prev ? { ...prev, ...updated } : updated));
+              }
+            }}
+          />
+        )}
+        {activeTab === "website-content" && (
+          <WebsiteContentTab restaurantId={restaurantId} token={token} />
         )}
       </main>
 

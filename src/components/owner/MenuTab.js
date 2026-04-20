@@ -14,6 +14,8 @@ import {
   createItemForCategory,
   updateItem,
   deleteItem,
+  reorderMenuCategories,
+  reorderCategoryItems,
 } from "@/lib/api";
 import { toArray } from "@/lib/owner-utils";
 import { Toast } from "@/components/Toast";
@@ -30,6 +32,71 @@ function flattenCategories(arr) {
     }
   }
   return out;
+}
+
+function sortByOrder(a, b) {
+  const ao = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER;
+  const bo = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER;
+  if (ao !== bo) return ao - bo;
+  return Number(a?.id || 0) - Number(b?.id || 0);
+}
+
+function parseVariantsDraft(variants) {
+  if (!Array.isArray(variants)) return { hasAnyInput: false, invalid: false, payload: [] };
+  let hasAnyInput = false;
+  const payload = [];
+  for (const v of variants) {
+    const typeName = String(v?.type_name ?? "").trim();
+    const rawPrice = v?.price;
+    const hasType = typeName.length > 0;
+    const hasPrice = rawPrice !== "" && rawPrice !== null && rawPrice !== undefined;
+    if (hasType || hasPrice) hasAnyInput = true;
+    if (!hasType && !hasPrice) continue;
+    const price = parseFloat(rawPrice);
+    if (!hasType || !Number.isFinite(price) || price < 0) {
+      return { hasAnyInput: true, invalid: true, payload: [] };
+    }
+    payload.push({
+      type_name: typeName,
+      price,
+      sort_order: payload.length + 1,
+      is_available: v?.is_available !== false,
+    });
+  }
+  return { hasAnyInput, invalid: false, payload };
+}
+
+function appendVariantsToFormData(fd, variants) {
+  variants.forEach((variant, idx) => {
+    fd.append(`variants[${idx}][type_name]`, variant.type_name);
+    fd.append(`variants[${idx}][price]`, String(variant.price));
+    fd.append(`variants[${idx}][sort_order]`, String(variant.sort_order));
+    fd.append(`variants[${idx}][is_available]`, variant.is_available !== false ? "1" : "0");
+  });
+}
+
+function toVariantDrafts(variants) {
+  if (!Array.isArray(variants)) return [];
+  return [...variants]
+    .sort(sortByOrder)
+    .map((v) => ({
+      type_name: v?.type_name ?? "",
+      price: v?.price ?? "",
+      is_available: v?.is_available !== false,
+    }));
+}
+
+function getItemPriceLabel(item) {
+  const variants = Array.isArray(item?.variants) ? item.variants : [];
+  if (variants.length > 0) {
+    const prices = variants
+      .map((v) => parseFloat(v?.price))
+      .filter((p) => Number.isFinite(p) && p >= 0);
+    if (prices.length > 0) return `From ${Math.min(...prices).toFixed(2)}`;
+    return `${variants.length} variants`;
+  }
+  const price = parseFloat(item?.price);
+  return Number.isFinite(price) ? price.toFixed(2) : item?.price ?? "-";
 }
 
 export function MenuTab({ restaurantId, token }) {
@@ -105,7 +172,7 @@ export function MenuTab({ restaurantId, token }) {
       if (!token) return [];
       const res = await getItemsForCategory(token, categoryId);
       const arr = toArray(res);
-      return Array.isArray(arr) ? arr : [];
+      return Array.isArray(arr) ? [...arr].sort(sortByOrder) : [];
     },
     [token]
   );
@@ -239,6 +306,20 @@ export function MenuTab({ restaurantId, token }) {
     }
   };
 
+  const handleReorderCategory = async (menuId, categoryId, newSortOrder, parentId = null) => {
+    try {
+      await reorderMenuCategories(token, menuId, {
+        category_id: categoryId,
+        new_sort_order: newSortOrder,
+        ...(parentId ? { parent_id: parentId } : {}),
+      });
+      setCategoriesRefreshTrigger((t) => t + 1);
+      showToast("Category order updated.", "success");
+    } catch (err) {
+      showToast(err?.data?.message || err?.message || "Failed to reorder category", "error");
+    }
+  };
+
   const handleDeleteCategory = async (categoryId) => {
     if (!confirm("Delete this category and all its sub-categories and items?")) return;
     try {
@@ -257,9 +338,20 @@ export function MenuTab({ restaurantId, token }) {
       showToast("Item name is required.", "error");
       throw new Error("validation");
     }
-    const price = parseFloat(data.price);
-    if (data.price === undefined || data.price === null || data.price === "" || Number.isNaN(price) || price < 0) {
-      showToast("Price is required and must be 0 or greater.", "error");
+    const parsedVariants = parseVariantsDraft(data?.variants);
+    if (parsedVariants.invalid) {
+      showToast("Each variant needs a type and a valid price (0 or greater).", "error");
+      throw new Error("validation");
+    }
+    const hasPriceInput = data?.price !== undefined && data?.price !== null && data?.price !== "";
+    const price = parseFloat(data?.price);
+    const hasValidPrice = hasPriceInput && Number.isFinite(price) && price >= 0;
+    if (hasPriceInput && !hasValidPrice) {
+      showToast("Price must be 0 or greater.", "error");
+      throw new Error("validation");
+    }
+    if (!hasValidPrice && parsedVariants.payload.length === 0) {
+      showToast("Add a base price or at least one valid variant.", "error");
       throw new Error("validation");
     }
     try {
@@ -268,11 +360,13 @@ export function MenuTab({ restaurantId, token }) {
         const fd = new FormData();
         fd.append("name", data.name.trim());
         fd.append("description", data.description || "");
-        fd.append("price", String(price));
+        if (hasValidPrice) fd.append("price", String(price));
         fd.append("is_available", data.is_available !== false ? "1" : "0");
         fd.append("is_gluten_free", data.is_gluten_free ? "1" : "0");
         fd.append("is_vegan", data.is_vegan ? "1" : "0");
         fd.append("is_vegetarian", data.is_vegetarian ? "1" : "0");
+        fd.append("is_spicy", data.is_spicy ? "1" : "0");
+        if (parsedVariants.payload.length > 0) appendVariantsToFormData(fd, parsedVariants.payload);
         fd.append("image", imageFile, imageFile.name || "image.jpg");
         fd.append("data[image]", imageFile, imageFile.name || "image.jpg");
         await createItemForCategory(token, categoryId, fd);
@@ -280,11 +374,13 @@ export function MenuTab({ restaurantId, token }) {
         await createItemForCategory(token, categoryId, {
           name: data.name.trim(),
           description: data.description || "",
-          price,
+          ...(hasValidPrice ? { price } : {}),
+          ...(parsedVariants.payload.length > 0 ? { variants: parsedVariants.payload } : {}),
           is_available: data.is_available !== false,
           is_gluten_free: data.is_gluten_free === true,
           is_vegan: data.is_vegan === true,
           is_vegetarian: data.is_vegetarian === true,
+          is_spicy: data.is_spicy === true,
         });
       }
       setFormData((p) => ({ ...p, [`item-${categoryId}`]: {} }));
@@ -300,17 +396,35 @@ export function MenuTab({ restaurantId, token }) {
   const handleUpdateItem = async (item) => {
     const data = formData[`edit-item-${item.id}`] ?? item;
     const imageFile = data._imageFile instanceof File ? data._imageFile : null;
+    const parsedVariants = parseVariantsDraft(data?.variants);
+    if (parsedVariants.invalid) {
+      showToast("Each variant needs a type and a valid price (0 or greater).", "error");
+      return;
+    }
+    const hasPriceInput = data?.price !== undefined && data?.price !== null && data?.price !== "";
+    const parsedPrice = parseFloat(data?.price);
+    if (hasPriceInput && (!Number.isFinite(parsedPrice) || parsedPrice < 0)) {
+      showToast("Price must be 0 or greater.", "error");
+      return;
+    }
+    const finalPrice = hasPriceInput ? parsedPrice : undefined;
+    if (finalPrice === undefined && parsedVariants.payload.length === 0) {
+      showToast("Add a base price or at least one valid variant.", "error");
+      return;
+    }
     try {
       if (imageFile) {
         const fd = new FormData();
         fd.append("_method", "PATCH");
         fd.append("name", data.name?.trim() || item.name);
         fd.append("description", data.description ?? item.description ?? "");
-        fd.append("price", String(parseFloat(data.price) ?? item.price ?? 0));
+        if (finalPrice !== undefined) fd.append("price", String(finalPrice));
         fd.append("is_available", data.is_available !== false ? "1" : "0");
         fd.append("is_gluten_free", data.is_gluten_free === true ? "1" : "0");
         fd.append("is_vegan", data.is_vegan === true ? "1" : "0");
         fd.append("is_vegetarian", data.is_vegetarian === true ? "1" : "0");
+        fd.append("is_spicy", data.is_spicy === true ? "1" : "0");
+        appendVariantsToFormData(fd, parsedVariants.payload);
         fd.append("image", imageFile, imageFile.name || "image.jpg");
         fd.append("data[image]", imageFile, imageFile.name || "image.jpg");
         await updateItem(token, item.id, fd);
@@ -318,14 +432,17 @@ export function MenuTab({ restaurantId, token }) {
         await updateItem(token, item.id, {
           name: data.name?.trim() || item.name,
           description: data.description ?? item.description ?? "",
-          price: parseFloat(data.price) ?? item.price,
+          ...(finalPrice !== undefined ? { price: finalPrice } : {}),
+          variants: parsedVariants.payload,
           is_available: data.is_available !== false,
           is_gluten_free: data.is_gluten_free === true,
           is_vegan: data.is_vegan === true,
           is_vegetarian: data.is_vegetarian === true,
+          is_spicy: data.is_spicy === true,
         });
       }
       setEditing(null);
+      setItemsRefreshTrigger((t) => t + 1);
       loadMenus();
       showToast("Item updated.", "success");
     } catch (err) {
@@ -337,6 +454,7 @@ export function MenuTab({ restaurantId, token }) {
     if (!confirm("Delete this item?")) return;
     try {
       await deleteItem(token, itemId);
+      setItemsRefreshTrigger((t) => t + 1);
       loadMenus();
       showToast("Item deleted.", "success");
     } catch (err) {
@@ -352,6 +470,19 @@ export function MenuTab({ restaurantId, token }) {
       showToast("Item moved.", "success");
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to move item", "error");
+    }
+  };
+
+  const handleReorderItem = async (categoryId, itemId, newSortOrder) => {
+    try {
+      await reorderCategoryItems(token, categoryId, {
+        item_id: itemId,
+        new_sort_order: newSortOrder,
+      });
+      setItemsRefreshTrigger((t) => t + 1);
+      showToast("Item order updated.", "success");
+    } catch (err) {
+      showToast(err?.data?.message || err?.message || "Failed to reorder item", "error");
     }
   };
 
@@ -625,9 +756,11 @@ export function MenuTab({ restaurantId, token }) {
               onUpdateItem={handleUpdateItem}
               onDeleteItem={handleDeleteItem}
               onMoveItem={handleMoveItem}
+              onReorderItem={handleReorderItem}
               categoriesRefreshTrigger={categoriesRefreshTrigger}
               onUpdateCategory={handleUpdateCategory}
               onMoveCategory={handleMoveCategory}
+              onReorderCategory={handleReorderCategory}
               onDeleteCategory={handleDeleteCategory}
               onImageError={(msg) => showToast(msg, "error")}
               imageCacheBust={imageCacheBust}
@@ -659,8 +792,10 @@ function MenuSection({
   onUpdateItem,
   onDeleteItem,
   onMoveItem,
+  onReorderItem,
   onUpdateCategory,
   onMoveCategory,
+  onReorderCategory,
   onDeleteCategory,
   onImageError,
   imageCacheBust = 0,
@@ -676,9 +811,11 @@ function MenuSection({
     });
   }, [menu.id, loadCategories, categoriesRefreshTrigger]);
 
-  const mainCategories = Array.isArray(categories) ? categories.filter((c) => !c.parent_id) : [];
+  const mainCategories = Array.isArray(categories) ? categories.filter((c) => !c.parent_id).sort(sortByOrder) : [];
   const getChildren = (parentId) =>
-    Array.isArray(categories) ? categories.filter((c) => (c.parent_id || c.parentId) === parentId) : [];
+    Array.isArray(categories)
+      ? categories.filter((c) => (c.parent_id || c.parentId) === parentId).sort(sortByOrder)
+      : [];
 
   return (
     <div className="owner-card rounded-xl shadow-sm">
@@ -743,6 +880,7 @@ function MenuSection({
                     <div key={main.id} className="space-y-2">
                       {/* Main category card */}
                       <CategorySection
+                        menuId={menu.id}
                         category={main}
                         parentCategory={null}
                         siblingCategories={mainCategories}
@@ -760,8 +898,10 @@ function MenuSection({
                         onUpdateItem={onUpdateItem}
                         onDeleteItem={onDeleteItem}
                         onMoveItem={onMoveItem}
+                        onReorderItem={onReorderItem}
                         onUpdateCategory={onUpdateCategory}
                         onMoveCategory={onMoveCategory}
+                        onReorderCategory={onReorderCategory}
                         onDeleteCategory={onDeleteCategory}
                         onImageError={onImageError}
                         imageCacheBust={imageCacheBust}
@@ -770,6 +910,7 @@ function MenuSection({
                       {subCats.map((sub) => (
                         <div key={sub.id} className="ml-3 border-l border-zinc-700/40 pl-3">
                           <CategorySection
+                            menuId={menu.id}
                             category={sub}
                             parentCategory={main}
                             siblingCategories={subCats}
@@ -787,8 +928,10 @@ function MenuSection({
                             onUpdateItem={onUpdateItem}
                             onDeleteItem={onDeleteItem}
                             onMoveItem={onMoveItem}
+                            onReorderItem={onReorderItem}
                             onUpdateCategory={onUpdateCategory}
                             onMoveCategory={onMoveCategory}
+                            onReorderCategory={onReorderCategory}
                             onDeleteCategory={onDeleteCategory}
                             onImageError={onImageError}
                             imageCacheBust={imageCacheBust}
@@ -812,6 +955,7 @@ function MenuSection({
 }
 
 function CategorySection({
+  menuId,
   category,
   parentCategory,
   siblingCategories = [],
@@ -828,8 +972,10 @@ function CategorySection({
   onUpdateItem,
   onDeleteItem,
   onMoveItem,
+  onReorderItem,
   onUpdateCategory,
   onMoveCategory,
+  onReorderCategory,
   onDeleteCategory,
   onImageError,
   imageCacheBust = 0,
@@ -871,6 +1017,10 @@ function CategorySection({
   const isExpanded = expandedCategory === category.id;
   const isEditingCategory = editing === `cat-${category.id}`;
   const editCatData = formData[`edit-cat-${category.id}`] ?? category;
+  const sortedSiblings = Array.isArray(siblingCategories) ? [...siblingCategories].sort(sortByOrder) : [];
+  const categoryIndex = sortedSiblings.findIndex((c) => c.id === category.id);
+  const canMoveCategoryUp = categoryIndex > 0;
+  const canMoveCategoryDown = categoryIndex !== -1 && categoryIndex < sortedSiblings.length - 1;
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -914,6 +1064,20 @@ function CategorySection({
     e.stopPropagation();
     e.dataTransfer.setData("application/json", JSON.stringify({ type: "category", categoryId: category.id }));
     e.dataTransfer.effectAllowed = "move";
+  };
+
+  const moveCategory = async (direction) => {
+    if (!onReorderCategory || !menuId) return;
+    const targetIndex = categoryIndex + direction;
+    if (targetIndex < 0 || targetIndex >= sortedSiblings.length) return;
+    await onReorderCategory(menuId, category.id, targetIndex + 1, parentCategory?.id ?? null);
+  };
+
+  const moveItem = async (itemId, currentIndex, direction) => {
+    if (!onReorderItem) return;
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    await onReorderItem(category.id, itemId, targetIndex + 1);
   };
 
   return (
@@ -1055,6 +1219,24 @@ function CategorySection({
           <div className="flex shrink-0 gap-1">
             <button
               type="button"
+              disabled={!canMoveCategoryUp}
+              onClick={() => moveCategory(-1)}
+              className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              title="Move up"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={!canMoveCategoryDown}
+              onClick={() => moveCategory(1)}
+              className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              title="Move down"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
               onClick={() => setEditing(`cat-${category.id}`)}
               className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
@@ -1082,7 +1264,7 @@ function CategorySection({
                 Drag items to another category to move them.
               </p>
               <ul className="mb-4 space-y-3">
-              {items.map((item) => {
+              {items.map((item, itemIndex) => {
                 const editData = formData[`edit-item-${item.id}`] ?? item;
                 return (
                   <li
@@ -1135,7 +1317,7 @@ function CategorySection({
                                 [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), price: e.target.value },
                               }))
                             }
-                            placeholder="Price"
+                            placeholder="Base price (optional if variants)"
                             className="rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                           />
                         </div>
@@ -1151,6 +1333,127 @@ function CategorySection({
                           rows={3}
                           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm md:text-xs leading-relaxed dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                         />
+                        <div className="rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Variants (optional)</p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData((p) => {
+                                  const key = `edit-item-${item.id}`;
+                                  const prev = p[key] ?? item;
+                                  const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                                  return {
+                                    ...p,
+                                    [key]: {
+                                      ...prev,
+                                      variants: [...prevVariants, { type_name: "", price: "", is_available: true }],
+                                    },
+                                  };
+                                })
+                              }
+                              className="touch-manipulation rounded-lg border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+                            >
+                              + Add variant
+                            </button>
+                          </div>
+                          {Array.isArray(editData.variants) && editData.variants.length > 0 ? (
+                            <div className="space-y-2">
+                              {editData.variants.map((variant, variantIdx) => (
+                                <div key={`edit-variant-${item.id}-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto_auto]">
+                                  <input
+                                    type="text"
+                                    placeholder="Type name (e.g. Beef)"
+                                    value={variant?.type_name ?? ""}
+                                    onChange={(e) =>
+                                      setFormData((p) => {
+                                        const key = `edit-item-${item.id}`;
+                                        const prev = p[key] ?? item;
+                                        const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                                        return {
+                                          ...p,
+                                          [key]: {
+                                            ...prev,
+                                            variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, type_name: e.target.value } : v)),
+                                          },
+                                        };
+                                      })
+                                    }
+                                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                                  />
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="Price"
+                                    value={variant?.price ?? ""}
+                                    onChange={(e) =>
+                                      setFormData((p) => {
+                                        const key = `edit-item-${item.id}`;
+                                        const prev = p[key] ?? item;
+                                        const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                                        return {
+                                          ...p,
+                                          [key]: {
+                                            ...prev,
+                                            variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, price: e.target.value } : v)),
+                                          },
+                                        };
+                                      })
+                                    }
+                                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                                  />
+                                  <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+                                    <input
+                                      type="checkbox"
+                                      checked={variant?.is_available !== false}
+                                      onChange={(e) =>
+                                        setFormData((p) => {
+                                          const key = `edit-item-${item.id}`;
+                                          const prev = p[key] ?? item;
+                                          const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                                          return {
+                                            ...p,
+                                            [key]: {
+                                              ...prev,
+                                              variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, is_available: e.target.checked } : v)),
+                                            },
+                                          };
+                                        })
+                                      }
+                                      className="rounded border-zinc-300"
+                                    />
+                                    Available
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setFormData((p) => {
+                                        const key = `edit-item-${item.id}`;
+                                        const prev = p[key] ?? item;
+                                        const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                                        return {
+                                          ...p,
+                                          [key]: {
+                                            ...prev,
+                                            variants: prevVariants.filter((_, i) => i !== variantIdx),
+                                          },
+                                        };
+                                      })
+                                    }
+                                    className="touch-manipulation rounded-lg px-2 py-1 text-xs font-medium text-red-500"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              Add variants to offer multiple type + price options under one item.
+                            </p>
+                          )}
+                        </div>
                         <ImageUploadDropzone
                           id={`edit-item-image-${item.id}`}
                           label="Change image"
@@ -1210,6 +1513,20 @@ function CategorySection({
                             />
                             <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegetarian</span>
                           </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={editData.is_spicy === true}
+                              onChange={(e) =>
+                                setFormData((p) => ({
+                                  ...p,
+                                  [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_spicy: e.target.checked },
+                                }))
+                              }
+                              className="rounded border-zinc-300"
+                            />
+                            <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Spicy</span>
+                          </label>
                         </div>
                         <label className="flex items-center gap-2">
                           <input
@@ -1264,6 +1581,16 @@ function CategorySection({
                                 {item.description}
                               </p>
                             )}
+                            {Array.isArray(item.variants) && item.variants.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {[...item.variants].sort(sortByOrder).map((variant, idx) => (
+                                  <span key={`item-${item.id}-variant-${variant?.id ?? idx}`} className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
+                                    {variant?.type_name || "Variant"}{" "}
+                                    {Number.isFinite(parseFloat(variant?.price)) ? parseFloat(variant.price).toFixed(2) : variant?.price}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             <div className="mt-1 flex flex-wrap gap-1.5">
                               {item.is_gluten_free && (
                                 <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
@@ -1280,6 +1607,11 @@ function CategorySection({
                                   Vegetarian
                                 </span>
                               )}
+                              {item.is_spicy && (
+                                <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
+                                  Spicy
+                                </span>
+                              )}
                               {item.is_available === false && (
                                 <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300">
                                   Unavailable
@@ -1292,11 +1624,27 @@ function CategorySection({
                         {/* Right: price + actions */}
                         <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
                           <p className="text-base md:text-sm font-semibold text-zinc-100 dark:text-zinc-100">
-                            {typeof item.price === "number"
-                              ? item.price.toFixed(2)
-                              : item.price}
+                            {getItemPriceLabel(item)}
                           </p>
                           <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={itemIndex === 0}
+                              onClick={() => moveItem(item.id, itemIndex, -1)}
+                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400"
+                              title="Move up"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={itemIndex === items.length - 1}
+                              onClick={() => moveItem(item.id, itemIndex, 1)}
+                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400"
+                              title="Move down"
+                            >
+                              ↓
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -1306,10 +1654,12 @@ function CategorySection({
                                     name: item.name,
                                     description: item.description ?? "",
                                     price: item.price,
+                                    variants: toVariantDrafts(item.variants),
                                     is_available: item.is_available !== false,
                                     is_gluten_free: !!item.is_gluten_free,
                                     is_vegan: !!item.is_vegan,
                                     is_vegetarian: !!item.is_vegetarian,
+                                    is_spicy: !!item.is_spicy,
                                     _imageFile: undefined,
                                   },
                                 }));
@@ -1369,8 +1719,7 @@ function CategorySection({
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="Price *"
-                required
+                placeholder="Base price (optional if variants)"
                 value={formData[`item-${category.id}`]?.price ?? ""}
                 onChange={(e) =>
                   setFormData((p) => ({
@@ -1380,6 +1729,127 @@ function CategorySection({
                 }
                 className="w-24 rounded-lg border border-zinc-300 px-3 py-2 text-base md:text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
               />
+            </div>
+            <div className="rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Variants (optional)</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((p) => {
+                      const key = `item-${category.id}`;
+                      const prev = p[key] || {};
+                      const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                      return {
+                        ...p,
+                        [key]: {
+                          ...prev,
+                          variants: [...prevVariants, { type_name: "", price: "", is_available: true }],
+                        },
+                      };
+                    })
+                  }
+                  className="touch-manipulation rounded-lg border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+                >
+                  + Add variant
+                </button>
+              </div>
+              {Array.isArray(formData[`item-${category.id}`]?.variants) && formData[`item-${category.id}`]?.variants?.length > 0 ? (
+                <div className="space-y-2">
+                  {formData[`item-${category.id}`].variants.map((variant, variantIdx) => (
+                    <div key={`new-variant-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto_auto]">
+                      <input
+                        type="text"
+                        placeholder="Type name (e.g. Beef)"
+                        value={variant?.type_name ?? ""}
+                        onChange={(e) =>
+                          setFormData((p) => {
+                            const key = `item-${category.id}`;
+                            const prev = p[key] || {};
+                            const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                            return {
+                              ...p,
+                              [key]: {
+                                ...prev,
+                                variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, type_name: e.target.value } : v)),
+                              },
+                            };
+                          })
+                        }
+                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Price"
+                        value={variant?.price ?? ""}
+                        onChange={(e) =>
+                          setFormData((p) => {
+                            const key = `item-${category.id}`;
+                            const prev = p[key] || {};
+                            const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                            return {
+                              ...p,
+                              [key]: {
+                                ...prev,
+                                variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, price: e.target.value } : v)),
+                              },
+                            };
+                          })
+                        }
+                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                      />
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={variant?.is_available !== false}
+                          onChange={(e) =>
+                            setFormData((p) => {
+                              const key = `item-${category.id}`;
+                              const prev = p[key] || {};
+                              const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                              return {
+                                ...p,
+                                [key]: {
+                                  ...prev,
+                                  variants: prevVariants.map((v, i) => (i === variantIdx ? { ...v, is_available: e.target.checked } : v)),
+                                },
+                              };
+                            })
+                          }
+                          className="rounded border-zinc-300"
+                        />
+                        Available
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((p) => {
+                            const key = `item-${category.id}`;
+                            const prev = p[key] || {};
+                            const prevVariants = Array.isArray(prev.variants) ? prev.variants : [];
+                            return {
+                              ...p,
+                              [key]: {
+                                ...prev,
+                                variants: prevVariants.filter((_, i) => i !== variantIdx),
+                              },
+                            };
+                          })
+                        }
+                        className="touch-manipulation rounded-lg px-2 py-1 text-xs font-medium text-red-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Add variants to offer multiple type + price options under one item.
+                </p>
+              )}
             </div>
             <textarea
               placeholder="Description (optional)"
@@ -1451,6 +1921,20 @@ function CategorySection({
                   className="rounded border-zinc-300"
                 />
                 <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegetarian</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData[`item-${category.id}`]?.is_spicy === true}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), is_spicy: e.target.checked },
+                    }))
+                  }
+                  className="rounded border-zinc-300"
+                />
+                <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Spicy</span>
               </label>
             </div>
             <button type="submit" className="touch-manipulation min-h-[48px] w-full rounded-xl bg-zinc-600 px-4 py-3 text-base md:text-sm font-medium text-white dark:bg-zinc-500 sm:w-auto">

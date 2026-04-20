@@ -16,8 +16,13 @@
   --wood-800: #e8ddd0;
   --wood-900: #f2ebe3;
   --wood-950: #faf6f2;
-  --accent: #c9a227;
-  --accent-hover: #b8921f;
+  /* Gold closer to Sovy demo (#c59d5f) */
+  --accent: #c59d5f;
+  --accent-hover: #b08a52;
+  /* Sovy-style alternate sections */
+  --sovy-cream: #f3ede4;
+  --sovy-cream-dark: #e8dfd2;
+  --sovy-ink: #1a1614;
   /* Glass (glassy UI) */
   --glass-bg: rgba(255, 255, 255, 0.06);
   --glass-bg-strong: rgba(255, 255, 255, 0.12);
@@ -69,6 +74,7 @@
   --color-owner-border: var(--owner-border);
   --shadow-owner-card: 0 1px 3px rgba(45, 36, 30, 0.06), 0 4px 12px rgba(45, 36, 30, 0.04);
   --font-sans: var(--font-montserrat), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-playfair), "Georgia", "Times New Roman", serif;
   --font-size-base: 1.0625rem;
   --font-size-sm: 1rem;
   --font-size-xs: 0.9375rem;
@@ -86,6 +92,26 @@ body {
   color: var(--wood-900);
   font-family: var(--font-montserrat), "Helvetica Neue", Helvetica, Arial, sans-serif;
   line-height: 1.6;
+}
+
+/* Display headings (Sovy-style serif) */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Sovy hero — dark vertical wood planks (no image asset required) */
+.hero-sovy-wood {
+  background-color: #14110f;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.25)),
+    repeating-linear-gradient(
+      90deg,
+      #1a1512 0px,
+      #1a1512 38px,
+      #14110f 38px,
+      #14110f 40px
+    ),
+    linear-gradient(165deg, #2a221c 0%, #0c0a09 55%, #161310 100%);
 }
 
 /* Owner dashboard: Soft Professional neutral theme – applied only to /owner routes */
@@ -149,6 +175,43 @@ body {
 .dark\:bg-wood-900 *,
 [class*="bg-zinc-900"] *:not(button):not(a):not([class*="text-white"]):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-amber"]) {
   color: inherit;
+}
+
+/* /book — native selects & date: solid dark field + readable dropdown options (fixes white-on-white) */
+.book-form-input,
+.book-form-select {
+  background-color: #1e1a17;
+  color: #f2ebe3;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.book-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23c59d5f'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem;
+  padding-right: 2.35rem;
+}
+.book-form-select::-ms-expand {
+  display: none;
+}
+.book-form-select option {
+  background-color: #161310;
+  color: #f2ebe3;
+}
+.book-form-input:focus,
+.book-form-select:focus {
+  border-color: rgba(197, 157, 95, 0.55);
+  box-shadow: 0 0 0 1px rgba(197, 157, 95, 0.35);
+  outline: none;
+}
+.book-form-input::placeholder {
+  color: rgba(242, 235, 227, 0.35);
+}
+.book-form-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.55;
 }
 
 /* Hide scrollbar but keep scroll – slick horizontal nav on mobile */

@@ -184,10 +184,13 @@ export default function CheckoutPage() {
     );
   }
 
-  const orderItems = items.map(({ item, quantity }) => ({
-    menu_item_id: item.id,
-    quantity,
-  }));
+  const orderItems = items.map(({ item, quantity }) => {
+    const fallbackId = typeof item?.id === "string" ? Number(String(item.id).split("::")[0]) : Number(item?.id);
+    return {
+      menu_item_id: Number(item?.menu_item_id ?? fallbackId ?? item?.id),
+      quantity,
+    };
+  });
 
   function validateGuestContact() {
     const nameOk = (customerName || "").trim().length > 0;

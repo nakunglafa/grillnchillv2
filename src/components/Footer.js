@@ -1,11 +1,52 @@
-export function Footer({ restaurantName = "Restaurant" }) {
+/**
+ * Minimal centered footer — brand, social row, copyright.
+ */
+export function Footer({ restaurantName = "Restaurant", socialLinks }) {
+  const year = new Date().getFullYear();
+  const brand = restaurantName.trim().toUpperCase();
+
+  const items = [
+    { label: "Facebook", href: socialLinks?.facebook?.trim() || null },
+    { label: "Twitter", href: socialLinks?.x?.trim() || null },
+    { label: "Instagram", href: socialLinks?.instagram?.trim() || null },
+    { label: "Trip advisor", href: socialLinks?.tripadvisor?.trim() || null },
+  ];
+
   return (
-    <footer className="mt-auto site-footer">
-      <div className="mx-auto max-w-6xl px-4 text-center text-[13px] text-wood-600">
-        <p>© {new Date().getFullYear()} {restaurantName}. All rights reserved.</p>
-        <p>
-          Developed and managed by{" "}
-          <span className="font-medium text-wood-700">Digital Lisbon Software Solution</span>
+    <footer className="mt-auto bg-[#0a0908] py-16 text-center md:py-20">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6">
+        <p className="font-sans text-4xl font-bold uppercase tracking-[0.12em] text-white md:text-5xl md:tracking-[0.16em]">
+          {brand}
+        </p>
+
+        <nav
+          className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 sm:gap-x-10 md:gap-x-12"
+          aria-label="Social links"
+        >
+          {items.map(({ label, href }) =>
+            href ? (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#c49a6c] transition-colors hover:text-accent"
+              >
+                {label}
+              </a>
+            ) : (
+              <span
+                key={label}
+                className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#c49a6c]/35"
+              >
+                {label}
+              </span>
+            )
+          )}
+        </nav>
+
+        <p className="mt-12 text-[12px] leading-relaxed text-white/40 md:text-[13px]">
+          © {year} {restaurantName}. All rights reserved.
         </p>
       </div>
     </footer>

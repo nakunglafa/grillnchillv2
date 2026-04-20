@@ -1,0 +1,37 @@
+{
+  "default": {
+    "storyTitle": "",
+    "storyText": "",
+    "thaiSectionTitle": "Thai Menu",
+    "thaiSectionIntro": "",
+    "sushiSectionTitle": "Sushi Menu",
+    "sushiSectionIntro": "",
+    "heroMainImage": "",
+    "heroSideImage": "",
+    "parallaxQualityBg": "",
+    "parallaxTestimonialsBg": "",
+    "parallaxReserveBg": "",
+    "thaiImageMain": "",
+    "thaiImageSecondary": "",
+    "thaiImageTertiary": "",
+    "sushiImageMain": "",
+    "sushiImageSecondary": "",
+    "sushiImageTertiary": "",
+    "menuShowcaseEyebrow": "Menus",
+    "menuShowcaseTitle": "Our Menus",
+    "menuShowcaseIntro": "Explore Thai favorites, fresh sushi, and house desserts from our live menu.",
+    "menuShowcaseThaiTitle": "Thai",
+    "menuShowcaseThaiSubtext": "Curries / Noodles / Stir-fry",
+    "menuShowcaseThaiImage": "",
+    "menuShowcaseSushiTitle": "Sushi",
+    "menuShowcaseSushiSubtext": "Maki / Nigiri / Sashimi",
+    "menuShowcaseSushiImage": "",
+    "menuShowcaseDessertTitle": "Dessert",
+    "menuShowcaseDessertSubtext": "Cake / Ice cream / Mochi",
+    "menuShowcaseDessertImage": ""
+  },
+  "5": {
+    "thaiSectionTitle": "Thai Menu",
+    "sushiSectionTitle": "Sushi Menu"
+  }
+}

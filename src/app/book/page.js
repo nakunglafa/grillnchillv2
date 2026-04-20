@@ -8,6 +8,12 @@ import { getRestaurant, createReservation, getAvailability } from "@/lib/api";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
 
+/** Left column visual — match homepage hero; override with NEXT_PUBLIC_BOOK_PAGE_IMAGE */
+const BOOK_PAGE_IMAGE =
+  process.env.NEXT_PUBLIC_BOOK_PAGE_IMAGE ||
+  process.env.NEXT_PUBLIC_HERO_COLLAGE_MAIN ||
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80";
+
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 /** Get day_of_week string for a date (YYYY-MM-DD) */
@@ -103,6 +109,18 @@ function buildDateOptions(days = 7, openingSlots) {
 
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
+function BookPageImageColumn({ alt = "Restaurant" }) {
+  return (
+    <div className="relative aspect-[5/3] max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-[2/1] sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
+      <img src={BOOK_PAGE_IMAGE} alt={alt} className="absolute inset-0 h-full w-full object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/90 via-[#0a0908]/15 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-[#0a0908]/65"
+        aria-hidden
+      />
+    </div>
+  );
+}
+
 export default function BookPage() {
   const { user, token, isAuthenticated } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
@@ -122,6 +140,8 @@ export default function BookPage() {
   const [customer_email, setCustomer_email] = useState("");
   const [notes, setNotes] = useState("");
   const [reservationResult, setReservationResult] = useState(null);
+  /** 1 = date/time/guests, 2 = contact & confirm */
+  const [bookStep, setBookStep] = useState(1);
 
   useEffect(() => {
     getRestaurant(RESTAURANT_ID)
@@ -215,6 +235,7 @@ export default function BookPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (bookStep !== 2) return;
     setError("");
     if (!validateGuestContact()) return;
     setSubmitting(true);
@@ -265,14 +286,6 @@ export default function BookPage() {
     );
   }, [availabilitySlots]);
 
-  // Keep selected time valid when slots change
-  useEffect(() => {
-    if (!reservation_date || timeSlotsToShow.length === 0) return;
-    if (!timeSlotsToShow.includes(reservation_time)) {
-      setReservation_time(timeSlotsToShow[0]);
-    }
-  }, [reservation_date, timeSlotsToShow, reservation_time]);
-
   const isToday = reservation_date && (() => {
     const t = new Date();
     const y = t.getFullYear();
@@ -287,13 +300,76 @@ export default function BookPage() {
     const [h, m] = slot.split(":").map(Number);
     return h * 60 + m <= currentMinutes;
   };
+  const isSlotUnavailable = (slot) =>
+    party_size >= 10 && availableSlotsSet !== null && !availableSlotsSet.has(slot);
+
+  // Keep selected time on a bookable slot when date, slots, or party size change
+  useEffect(() => {
+    if (!reservation_date || timeSlotsToShow.length === 0) return;
+    const selectable = timeSlotsToShow.filter((s) => !isTimeSlotPast(s) && !isSlotUnavailable(s));
+    if (selectable.length === 0) return;
+    if (!selectable.includes(reservation_time)) {
+      setReservation_time(selectable[0]);
+    }
+  }, [
+    reservation_date,
+    timeSlotsToShow,
+    reservation_time,
+    party_size,
+    availableSlotsSet,
+    isToday,
+    currentMinutes,
+  ]);
+
+  const whenSummaryLine = useMemo(() => {
+    const opt = dateOptions.find((o) => o.value === reservation_date);
+    const datePart = opt?.label ?? reservation_date ?? "—";
+    return `${datePart} · ${reservation_time ?? "—"} · ${party_size} ${party_size === 1 ? "guest" : "guests"}`;
+  }, [dateOptions, reservation_date, reservation_time, party_size]);
+
+  function goToStep2() {
+    setError("");
+    if (reservationConfigMissing) {
+      setError("Reservations are not available yet. Please try again later.");
+      return;
+    }
+    if (!reservation_date?.trim()) {
+      setError("Please choose a date.");
+      return;
+    }
+    if (availabilityLoading) {
+      setError("Loading available times…");
+      return;
+    }
+    if (timeSlotsToShow.length === 0) {
+      setError("No times available for this day.");
+      return;
+    }
+    const selectable = timeSlotsToShow.filter((s) => !isTimeSlotPast(s) && !isSlotUnavailable(s));
+    if (selectable.length === 0) {
+      setError("No bookable times for this selection. Try another date or party size.");
+      return;
+    }
+    if (!selectable.includes(reservation_time)) {
+      setError("Please choose a valid time.");
+      return;
+    }
+    setBookStep(2);
+  }
 
   if (loading || !restaurant) {
     return (
-      <div className="min-h-screen bg-wood-100">
-        <Header />
-        <main className="mx-auto max-w-6xl px-4 py-8">
-          <p className="text-wood-600">Loading...</p>
+      <div className="relative min-h-screen bg-[#0a0908] text-white">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+          aria-hidden
+        />
+        <Header variant="marketing" />
+        <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
+          <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
+            <BookPageImageColumn alt="Restaurant" />
+            <p className="text-sm text-white/50 lg:flex lg:min-h-0 lg:items-center">Loading…</p>
+          </div>
         </main>
       </div>
     );
@@ -304,39 +380,52 @@ export default function BookPage() {
     const dateStr = r.reservation_date || r.date;
     const timeStr = (r.reservation_time || r.time || "").toString().replace(/\.\d+Z?$/i, "").slice(0, 5);
     return (
-      <div className="min-h-screen bg-wood-100">
-        <Header />
-        <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
-          <div className="glass rounded-2xl border border-white/10 p-6 md:p-8 text-center">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-wood-900">Booking request received</h1>
-            <p className="mt-2 text-wood-700">
+      <div className="relative min-h-screen bg-[#0a0908] text-white">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+          aria-hidden
+        />
+        <Header variant="marketing" />
+        <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
+          <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
+            <BookPageImageColumn alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant"} />
+            <div className="w-full border border-white/10 bg-white/[0.03] p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Confirmed</p>
+            <h1 className="font-display mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+              Booking request received
+            </h1>
+            <p className="mt-2 text-xs text-white/75 sm:text-sm">
               {restaurant?.name} — {dateStr} at {timeStr || "—"}, party of {r.party_size ?? party_size}
             </p>
-            <p className="mt-4 text-sm text-wood-600">
+            <p className="mx-auto mt-3 max-w-xl text-[11px] leading-relaxed text-white/55 sm:text-xs">
               {isAuthenticated
                 ? "You can view and manage your reservations in your account."
                 : "If you provided an email, you will receive a confirmation once the restaurant confirms your table. To track your booking in your account, log in with the same email."}
             </p>
             {!isAuthenticated && (
-              <p className="mt-2 text-sm text-wood-600">
-                <Link href="/login" className="font-medium text-wood-800 underline hover:no-underline dark:text-wood-200">Log in</Link> to see and manage your reservations.
+              <p className="mt-2 text-[11px] text-white/55 sm:text-xs">
+                <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
+                  Log in
+                </Link>{" "}
+                to see and manage your reservations.
               </p>
             )}
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <div className="mt-6 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
               {isAuthenticated ? (
                 <Link
                   href="/reservations"
-                  className="touch-manipulation min-h-[44px] rounded-full bg-accent px-6 py-3 font-semibold text-wood-950 shadow-md hover:bg-accent-hover"
+                  className="touch-manipulation inline-flex h-10 w-full items-center justify-center rounded-sm bg-accent text-[10px] font-semibold uppercase tracking-[0.18em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover sm:h-11 sm:w-auto sm:min-w-[200px] sm:text-[11px]"
                 >
                   View my reservations
                 </Link>
               ) : null}
               <Link
                 href="/"
-                className="touch-manipulation min-h-[44px] rounded-full bg-white/10 px-6 py-3 font-semibold text-wood-900 border border-white/10 hover:bg-white/15"
+                className="touch-manipulation inline-flex h-10 w-full items-center justify-center border border-white/20 bg-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 transition-colors hover:border-accent/40 hover:bg-white/[0.1] sm:h-11 sm:w-auto sm:min-w-[160px] sm:text-[11px]"
               >
-                Back to Restaurant
+                Back to home
               </Link>
+            </div>
             </div>
           </div>
         </main>
@@ -345,218 +434,267 @@ export default function BookPage() {
   }
 
   return (
-    <div className="min-h-screen bg-wood-100">
-      <Header />
-      <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
+    <div className="relative min-h-screen bg-[#0a0908] text-white">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+        aria-hidden
+      />
+      <Header variant="marketing" />
+      <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
+        <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
+          <BookPageImageColumn
+            alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant dining"}
+          />
+          <div className="min-w-0">
         <Link
           href="/"
-          className="touch-manipulation mb-4 inline-flex min-h-[44px] items-center rounded-lg px-3 py-2.5 text-base font-medium text-wood-600 hover:bg-white/10 hover:text-wood-900 transition-colors"
+          className="touch-manipulation mb-4 inline-flex min-h-9 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50 transition-colors hover:text-accent"
         >
-          <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to Restaurant
+          Back to home
         </Link>
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-wood-900">
-            Book a Table
-          </h1>
-          <p className="mt-1 text-wood-600">at {restaurant.name}</p>
+
+        <div className="mb-4 text-left md:mb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Reservations</p>
+          <h1 className="font-display mt-1.5 text-2xl font-semibold tracking-tight text-white md:text-3xl">Book a table</h1>
+          <p className="mt-1 text-xs text-white/55">{restaurant.name}</p>
+          <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white/40">
+            Step {bookStep} of 2 — {bookStep === 1 ? "When" : "Your details"}
+          </p>
         </div>
 
-        {!isAuthenticated && (
-          <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Booking as guest: please enter your name and at least one of phone or email.
-            {" "}
-            <span className="text-amber-100">To track your booking, <Link href="/login" className="font-medium underline hover:no-underline">log in</Link> before or after submitting.</span>
-          </p>
+        {!isAuthenticated && bookStep === 2 && (
+          <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-left text-[11px] leading-snug text-amber-100/95 ring-1 ring-amber-500/20 sm:text-xs">
+            Booking as guest: enter your name and at least one of phone or email.{" "}
+            <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
+              Log in
+            </Link>{" "}
+            to track your booking.
+          </div>
         )}
 
-        <form onSubmit={handleSubmit} className="glass flex flex-col gap-4 rounded-2xl p-4 border border-white/10 md:p-5 text-wood-900">
-          {reservationConfigMissing && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-              <p className="font-medium">Reservations not available yet</p>
-              <p className="mt-1 text-amber-200/90">
+        <form
+          onSubmit={handleSubmit}
+          className="flex w-full max-w-none flex-col gap-3 border border-white/10 bg-white/[0.03] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:gap-3.5 sm:p-4"
+        >
+          {bookStep === 1 && reservationConfigMissing && (
+            <div className="border border-amber-500/40 bg-amber-500/[0.08] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100 ring-1 ring-amber-500/25 sm:text-xs">
+              <p className="font-medium text-amber-50">Reservations not available yet</p>
+              <p className="mt-1 text-amber-100/90">
                 This restaurant has not set up reservation settings. The owner needs to add reservation configuration and opening hours in the dashboard. Please contact the restaurant or try again later.
               </p>
             </div>
           )}
           {error && (
-            <p className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">
+            <p className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200 ring-1 ring-red-500/20 sm:text-xs">
               {error}
             </p>
           )}
 
-          {/* Date, Time, Party — wider row on large screens */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Date — this week only */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-3 backdrop-blur-sm">
-            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-wood-900">
-              <svg className="h-4 w-4 shrink-0 text-wood-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-              </svg>
-              Date
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {dateOptions.map((opt) => {
-                const selected = reservation_date === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setReservation_date(opt.value)}
-                    className={`touch-manipulation min-h-[44px] rounded-full px-4 py-2.5 text-base font-semibold transition-all active:scale-[0.98] ${
-                      selected
-                        ? "bg-accent text-wood-950 shadow-md ring-2 ring-accent ring-offset-2 ring-offset-wood-200/50"
-                        : "bg-white/10 text-wood-800 border border-white/10 hover:bg-white/15"
-                    } ${opt.isToday && !selected ? "ring-1 ring-accent/60" : ""}`}
+          {bookStep === 1 && (
+          <>
+          {/* When — step 1 */}
+          <div className="w-full border border-white/10 bg-white/[0.04] p-3 ring-1 ring-white/10 sm:p-4">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">When</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={reservation_date}
+                  onChange={(e) => setReservation_date(e.target.value)}
+                  min={(() => {
+                    const t = new Date();
+                    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+                  })()}
+                  className="book-form-input touch-manipulation h-10 w-full rounded-sm px-3 text-sm outline-none"
+                />
+                {dateOptions.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] leading-snug text-white/45 sm:text-[11px]">
+                    <span className="mr-1 shrink-0 text-white/35">Quick:</span>
+                    {dateOptions.map((opt, i) => {
+                      const selected = reservation_date === opt.value;
+                      return (
+                        <span key={opt.value} className="inline-flex items-center">
+                          {i > 0 ? <span className="mx-0.5 text-white/25" aria-hidden>·</span> : null}
+                          <button
+                            type="button"
+                            onClick={() => setReservation_date(opt.value)}
+                            className={`touch-manipulation underline-offset-2 transition-colors ${
+                              selected
+                                ? "font-medium text-accent"
+                                : "text-white/55 hover:text-accent hover:underline"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-white/10 pt-3">
+                <label htmlFor="book-time" className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                  Time
+                </label>
+                {availabilityLoading ? (
+                  <p className="py-2 text-xs text-white/45">Loading availability…</p>
+                ) : timeSlotsToShow.length === 0 ? (
+                  <p className="py-2 text-xs text-white/45">No times for this day.</p>
+                ) : (
+                  <select
+                    id="book-time"
+                    value={reservation_time}
+                    onChange={(e) => setReservation_time(e.target.value)}
+                    className="book-form-select touch-manipulation h-10 w-full rounded-sm text-sm outline-none"
                   >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3 border-t border-white/10 pt-3">
-              <p className="mb-1.5 text-xs font-medium text-wood-600">Or choose another date</p>
-              <input
-                type="date"
-                value={reservation_date}
-                onChange={(e) => setReservation_date(e.target.value)}
-                min={(() => {
-                  const t = new Date();
-                  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-                })()}
-                className="touch-manipulation min-h-[48px] w-full max-w-xs rounded-lg border border-wood-500/40 bg-white/10 px-4 py-3 text-base text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
-              />
-            </div>
-          </div>
+                    {timeSlotsToShow.map((slot) => {
+                      const disabled = isTimeSlotPast(slot) || isSlotUnavailable(slot);
+                      let suffix = "";
+                      if (isTimeSlotPast(slot)) suffix = " — past";
+                      else if (isSlotUnavailable(slot)) suffix = " — unavailable";
+                      return (
+                        <option key={slot} value={slot} disabled={disabled}>
+                          {slot}
+                          {suffix}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
 
-          {/* Time — from availability API when available, else opening hours */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-3 backdrop-blur-sm">
-            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-wood-900">
-              <svg className="h-4 w-4 shrink-0 text-wood-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Time
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {availabilityLoading && (
-                <p className="w-full text-sm text-wood-600">Loading availability…</p>
-              )}
-              {timeSlotsToShow.length === 0 ? (
-                <p className="text-sm text-wood-600">No times for this day.</p>
-              ) : (
-                timeSlotsToShow.map((slot) => {
-                  const selected = reservation_time === slot;
-                  const isPast = isTimeSlotPast(slot);
-                  const isUnavailable = party_size >= 10 && availableSlotsSet !== null && !availableSlotsSet.has(slot);
-                  const disabled = isPast || isUnavailable;
-                  return (
-                    <button
-                      key={slot}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => !disabled && setReservation_time(slot)}
-                      title={isUnavailable ? "Not available" : undefined}
-                      className={`touch-manipulation min-h-[44px] rounded-full px-4 py-2.5 text-base font-semibold transition-all active:scale-[0.98] ${
-                        disabled
-                          ? "cursor-not-allowed bg-white/20 text-wood-500"
-                          : selected
-                            ? "bg-accent text-wood-950 shadow-md ring-2 ring-accent ring-offset-2 ring-offset-wood-200/50"
-                            : "bg-white/10 text-wood-800 border border-white/10 hover:bg-white/15"
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  );
-                })
-              )}
+              <div className="border-t border-white/10 pt-3">
+                <label htmlFor="book-guests" className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                  Guests
+                </label>
+                <select
+                  id="book-guests"
+                  value={party_size}
+                  onChange={(e) => setParty_size(Number(e.target.value))}
+                  className="book-form-select touch-manipulation h-10 w-full rounded-sm text-sm outline-none"
+                >
+                  {PARTY_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "guest" : "guests"}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Party size — pills */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-3 backdrop-blur-sm">
-            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-wood-900">
-              <svg className="h-4 w-4 shrink-0 text-wood-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-              </svg>
-              Party size
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PARTY_SIZES.map((n) => {
-                const selected = party_size === n;
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setParty_size(n)}
-                    className={`touch-manipulation min-h-[44px] rounded-full px-4 py-2.5 text-base font-semibold transition-all active:scale-[0.98] ${
-                      selected
-                        ? "bg-accent text-wood-950 shadow-md ring-2 ring-accent ring-offset-2 ring-offset-wood-200/50"
-                        : "bg-white/10 text-wood-800 border border-white/10 hover:bg-white/15"
-                    }`}
-                  >
-                    {n} {n === 1 ? "guest" : "guests"}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={goToStep2}
+            disabled={availabilityLoading || reservationConfigMissing}
+            className="touch-manipulation h-10 w-full rounded-sm bg-accent text-[10px] font-semibold uppercase tracking-[0.2em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:text-[11px] sm:tracking-[0.22em]"
+          >
+            Continue
+          </button>
+          </>
+          )}
+
+          {bookStep === 2 && (
+          <>
+          <div className="border border-white/10 bg-white/[0.04] px-3 py-2.5 ring-1 ring-white/10 sm:px-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-accent">Your selection</p>
+            <p className="mt-1 text-sm leading-snug text-white/90">{whenSummaryLine}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setBookStep(1);
+              }}
+              className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:text-accent/90 hover:underline"
+            >
+              Edit date & time
+            </button>
           </div>
 
-          <div className="my-2 border-t border-white/10"></div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">Contact</p>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-wood-700">Your name</span>
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">Your name</span>
               <input
                 type="text"
                 value={customer_name}
                 onChange={(e) => setCustomer_name(e.target.value)}
                 required
-                className="touch-manipulation min-h-[48px] w-full rounded-lg border border-wood-500/40 bg-white/10 px-4 py-3 text-base text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                autoComplete="name"
+                className="book-form-input touch-manipulation h-10 w-full rounded-sm px-3 text-sm outline-none"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-wood-700">Phone {!isAuthenticated ? "(required if no email)" : ""}</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                Phone {!isAuthenticated ? "(if no email)" : ""}
+              </span>
               <input
                 type="tel"
                 value={confirmation_phone}
                 onChange={(e) => setConfirmation_phone(e.target.value)}
-                className="touch-manipulation min-h-[48px] w-full rounded-lg border border-wood-500/40 bg-white/10 px-4 py-3 text-base text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                autoComplete="tel"
+                className="book-form-input touch-manipulation h-10 w-full rounded-sm px-3 text-sm outline-none"
               />
             </label>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-wood-700">Email {!isAuthenticated ? "(required if no phone)" : "(optional)"}</span>
+          <label className="flex w-full flex-col gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+              Email {!isAuthenticated ? "(if no phone)" : "(optional)"}
+            </span>
             <input
               type="email"
               value={customer_email}
               onChange={(e) => setCustomer_email(e.target.value)}
-              className="touch-manipulation min-h-[48px] w-full rounded-xl border border-wood-500/40 bg-white/10 px-4 py-3 text-base text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+              autoComplete="email"
+              className="book-form-input touch-manipulation h-10 w-full rounded-sm px-3 text-sm outline-none"
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-wood-700">Notes (optional)</span>
+          <label className="flex w-full flex-col gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">Notes (optional)</span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Allergies, special requests..."
-              className="touch-manipulation min-h-[48px] w-full rounded-xl border border-wood-500/40 bg-white/10 px-4 py-3 text-base text-wood-900 placeholder-wood-500 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+              className="book-form-input touch-manipulation min-h-[72px] w-full resize-y rounded-sm px-3 py-2 text-sm outline-none"
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={submitting || reservationConfigMissing}
-            className="touch-manipulation mt-2 min-h-[52px] w-full rounded-full bg-accent py-4 text-lg font-semibold text-wood-950 shadow-md hover:bg-accent-hover disabled:opacity-50 active:scale-[0.98] transition-colors"
-          >
-            {submitting ? "Confirming..." : reservationConfigMissing ? "Booking unavailable" : "Confirm Booking"}
-          </button>
+          <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setBookStep(1);
+              }}
+              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.16em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/[0.1] sm:h-12 sm:min-w-[140px] sm:flex-1"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || reservationConfigMissing}
+              className="touch-manipulation h-11 w-full flex-[2] rounded-sm bg-accent text-[10px] font-semibold uppercase tracking-[0.2em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-[11px] sm:tracking-[0.22em]"
+            >
+              {submitting ? "Confirming…" : reservationConfigMissing ? "Booking unavailable" : "Confirm booking"}
+            </button>
+          </div>
+          </>
+          )}
         </form>
+          </div>
+        </div>
       </main>
     </div>
   );

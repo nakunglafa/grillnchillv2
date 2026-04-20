@@ -1,4 +1,4 @@
-import { Montserrat } from "next/font/google";
+import { Montserrat, Playfair_Display } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -11,6 +11,12 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const siteTitle =
@@ -74,10 +80,15 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   let restaurantName = process.env.NEXT_PUBLIC_RESTAURANT_NAME || "Restaurant";
+  /** @type {{ x?: string | null; facebook?: string | null; instagram?: string | null; tripadvisor?: string | null } | undefined} */
+  let socialLinks;
   try {
     const data = await getRestaurant(RESTAURANT_ID);
     const rest = data?.restaurant ?? data?.data ?? data;
     if (rest?.name) restaurantName = rest.name;
+    if (rest?.social_links && typeof rest.social_links === "object") {
+      socialLinks = rest.social_links;
+    }
   } catch (_) {
     // Fallback to env or "Restaurant" if fetch fails
   }
@@ -85,7 +96,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${montserrat.variable} font-sans antialiased text-base`}
+        className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
       >
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-FXP9H4LTE2"
@@ -150,7 +161,7 @@ export default async function RootLayout({ children }) {
         />
         <div className="flex min-h-screen flex-col">
           <Providers>{children}</Providers>
-          <Footer restaurantName={restaurantName} />
+          <Footer restaurantName={restaurantName} socialLinks={socialLinks} />
         </div>
       </body>
     </html>

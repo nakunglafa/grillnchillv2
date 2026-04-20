@@ -30,6 +30,7 @@ export function RealTimeNotificationProvider({ children }) {
   const echoRef = useRef(null);
   const userChannelRef = useRef(null);
   const restaurantChannelsRef = useRef([]);
+  const initializedKeyRef = useRef(null);
 
   /**
    * Clean up a specific Echo instance. Pass the instance to avoid disconnecting
@@ -79,12 +80,18 @@ export function RealTimeNotificationProvider({ children }) {
       echoRef.current = null;
       userChannelRef.current = null;
       restaurantChannelsRef.current = [];
+      initializedKeyRef.current = null;
       if (prevEcho) cleanupEcho(prevEcho, prevChannels, prevUserCh);
       return;
     }
 
     let cancelled = false;
     const userId = user.id;
+    const initKey = `${userId}:${String(token).slice(-16)}`;
+    if (echoRef.current && initializedKeyRef.current === initKey) {
+      if (DEBUG) console.log("[Notifications] Echo already initialized for current user/token, skipping re-init.");
+      return;
+    }
     // Must use echo.private() for private channels - it triggers auth to /broadcasting/auth.
     // echo.channel() subscribes to PUBLIC channels only (no auth).
     const userChannelName = `App.Models.User.${userId}`;
@@ -190,12 +197,19 @@ export function RealTimeNotificationProvider({ children }) {
       createEcho({ userId, token }),
       fetchRestaurants(),
     ]).then(([echo, restaurantIds]) => {
-      if (cancelled || !echo) {
+      if (cancelled) {
+        // Strict mode / fast refresh can cancel this effect before async completes.
+        // Ensure the created Echo instance is disconnected to avoid leaking subscriptions.
+        if (echo) cleanupEcho(echo, [], null);
+        return;
+      }
+      if (!echo) {
         if (DEBUG && !echo) console.warn("[Notifications] Echo not created, check Pusher config");
         return;
       }
 
       echoRef.current = echo;
+      initializedKeyRef.current = initKey;
 
       // User channel (NewReservationNotification, OrderCreated) - must use .private() for auth
       const userChannel = echo.private(userChannelName);
@@ -300,6 +314,7 @@ export function RealTimeNotificationProvider({ children }) {
       echoRef.current = null;
       userChannelRef.current = null;
       restaurantChannelsRef.current = [];
+      initializedKeyRef.current = null;
 
       if (echoInstance) {
         setTimeout(() => cleanupEcho(echoInstance, channels, userCh), 0);

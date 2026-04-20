@@ -316,6 +316,14 @@ export async function deleteCategory(token, categoryId) {
   return apiFetch(`/owner/categories/${categoryId}`, { method: "DELETE", token });
 }
 
+export async function reorderMenuCategories(token, menuId, payload) {
+  return apiFetch(`/owner/menus/${menuId}/categories/reorder`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
 // Items
 export async function getItemsForCategory(token, categoryId) {
   return apiFetch(`/owner/categories/${categoryId}/items`, { token });
@@ -353,6 +361,14 @@ export async function updateItem(token, itemId, itemData) {
 
 export async function deleteItem(token, itemId) {
   return apiFetch(`/owner/items/${itemId}`, { method: "DELETE", token });
+}
+
+export async function reorderCategoryItems(token, categoryId, payload) {
+  return apiFetch(`/owner/categories/${categoryId}/items/reorder`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    token,
+  });
 }
 
 // Special menus (owner)
@@ -467,6 +483,29 @@ export async function updateOpeningSlots(token, restaurantId, slotsData) {
   return apiFetch(`/owner/restaurants/${restaurantId}/opening-slots`, {
     method: "PUT",
     body: JSON.stringify(slotsData),
+    token,
+  });
+}
+
+// Website content (owner)
+export async function getOwnerWebsiteContent(token, restaurantId) {
+  return apiFetch(`/owner/restaurants/${restaurantId}/website-content`, { token });
+}
+
+export async function updateOwnerWebsiteContent(token, restaurantId, contentJson) {
+  return apiFetch(`/owner/restaurants/${restaurantId}/website-content`, {
+    method: "PUT",
+    body: JSON.stringify({ content_json: contentJson }),
+    token,
+  });
+}
+
+export async function uploadOwnerWebsiteContentImage(token, restaurantId, imageFile) {
+  const fd = new FormData();
+  fd.append("image", imageFile, imageFile?.name || "image.jpg");
+  return apiFetch(`/owner/restaurants/${restaurantId}/website-content/upload-image`, {
+    method: "POST",
+    body: fd,
     token,
   });
 }
