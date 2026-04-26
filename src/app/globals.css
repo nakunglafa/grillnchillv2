@@ -183,6 +183,8 @@ body {
   background-color: #1e1a17;
   color: #f2ebe3;
   border: 1px solid rgba(255, 255, 255, 0.22);
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 .book-form-select {
   appearance: none;

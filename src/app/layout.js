@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { getRestaurant } from "@/lib/api";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://restaurant.digitallisbon.pt").replace(/\/$/, "");
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -20,39 +21,45 @@ const playfair = Playfair_Display({
 });
 
 const siteTitle =
-  "Lusiqueira Burger & Grill House | Hambúrgueres Artesanais em Alvalade & Best Burgers near Alvalade Metro";
+  "Thai Maki | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
 const siteDescription =
-  "Descubra a Lusiqueira Burger & Grill House no Campo Grande 232 C, em frente ao Jardim do Campo Grande e a 2 min do Metro de Alvalade. Hambúrgueres artesanais, grelhados premium e refeições rápidas para estudantes, trabalhadores de escritório e moradores de Alvalade. Lusiqueira Burger & Grill House in Campo Grande 232 C, opposite Jardim do Campo Grande and 2 minutes from Alvalade Metro. Artisan burgers, premium grilled meats and quick lunches for university students, office workers and Alvalade locals.";
+  "Thai Maki is a Thai and sushi restaurant in Almancil, near Faro, Algarve. Enjoy fresh sushi, authentic Thai food, and easy online table booking.";
+const siteKeywords = [
+  "Thai Maki",
+  "Thai restaurant Almancil",
+  "Thai restaurant Faro",
+  "Thai restaurant Algarve",
+  "sushi restaurant Almancil",
+  "sushi restaurant Faro",
+  "sushi restaurant Algarve",
+  "Thai restaurant near me",
+  "sushi restaurant near me",
+  "Thai food near me",
+  "sushi near me",
+  "Thai food Algarve",
+  "book restaurant table Almancil",
+  "restaurant menu Almancil",
+];
 
 export const metadata = {
-  metadataBase: new URL("https://lusiqueiraburger.pt"),
-  title: siteTitle,
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: siteTitle,
+    template: "%s | Thai Maki",
+  },
   description: siteDescription,
-  keywords: [
-    "Lusiqueira Burger & Grill House",
-    "hambúrguer artesanal Alvalade",
-    "hambúrgueres Campo Grande",
-    "restaurante hamburgueria Alvalade",
-    "grill house Lisboa",
-    "burgers near me Lisbon",
-    "Jardim do Campo Grande",
-    "Metro de Alvalade",
-    "Cidade Universitária",
-    "Estádio José Alvalade",
-  ],
+  keywords: siteKeywords,
+  applicationName: "Thai Maki",
+  category: "restaurant",
   alternates: {
     canonical: "/",
-    languages: {
-      "pt-PT": "/",
-      "en": "/",
-    },
   },
   openGraph: {
     title: siteTitle,
     description: siteDescription,
-    url: "/",
-    siteName: "Lusiqueira Burger & Grill House",
-    locale: "pt_PT",
+    url: SITE_URL,
+    siteName: "Thai Maki",
+    locale: "en_GB",
     type: "website",
   },
   twitter: {
@@ -66,26 +73,29 @@ export const metadata = {
     googleBot: {
       index: true,
       follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-    ],
-    apple: "/favicon-180x180.png",
   },
 };
 
 export default async function RootLayout({ children }) {
   let restaurantName = process.env.NEXT_PUBLIC_RESTAURANT_NAME || "Restaurant";
+  /** @type {{ address?: string | null; phone?: string | null; cuisine?: string | null; logo_url?: string | null }} */
+  let restaurantMeta;
   /** @type {{ x?: string | null; facebook?: string | null; instagram?: string | null; tripadvisor?: string | null } | undefined} */
   let socialLinks;
   try {
     const data = await getRestaurant(RESTAURANT_ID);
     const rest = data?.restaurant ?? data?.data ?? data;
     if (rest?.name) restaurantName = rest.name;
+    restaurantMeta = {
+      address: rest?.address ?? null,
+      phone: rest?.phone ?? null,
+      cuisine: rest?.cuisine ?? null,
+      logo_url: rest?.logo_url ?? null,
+    };
     if (rest?.social_links && typeof rest.social_links === "object") {
       socialLinks = rest.social_links;
     }
@@ -99,7 +109,7 @@ export default async function RootLayout({ children }) {
         className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
       >
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-FXP9H4LTE2"
+          src="https://www.googletagmanager.com/gtag/js?id=G-6VH93MEK2E"
           strategy="afterInteractive"
         />
         <Script
@@ -110,7 +120,7 @@ export default async function RootLayout({ children }) {
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', 'G-FXP9H4LTE2');
+              gtag('config', 'G-6VH93MEK2E');
             `,
           }}
         />
@@ -122,23 +132,18 @@ export default async function RootLayout({ children }) {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Restaurant",
-              name: "Lusiqueira Burger & Grill House",
-              image: "https://lusiqueiraburger.pt/favicon-32x32.png",
-              address: {
-                "@type": "PostalAddress",
-                streetAddress: "Campo Grande 232 C",
-                addressLocality: "Lisboa",
-                postalCode: "1700-094",
-                addressCountry: "PT",
-              },
-              geo: {
-                "@type": "GeoCoordinates",
-                latitude: 38.7512,
-                longitude: -9.1465,
-              },
-              url: "https://lusiqueiraburger.pt",
-              telephone: "+351920311793",
-              servesCuisine: ["Burgers", "Grill", "Portuguese"],
+              name: restaurantName,
+              image: restaurantMeta?.logo_url || undefined,
+              address: restaurantMeta?.address
+                ? {
+                    "@type": "PostalAddress",
+                    streetAddress: restaurantMeta.address,
+                    addressCountry: "PT",
+                  }
+                : undefined,
+              url: SITE_URL,
+              telephone: restaurantMeta?.phone || undefined,
+              servesCuisine: restaurantMeta?.cuisine ? [restaurantMeta.cuisine] : ["Thai", "Japanese", "Sushi"],
               priceRange: "$$",
               openingHoursSpecification: [
                 {

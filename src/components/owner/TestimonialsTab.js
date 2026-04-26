@@ -111,7 +111,7 @@ export function TestimonialsTab({ restaurantId, token, restaurant, onRestaurantU
   return (
     <div className="space-y-4 max-w-full min-w-0">
       <div className="owner-card rounded-xl border border-owner-border p-5">
-        <h3 className="text-lg md:text-base font-semibold text-owner-charcoal">
+        <h3 className="text-xl font-semibold text-owner-charcoal">
           Testimonials
         </h3>
         <p className="mt-1 text-sm text-owner-muted">
@@ -136,7 +136,7 @@ export function TestimonialsTab({ restaurantId, token, restaurant, onRestaurantU
             {testimonials.map((item, index) => (
               <li key={index} className="owner-card rounded-xl border border-owner-border p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-owner-charcoal">
+                  <p className="text-base font-semibold text-owner-charcoal">
                     Testimonial {index + 1}
                   </p>
                   <button
@@ -149,7 +149,7 @@ export function TestimonialsTab({ restaurantId, token, restaurant, onRestaurantU
                 </div>
                 <div className="grid gap-3">
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-owner-muted">Reviewer name</span>
+                    <span className="text-sm font-medium text-owner-muted">Reviewer name</span>
                     <input
                       type="text"
                       value={item.reviewer_name}
@@ -158,18 +158,18 @@ export function TestimonialsTab({ restaurantId, token, restaurant, onRestaurantU
                       }
                       maxLength={255}
                       placeholder="e.g. Maria S."
-                      className="w-full rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-owner-charcoal"
+                      className="w-full rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-sm text-owner-charcoal"
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-owner-muted">Quote</span>
+                    <span className="text-sm font-medium text-owner-muted">Quote</span>
                     <textarea
                       rows={3}
                       value={item.quote}
                       onChange={(e) => handleChange(index, "quote", e.target.value)}
                       maxLength={1000}
                       placeholder="Write the testimonial quote..."
-                      className="w-full rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-owner-charcoal"
+                      className="w-full rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-sm text-owner-charcoal"
                     />
                   </label>
                 </div>
@@ -189,14 +189,14 @@ export function TestimonialsTab({ restaurantId, token, restaurant, onRestaurantU
             type="button"
             onClick={addRow}
             disabled={!canAddMore || saving}
-            className="touch-manipulation min-h-[48px] flex-1 rounded-xl border border-owner-border px-5 py-3 text-base md:text-sm font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-50 sm:flex-none sm:rounded-lg sm:py-2 sm:text-sm"
+            className="touch-manipulation min-h-[48px] flex-1 rounded-xl border border-owner-border px-5 py-3 text-sm font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-50 sm:flex-none sm:rounded-lg"
           >
             {canAddMore ? "Add testimonial" : `Max ${MAX_TESTIMONIALS} reached`}
           </button>
           <button
             type="submit"
             disabled={saving || hasInvalidRows}
-            className="touch-manipulation min-h-[48px] flex-1 rounded-xl bg-owner-action px-5 py-3 text-base md:text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:flex-none sm:rounded-lg sm:py-2 sm:text-sm"
+            className="touch-manipulation min-h-[48px] flex-1 rounded-xl bg-owner-action px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:flex-none sm:rounded-lg"
           >
             {saving ? "Saving..." : "Save testimonials"}
           </button>

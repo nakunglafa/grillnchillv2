@@ -1,8 +1,8 @@
 export async function generateMetadata() {
   const title =
-    "As Minhas Reservas | Lusiqueira Burger & Grill House – Gerir Reservas";
+    "My Reservations | Thai Maki";
   const description =
-    "Veja e gere as suas reservas na Lusiqueira Burger & Grill House em Campo Grande, Lisboa. Consulte reservas futuras e passadas perto do Metro de Alvalade e do Jardim do Campo Grande.";
+    "View and manage your Thai Maki reservations in Almancil, including upcoming and past bookings.";
 
   return {
     title,

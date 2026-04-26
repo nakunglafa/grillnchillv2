@@ -7,20 +7,18 @@ export async function generateMetadata() {
     const data = await getRestaurant(RESTAURANT_ID);
     const restaurant = data?.restaurant ?? data?.data ?? data;
 
-    const name = restaurant?.name || "Lusiqueira Burger and Grill Restaurant";
-    const address =
-      restaurant?.address || "Campo Grande 232 G R/C Loja D, 1700-072 Lisboa";
+    const name = restaurant?.name || "Thai Maki";
+    const address = restaurant?.address || "Almancil, Algarve";
     const phone = restaurant?.phone || "+351 920 311 793";
 
     const title =
-      "Reservar Mesa | Lusiqueira Burger & Grill House em Campo Grande – Perto do Metro de Alvalade";
+      "Book a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
 
     const description =
       `Reserve a sua mesa em ${name}, ${address}. ` +
-      "A poucos minutos do Metro de Alvalade, Jardim do Campo Grande, Cidade Universitária e Estádio José Alvalade. " +
-      "Perfeito para jantares de grupo, after-work, estudantes e famílias em Alvalade. Ligue " +
+      "Enjoy Thai and sushi dining with easy online booking for lunch and dinner in Almancil near Faro, Algarve. Great choice for people searching Thai or sushi restaurant near me. Contact us at " +
       phone +
-      " ou faça a sua reserva online.";
+      " or reserve online.";
 
     return {
       title,
@@ -33,7 +31,7 @@ export async function generateMetadata() {
         description,
         url: "/book",
         type: "website",
-        siteName: "Lusiqueira Burger & Grill House",
+        siteName: "Thai Maki",
       },
       robots: {
         index: true,
@@ -41,10 +39,9 @@ export async function generateMetadata() {
       },
     };
   } catch {
-    const fallbackTitle =
-      "Reservar Mesa | Lusiqueira Burger & Grill House em Campo Grande – Alvalade";
+    const fallbackTitle = "Book a Table | Thai Restaurant in Almancil, Faro, Algarve";
     const fallbackDescription =
-      "Faça a sua reserva na Lusiqueira Burger & Grill House em Campo Grande, Lisboa. Restaurante de hambúrgueres e grelhados perto do Metro de Alvalade e do Jardim do Campo Grande.";
+      "Book your table at Thai Maki, a Thai and sushi restaurant in Almancil near Faro, Algarve.";
 
     return {
       title: fallbackTitle,

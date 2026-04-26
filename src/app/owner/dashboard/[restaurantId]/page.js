@@ -241,7 +241,7 @@ export default function OwnerDashboardRestaurantPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <Link
               href="/owner/dashboard"
-              className="touch-manipulation min-h-[48px] inline-flex items-center gap-2 rounded-lg px-4 py-3 text-base md:text-sm font-medium text-owner-nav hover:bg-white/10"
+              className="touch-manipulation inline-flex min-h-[48px] items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-owner-nav hover:bg-white/10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-owner-nav">
                 <path d="M19 12H5" />
@@ -249,7 +249,7 @@ export default function OwnerDashboardRestaurantPage() {
               </svg>
               Dashboard
             </Link>
-            <h1 className="text-xl md:text-lg font-bold text-owner-nav sm:text-xl">
+            <h1 className="text-2xl font-bold text-owner-nav sm:text-3xl">
               {restaurant?.name ?? `Restaurant #${restaurantId}`}
             </h1>
           </div>
@@ -257,7 +257,7 @@ export default function OwnerDashboardRestaurantPage() {
             <select
               value={restaurantId}
               onChange={handleRestaurantChange}
-              className="touch-manipulation min-h-[48px] w-full rounded-xl border border-owner-nav/30 bg-owner-walnut px-4 py-3 text-base md:text-sm text-owner-nav sm:w-auto sm:rounded-lg sm:py-2 sm:text-sm"
+              className="touch-manipulation min-h-[48px] w-full rounded-xl border border-owner-nav/30 bg-owner-walnut px-4 py-3 text-sm text-owner-nav sm:w-auto sm:rounded-lg"
             >
               {restaurants.map((r) => (
                 <option key={r.id} value={r.id} className="bg-owner-card text-owner-charcoal">
@@ -274,7 +274,7 @@ export default function OwnerDashboardRestaurantPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`${tabButtonBase} min-h-[44px] flex-1 min-w-0 shrink-0 flex-row gap-2 rounded-lg px-4 py-2.5 text-sm md:text-xs font-bold ${
+              className={`${tabButtonBase} min-h-[44px] flex-1 min-w-0 shrink-0 flex-row gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold ${
                 activeTab === tab.id ? tabButtonActive : tabButtonInactive
               }`}
             >
@@ -302,14 +302,14 @@ export default function OwnerDashboardRestaurantPage() {
         ))}
       </nav>
 
-      <main className="mx-auto px-4 py-6 pb-8 sm:pb-6 max-w-6xl">
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-8 text-sm sm:pb-6">
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-red-600">{error}</p>
+            <p className="text-sm text-red-600">{error}</p>
             <button
               type="button"
               onClick={loadData}
-              className="touch-manipulation mt-2 min-h-[48px] rounded-lg bg-red-100 px-4 py-3 text-base md:text-sm font-medium text-red-700"
+              className="touch-manipulation mt-2 min-h-[48px] rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700"
             >
               Try again
             </button>

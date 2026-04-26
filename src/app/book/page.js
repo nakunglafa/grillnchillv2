@@ -11,6 +11,7 @@ const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
 /** Left column visual — match homepage hero; override with NEXT_PUBLIC_BOOK_PAGE_IMAGE */
 const BOOK_PAGE_IMAGE =
   process.env.NEXT_PUBLIC_BOOK_PAGE_IMAGE ||
+  process.env.NEXT_PUBLIC_PARALLAX_RESERVE_BG ||
   process.env.NEXT_PUBLIC_HERO_COLLAGE_MAIN ||
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80";
 
@@ -109,10 +110,41 @@ function buildDateOptions(days = 7, openingSlots) {
 
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-function BookPageImageColumn({ alt = "Restaurant" }) {
+function getBookingParallaxImageFromRestaurant(restaurant) {
+  const content =
+    restaurant?.website_content ??
+    restaurant?.content_json ??
+    null;
+  const src =
+    content?.parallax_reserve_bg_url ??
+    content?.parallaxReserveBg ??
+    "";
+  return typeof src === "string" && src.trim() ? src.trim() : "";
+}
+
+function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [src]);
+
   return (
     <div className="relative aspect-[5/3] max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-[2/1] sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
-      <img src={BOOK_PAGE_IMAGE} alt={alt} className="absolute inset-0 h-full w-full object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+      {!imageLoaded ? (
+        <div className="absolute inset-0 animate-pulse bg-white/10" aria-hidden />
+      ) : null}
+      <img
+        key={src || BOOK_PAGE_IMAGE}
+        src={src || BOOK_PAGE_IMAGE}
+        alt={alt}
+        onLoad={() => setImageLoaded(true)}
+        onError={() => setImageLoaded(true)}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+          imageLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        sizes="(max-width: 1024px) 100vw, 50vw"
+      />
       <div
         className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/90 via-[#0a0908]/15 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-[#0a0908]/65"
         aria-hidden
@@ -142,6 +174,10 @@ export default function BookPage() {
   const [reservationResult, setReservationResult] = useState(null);
   /** 1 = date/time/guests, 2 = contact & confirm */
   const [bookStep, setBookStep] = useState(1);
+  const bookingParallaxImage = useMemo(
+    () => getBookingParallaxImageFromRestaurant(restaurant) || BOOK_PAGE_IMAGE,
+    [restaurant]
+  );
 
   useEffect(() => {
     getRestaurant(RESTAURANT_ID)
@@ -368,7 +404,16 @@ export default function BookPage() {
         <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
           <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
             <BookPageImageColumn alt="Restaurant" />
-            <p className="text-sm text-white/50 lg:flex lg:min-h-0 lg:items-center">Loading…</p>
+            <div className="w-full border border-white/10 bg-white/[0.03] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-5">
+              <div className="h-3 w-24 animate-pulse bg-white/15" />
+              <div className="mt-3 h-7 w-44 animate-pulse bg-white/12 sm:h-8 sm:w-56" />
+              <div className="mt-4 space-y-2">
+                <div className="h-10 w-full animate-pulse bg-white/10" />
+                <div className="h-10 w-full animate-pulse bg-white/10" />
+                <div className="h-10 w-full animate-pulse bg-white/10" />
+              </div>
+              <div className="mt-4 h-10 w-full animate-pulse bg-accent/35" />
+            </div>
           </div>
         </main>
       </div>
@@ -388,7 +433,10 @@ export default function BookPage() {
         <Header variant="marketing" />
         <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
           <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
-            <BookPageImageColumn alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant"} />
+            <BookPageImageColumn
+              alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant"}
+              src={bookingParallaxImage}
+            />
             <div className="w-full border border-white/10 bg-white/[0.03] p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
             <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Confirmed</p>
             <h1 className="font-display mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">
@@ -444,11 +492,12 @@ export default function BookPage() {
         <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
           <BookPageImageColumn
             alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant dining"}
+            src={bookingParallaxImage}
           />
           <div className="min-w-0">
         <Link
           href="/"
-          className="touch-manipulation mb-4 inline-flex min-h-9 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50 transition-colors hover:text-accent"
+          className="touch-manipulation mb-4 inline-flex min-h-9 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50 transition-colors hover:text-accent"
         >
           <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -457,16 +506,16 @@ export default function BookPage() {
         </Link>
 
         <div className="mb-4 text-left md:mb-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Reservations</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Reservations</p>
           <h1 className="font-display mt-1.5 text-2xl font-semibold tracking-tight text-white md:text-3xl">Book a table</h1>
-          <p className="mt-1 text-xs text-white/55">{restaurant.name}</p>
-          <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white/40">
+          <p className="mt-1 text-sm text-white/60">{restaurant.name}</p>
+          <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
             Step {bookStep} of 2 — {bookStep === 1 ? "When" : "Your details"}
           </p>
         </div>
 
         {!isAuthenticated && bookStep === 2 && (
-          <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-left text-[11px] leading-snug text-amber-100/95 ring-1 ring-amber-500/20 sm:text-xs">
+          <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-left text-xs leading-snug text-amber-100/95 ring-1 ring-amber-500/20">
             Booking as guest: enter your name and at least one of phone or email.{" "}
             <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
               Log in
@@ -477,7 +526,7 @@ export default function BookPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="flex w-full max-w-none flex-col gap-3 border border-white/10 bg-white/[0.03] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:gap-3.5 sm:p-4"
+          className="flex w-full max-w-none flex-col gap-4 border border-white/10 bg-white/[0.03] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-5"
         >
           {bookStep === 1 && reservationConfigMissing && (
             <div className="border border-amber-500/40 bg-amber-500/[0.08] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100 ring-1 ring-amber-500/25 sm:text-xs">
@@ -488,7 +537,7 @@ export default function BookPage() {
             </div>
           )}
           {error && (
-            <p className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200 ring-1 ring-red-500/20 sm:text-xs">
+            <p className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200 ring-1 ring-red-500/20">
               {error}
             </p>
           )}
@@ -496,12 +545,12 @@ export default function BookPage() {
           {bookStep === 1 && (
           <>
           {/* When — step 1 */}
-          <div className="w-full border border-white/10 bg-white/[0.04] p-3 ring-1 ring-white/10 sm:p-4">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">When</p>
+          <div className="w-full">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">When</p>
 
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                   Date
                 </label>
                 <input
@@ -512,10 +561,10 @@ export default function BookPage() {
                     const t = new Date();
                     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
                   })()}
-                  className="book-form-input touch-manipulation h-10 w-full rounded-sm px-3 text-sm outline-none"
+                  className="book-form-input touch-manipulation h-11 w-full rounded-sm text-sm outline-none"
                 />
                 {dateOptions.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] leading-snug text-white/45 sm:text-[11px]">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] leading-snug text-white/50">
                     <span className="mr-1 shrink-0 text-white/35">Quick:</span>
                     {dateOptions.map((opt, i) => {
                       const selected = reservation_date === opt.value;
@@ -540,8 +589,8 @@ export default function BookPage() {
                 )}
               </div>
 
-              <div className="border-t border-white/10 pt-3">
-                <label htmlFor="book-time" className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+              <div className="border-t border-white/8 pt-3">
+                <label htmlFor="book-time" className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                   Time
                 </label>
                 {availabilityLoading ? (
@@ -553,7 +602,7 @@ export default function BookPage() {
                     id="book-time"
                     value={reservation_time}
                     onChange={(e) => setReservation_time(e.target.value)}
-                    className="book-form-select touch-manipulation h-10 w-full rounded-sm text-sm outline-none"
+                    className="book-form-select touch-manipulation h-11 w-full rounded-sm text-sm outline-none"
                   >
                     {timeSlotsToShow.map((slot) => {
                       const disabled = isTimeSlotPast(slot) || isSlotUnavailable(slot);
@@ -571,15 +620,15 @@ export default function BookPage() {
                 )}
               </div>
 
-              <div className="border-t border-white/10 pt-3">
-                <label htmlFor="book-guests" className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+              <div className="border-t border-white/8 pt-3">
+                <label htmlFor="book-guests" className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                   Guests
                 </label>
                 <select
                   id="book-guests"
                   value={party_size}
                   onChange={(e) => setParty_size(Number(e.target.value))}
-                  className="book-form-select touch-manipulation h-10 w-full rounded-sm text-sm outline-none"
+                  className="book-form-select touch-manipulation h-11 w-full rounded-sm text-sm outline-none"
                 >
                   {PARTY_SIZES.map((n) => (
                     <option key={n} value={n}>
@@ -595,7 +644,7 @@ export default function BookPage() {
             type="button"
             onClick={goToStep2}
             disabled={availabilityLoading || reservationConfigMissing}
-            className="touch-manipulation h-10 w-full rounded-sm bg-accent text-[10px] font-semibold uppercase tracking-[0.2em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:text-[11px] sm:tracking-[0.22em]"
+            className="touch-manipulation h-10 w-full rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:text-xs"
           >
             Continue
           </button>
@@ -604,8 +653,8 @@ export default function BookPage() {
 
           {bookStep === 2 && (
           <>
-          <div className="border border-white/10 bg-white/[0.04] px-3 py-2.5 ring-1 ring-white/10 sm:px-4">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-accent">Your selection</p>
+          <div className="px-0 py-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Your selection</p>
             <p className="mt-1 text-sm leading-snug text-white/90">{whenSummaryLine}</p>
             <button
               type="button"
@@ -613,17 +662,17 @@ export default function BookPage() {
                 setError("");
                 setBookStep(1);
               }}
-              className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:text-accent/90 hover:underline"
+              className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-accent transition-colors hover:text-accent/90 hover:underline"
             >
               Edit date & time
             </button>
           </div>
 
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">Contact</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Contact</p>
 
           <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">Your name</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">Your name</span>
               <input
                 type="text"
                 value={customer_name}
@@ -634,7 +683,7 @@ export default function BookPage() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Phone {!isAuthenticated ? "(if no email)" : ""}
               </span>
               <input
@@ -648,7 +697,7 @@ export default function BookPage() {
           </div>
 
           <label className="flex w-full flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
               Email {!isAuthenticated ? "(if no phone)" : "(optional)"}
             </span>
             <input
@@ -661,7 +710,7 @@ export default function BookPage() {
           </label>
 
           <label className="flex w-full flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">Notes (optional)</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">Notes (optional)</span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -678,14 +727,14 @@ export default function BookPage() {
                 setError("");
                 setBookStep(1);
               }}
-              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.16em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/[0.1] sm:h-12 sm:min-w-[140px] sm:flex-1"
+              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/[0.06] text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/[0.1] sm:h-12 sm:min-w-[140px] sm:flex-1"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={submitting || reservationConfigMissing}
-              className="touch-manipulation h-11 w-full flex-[2] rounded-sm bg-accent text-[10px] font-semibold uppercase tracking-[0.2em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-[11px] sm:tracking-[0.22em]"
+              className="touch-manipulation h-11 w-full flex-[2] rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-xs"
             >
               {submitting ? "Confirming…" : reservationConfigMissing ? "Booking unavailable" : "Confirm booking"}
             </button>

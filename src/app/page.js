@@ -141,7 +141,7 @@ const PLACEHOLDER_TESTIMONIALS = [
   {
     reviewer_name: "Maria S.",
     quote:
-      "Outstanding flavors and friendly service. We keep coming back for the burgers and the welcoming atmosphere.",
+      "Outstanding flavors and friendly service. We keep coming back for the sushi and the welcoming atmosphere.",
   },
   {
     reviewer_name: "James R.",
@@ -150,7 +150,7 @@ const PLACEHOLDER_TESTIMONIALS = [
   },
   {
     reviewer_name: "Ana P.",
-    quote: "Great spot near Campo Grande — easy to book, lovely staff, and generous portions.",
+    quote: "Great spot in Almancil — easy to book, lovely staff, and generous portions.",
   },
 ];
 
@@ -233,6 +233,7 @@ function normalizeWebsiteContent(content) {
   return {
     storyTitle: content.story_title ?? content.storyTitle ?? "",
     storyText: content.story_text ?? content.storyText ?? "",
+    promoVideoUrl: content.promo_video_url ?? content.promoVideoUrl ?? "",
     thaiSectionTitle: content.thai_section_title ?? content.thaiSectionTitle ?? "",
     thaiSectionIntro: content.thai_section_intro ?? content.thaiSectionIntro ?? "",
     sushiSectionTitle: content.sushi_section_title ?? content.sushiSectionTitle ?? "",
@@ -347,6 +348,7 @@ export default function Home() {
     mergedWebsiteContent?.storyText ||
     restaurant?.description ||
     "We bring together quality ingredients, skilled cooking, and a relaxed atmosphere so every visit feels special. From weekday lunches to weekend dinners, our team is here to serve you.";
+  const promoVideoUrl = String(mergedWebsiteContent?.promoVideoUrl ?? PROMO_VIDEO_URL ?? "").trim();
 
   /** Curated testimonials from API: { id, reviewer_name, quote, sort_order } */
   const testimonialsSorted = useMemo(() => {
@@ -798,6 +800,35 @@ export default function Home() {
     isDraggingRef.current = false;
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-wood-100">
+        <Header variant="overlay" />
+        <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
+          <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center px-4 pb-10 pt-[5.5rem] sm:px-6 sm:pb-14 sm:pt-24 lg:px-10 lg:pb-16 lg:pt-28">
+            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-12">
+              <div className="animate-pulse lg:col-span-5 xl:col-span-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
+                  Loading website...
+                </p>
+                <div className="mt-6 h-5 w-40 rounded bg-white/15" />
+                <div className="mt-3 h-12 w-full max-w-md rounded bg-white/20" />
+                <div className="mt-3 h-12 w-5/6 max-w-sm rounded bg-white/20" />
+                <div className="mt-3 h-12 w-2/3 max-w-xs rounded bg-white/20" />
+                <div className="mt-10 h-11 w-36 rounded bg-accent/50" />
+              </div>
+              <div className="lg:col-span-7 xl:col-span-7">
+                <div className="relative mx-auto aspect-[4/3] w-full min-h-[min(52vh,520px)] overflow-hidden rounded-md bg-white/10 ring-1 ring-white/15 sm:aspect-[5/4] sm:min-h-[min(56vh,600px)] lg:aspect-auto lg:min-h-[min(62vh,720px)] lg:h-[min(62vh,720px)]">
+                  <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/10 via-white/20 to-white/10" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   const PlayCircle = (
     <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-accent bg-accent shadow-lg">
       <svg className="ml-1 h-6 w-6 text-wood-950" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -808,8 +839,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-wood-100">
+      <Header variant="overlay" />
       <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
-        <Header variant="overlay" />
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_70%_20%,rgba(201,162,39,0.07),transparent_55%)]"
           aria-hidden
@@ -835,9 +866,9 @@ export default function Home() {
                 >
                   Reserve now
                 </Link>
-                {PROMO_VIDEO_URL ? (
+                {promoVideoUrl ? (
                   <a
-                    href={PROMO_VIDEO_URL}
+                    href={promoVideoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group inline-flex items-center gap-4 text-white"
@@ -845,12 +876,7 @@ export default function Home() {
                     {PlayCircle}
                     <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
                   </a>
-                ) : (
-                  <Link href="/menu" className="group inline-flex items-center gap-4 text-white">
-                    {PlayCircle}
-                    <span className="text-[17px] font-medium tracking-wide">View menu</span>
-                  </Link>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -1397,15 +1423,15 @@ export default function Home() {
             <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 px-4 sm:px-6 lg:px-8">
               <div className="max-w-6xl mx-auto">
                 <div className="mb-2 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
                     This week
                   </p>
-                  <h2 className="font-display mt-2 text-3xl font-semibold text-wood-900 md:text-4xl">
+                  <h2 className="mt-2 font-sans text-3xl font-extrabold uppercase tracking-[0.05em] text-wood-900 md:text-4xl">
                     Specials menu
                   </h2>
                 </div>
-                <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
-                  <p className="max-w-xl text-center text-[15px] text-wood-600 sm:text-left">
+                <div className="mb-8 flex flex-col items-center justify-center gap-4">
+                  <p className="max-w-2xl text-center font-sans text-[13px] uppercase tracking-[0.08em] text-wood-600 md:text-[14px]">
                     A curated selection of highlighted dishes from our kitchen.
                   </p>
                   <Link
@@ -1418,7 +1444,7 @@ export default function Home() {
 
                 <div
                   ref={specialsRowRef}
-                  className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing"
+                  className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing md:flex-wrap md:justify-center md:overflow-visible"
                   onMouseDown={handleDragStart}
                   onMouseMove={handleDragMove}
                   onMouseLeave={handleDragEnd}
@@ -1430,7 +1456,7 @@ export default function Home() {
                     return (
                     <article
                       key={itemKey}
-                      className="group relative w-56 shrink-0 overflow-hidden rounded-sm bg-white/5 shadow-md ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                      className="group relative w-56 shrink-0 overflow-hidden rounded-sm bg-white/5 text-center shadow-md ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                       onClick={() =>
                         setActiveSpecialId((prev) => (prev === itemKey ? null : itemKey))
                       }
@@ -1449,12 +1475,12 @@ export default function Home() {
                         )}
                       </div>
 
-                      <div className="px-3 py-3 space-y-1">
-                        <h3 className="text-sm font-semibold text-wood-900 line-clamp-2">
+                      <div className="px-3 py-3 space-y-1.5">
+                        <h3 className="line-clamp-2 font-sans text-base font-extrabold uppercase tracking-[0.03em] text-wood-900">
                           {item.name}
                         </h3>
                         {item.price != null && item.price !== "" && (
-                          <p className="text-sm font-semibold text-wood-900">
+                          <p className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-accent">
                             {formatPrice(item.price)}
                           </p>
                         )}
@@ -1464,8 +1490,8 @@ export default function Home() {
                         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
                           isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
                         }`}>
-                          <div className="mx-1 mb-1 rounded-2xl bg-white text-wood-800 text-[11px] leading-snug p-3 shadow-xl backdrop-blur-md max-h-40 overflow-y-auto">
-                            <p className="whitespace-pre-line">{item.description}</p>
+                          <div className="mx-1 mb-1 max-h-40 overflow-y-auto rounded-2xl bg-white p-3 font-sans text-[11px] leading-snug text-wood-800 shadow-xl backdrop-blur-md">
+                            <p className="whitespace-pre-line text-center">{item.description}</p>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1510,18 +1536,18 @@ export default function Home() {
             <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 px-4 sm:px-6 lg:px-8">
               <div className="max-w-6xl mx-auto">
                 <div className="mb-8 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
                     Featured
                   </p>
-                  <h2 className="font-display mt-2 text-3xl font-semibold text-wood-900 md:text-4xl">
+                  <h2 className="mt-2 font-sans text-3xl font-extrabold uppercase tracking-[0.05em] text-wood-900 md:text-4xl">
                     Special menus
                   </h2>
                 </div>
 
                 <div className="space-y-10">
                   {specialMenuListsForUI.map((list) => (
-                    <div key={String(list.id)} className="space-y-3">
-                      <h3 className="text-lg md:text-xl font-semibold text-wood-900">
+                    <div key={String(list.id)} className="space-y-3 text-center">
+                      <h3 className="font-sans text-xl font-extrabold uppercase tracking-[0.04em] text-wood-900 md:text-2xl">
                         {list.name}
                       </h3>
                       <div
@@ -1530,7 +1556,7 @@ export default function Home() {
                             specialMenusRowRefs.current[list.id] = el;
                           }
                         }}
-                        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing"
+                        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing md:flex-wrap md:justify-center md:overflow-visible"
                         onMouseDown={handleDragStart}
                         onMouseMove={handleDragMove}
                         onMouseLeave={handleDragEnd}
@@ -1542,7 +1568,7 @@ export default function Home() {
                           return (
                           <article
                             key={itemKey}
-                            className="group relative w-56 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5 shadow-md transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                            className="group relative w-56 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5 text-center shadow-md transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                             onClick={() =>
                               setActiveSpecialMenuItemId((prev) => (prev === itemKey ? null : itemKey))
                             }
@@ -1560,12 +1586,12 @@ export default function Home() {
                                 </div>
                               )}
                             </div>
-                            <div className="px-3 py-3 space-y-1">
-                              <h4 className="text-sm font-semibold text-wood-900 line-clamp-2">
+                            <div className="px-3 py-3 space-y-1.5">
+                              <h4 className="line-clamp-2 font-sans text-base font-extrabold uppercase tracking-[0.03em] text-wood-900">
                                 {item.name}
                               </h4>
                               {item.price != null && item.price !== "" && (
-                                <p className="text-sm font-semibold text-wood-900">
+                                <p className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-accent">
                                   {formatPrice(item.price)}
                                 </p>
                               )}
@@ -1574,8 +1600,8 @@ export default function Home() {
                               <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
                                 isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
                               }`}>
-                                <div className="mx-1 mb-1 rounded-2xl bg-white text-wood-800 text-[11px] leading-snug p-3 shadow-xl backdrop-blur-md max-h-40 overflow-y-auto">
-                                  <p className="whitespace-pre-line">{item.description}</p>
+                                <div className="mx-1 mb-1 max-h-40 overflow-y-auto rounded-2xl bg-white p-3 font-sans text-[11px] leading-snug text-wood-800 shadow-xl backdrop-blur-md">
+                                  <p className="whitespace-pre-line text-center">{item.description}</p>
                                   <button
                                     type="button"
                                     onClick={(e) => {

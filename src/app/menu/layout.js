@@ -34,13 +34,12 @@ export async function generateMetadata() {
     const data = await getRestaurant(RESTAURANT_ID);
     const restaurant = data?.restaurant ?? data?.data ?? data;
 
-    const name = restaurant?.name || "Lusiqueira Burger and Grill Restaurant";
-    const address =
-      restaurant?.address || "Campo Grande 232 G R/C Loja D, 1700-072 Lisboa";
+    const name = restaurant?.name || "Thai Maki";
+    const address = restaurant?.address || "Almancil, Algarve";
     const phone = restaurant?.phone || "+351 920 311 793";
     const logoUrl =
       restaurant?.logo_url ||
-      "https://lusiqueiraburger.pt/img/cover.jpg";
+      "https://thainmaki.pt/cover.jpg";
 
     const menuItemNames =
       collectMenuItemNames(restaurant?.menus ?? data?.menus ?? []) || [];
@@ -48,14 +47,14 @@ export async function generateMetadata() {
     const highlightedItems = menuItemNames.slice(0, 10).join(", ");
 
     const title =
-      "Menu Lusiqueira Burger & Grill House | Hambúrgueres, Grelhados, Smash Burgers & Bebidas em Campo Grande";
+      "Menu Thai Maki | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
 
     const description =
       `Explore o menu completo de ${name} em ${address}: ` +
       (highlightedItems
         ? `${highlightedItems}. `
         : "") +
-      "Entradas, grelhados, hambúrguer smash, sandes, sobremesas, bebidas e vinhos junto ao Jardim do Campo Grande, a 2 minutos do Metro de Alvalade e perto da Cidade Universitária em Lisboa. Reserve ou faça take-away para estudantes, trabalhadores de escritório e moradores de Alvalade.";
+      "Explore sushi rolls, sashimi, Thai curries, noodles, starters, desserts and drinks from our live menu. Perfect for people searching Thai or sushi restaurant near me in Faro, Almancil and Algarve.";
 
     return {
       title,
@@ -68,7 +67,7 @@ export async function generateMetadata() {
         description,
         url: "/menu",
         type: "website",
-        siteName: "Lusiqueira Burger & Grill House",
+        siteName: "Thai Maki",
         images: [
           {
             url: logoUrl,
@@ -95,9 +94,9 @@ export async function generateMetadata() {
     };
   } catch {
     const fallbackTitle =
-      "Menu Lusiqueira Burger & Grill House | Hambúrgueres & Grelhados em Campo Grande – Alvalade";
+      "Menu Thai Maki | Thai and Sushi Restaurant in Faro, Almancil, Algarve";
     const fallbackDescription =
-      "Veja o menu da Lusiqueira Burger & Grill House em Campo Grande, Lisboa: hambúrgueres artesanais, grelhados, entradas, sobremesas e bebidas a poucos minutos do Metro de Alvalade e do Jardim do Campo Grande.";
+      "Discover Thai Maki menu in Almancil near Faro with Thai specialties and sushi favorites.";
 
     return {
       title: fallbackTitle,

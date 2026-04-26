@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { getProfile, updateProfile } from "@/lib/api";
 import { Toast } from "@/components/Toast";
+import { isOwner } from "@/lib/owner-utils";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -66,54 +67,82 @@ export default function ProfilePage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-wood-100">
-      <Header />
-      <main className="mx-auto max-w-md px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold text-wood-900">Profile</h1>
-        {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+    <div className="relative min-h-screen bg-[#0a0908] text-white">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+        aria-hidden
+      />
+      <Header variant="marketing" />
+      <main className="relative z-10 mx-auto max-w-md px-4 py-8">
+        <h1 className="mb-6 font-display text-2xl font-semibold text-white">Profile</h1>
+        {error && (
+          <p className="mb-4 border border-red-500/35 bg-red-500/10 px-3 py-2 text-sm text-red-200 ring-1 ring-red-500/20">
+            {error}
+          </p>
+        )}
         {loading && !user ? (
-          <p className="text-wood-600">Loading...</p>
+          <p className="text-white/60">Loading...</p>
         ) : (
-          <form onSubmit={handleSubmit} className="glass flex flex-col gap-4 rounded-2xl p-6 border border-white/10">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm"
+          >
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-wood-700">Name</span>
+              <span className="text-sm font-medium text-white/70">Name</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-lg border border-wood-500/40 bg-white/10 px-4 py-2 text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                className="rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-white outline-none focus:border-accent focus:ring-2 focus:ring-accent/50"
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-wood-700">Email</span>
+              <span className="text-sm font-medium text-white/70">Email</span>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="rounded-lg border border-wood-500/40 bg-white/10 px-4 py-2 text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                className="rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-white outline-none focus:border-accent focus:ring-2 focus:ring-accent/50"
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-wood-700">Phone</span>
+              <span className="text-sm font-medium text-white/70">Phone</span>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="rounded-lg border border-wood-500/40 bg-white/10 px-4 py-2 text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                className="rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-white outline-none focus:border-accent focus:ring-2 focus:ring-accent/50"
               />
             </label>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-accent py-3 font-medium text-wood-950 hover:bg-accent-hover disabled:opacity-50 transition-colors"
+              className="rounded-sm bg-accent py-3 text-sm font-semibold uppercase tracking-[0.16em] text-wood-950 transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save"}
             </button>
           </form>
         )}
-        <p className="mt-4">
-          <Link href="/" className="text-sm text-wood-600 underline hover:text-wood-900">Back to home</Link>
-        </p>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.3)] ring-1 ring-white/10">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">Account links</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/orders" className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 hover:border-accent hover:text-white">
+              My Orders
+            </Link>
+            <Link href="/reservations" className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 hover:border-accent hover:text-white">
+              My Reservations
+            </Link>
+            {isOwner(user) && (
+              <Link href="/owner/dashboard" className="rounded-full border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs text-accent hover:bg-accent/20">
+                Owner Dashboard
+              </Link>
+            )}
+            <Link href="/" className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 hover:border-accent hover:text-white">
+              Back to Home
+            </Link>
+          </div>
+        </div>
       </main>
       <Toast
         message={successMessage}

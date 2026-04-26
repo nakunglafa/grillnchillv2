@@ -129,7 +129,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
         <button
           type="button"
           onClick={() => loadOrders(false)}
-          className="touch-manipulation mt-2 min-h-[48px] rounded-xl bg-red-100 px-4 py-3 text-base md:text-sm font-medium text-red-700"
+          className="touch-manipulation mt-2 min-h-[48px] rounded-xl bg-red-100 px-4 py-3 text-sm font-medium text-red-700"
         >
           Try again
         </button>
@@ -151,7 +151,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
             key={s.value || "all"}
             type="button"
             onClick={() => setStatusFilter(s.value)}
-            className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm md:text-xs font-medium transition-colors ${
+            className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               statusFilter === s.value
                 ? "bg-owner-action text-white"
                 : "bg-owner-paper text-owner-charcoal hover:bg-owner-border border border-owner-border"
@@ -181,8 +181,8 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                 {/* Header: Order #, date, status dropdown */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-owner-border bg-owner-paper/50 px-4 py-3">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-base md:text-sm font-semibold text-owner-charcoal">Order #{order.id}</span>
-                    <span className="text-sm md:text-xs text-owner-muted">{formatOrderDateTime(order)}</span>
+                    <span className="text-lg font-semibold text-owner-charcoal">Order #{order.id}</span>
+                    <span className="text-sm text-owner-muted">{formatOrderDateTime(order)}</span>
                   </div>
                   <select
                     value={order.status ?? order.order_status ?? ""}

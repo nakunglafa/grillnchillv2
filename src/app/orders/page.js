@@ -126,10 +126,14 @@ export default function OrdersPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-wood-100">
-        <Header />
-        <main className="mx-auto max-w-5xl px-4 py-12">
-          <p className="text-center text-wood-600">Loading…</p>
+      <div className="relative min-h-screen bg-[#0a0908] text-white">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+          aria-hidden
+        />
+        <Header variant="marketing" />
+        <main className="relative z-10 mx-auto max-w-5xl px-4 py-12">
+          <p className="text-center text-white/60">Loading…</p>
         </main>
       </div>
     );
@@ -137,10 +141,14 @@ export default function OrdersPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-wood-100">
-        <Header />
-        <main className="mx-auto max-w-5xl px-4 py-12">
-          <p className="text-center text-wood-600">
+      <div className="relative min-h-screen bg-[#0a0908] text-white">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+          aria-hidden
+        />
+        <Header variant="marketing" />
+        <main className="relative z-10 mx-auto max-w-5xl px-4 py-12">
+          <p className="text-center text-white/65">
             Please <Link href="/login" className="text-accent hover:underline">log in</Link> to view your orders.
           </p>
         </main>
@@ -149,28 +157,32 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-wood-100">
-      <Header />
-      <main className="mx-auto max-w-5xl px-4 py-8 md:py-12">
-        <h1 className="mb-6 text-2xl font-bold text-wood-900">My Orders</h1>
+    <div className="relative min-h-screen bg-[#0a0908] text-white">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
+        aria-hidden
+      />
+      <Header variant="marketing" />
+      <main className="relative z-10 mx-auto max-w-5xl px-4 py-8 md:py-12">
+        <h1 className="mb-6 font-display text-2xl font-semibold text-white">My Orders</h1>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-            <p className="text-red-300">{error}</p>
-            <button type="button" onClick={() => load(true)} className="mt-2 text-sm font-medium text-red-300 hover:underline">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 ring-1 ring-red-500/20">
+            <p className="text-red-200">{error}</p>
+            <button type="button" onClick={() => load(true)} className="mt-2 text-sm font-medium text-red-200 hover:underline">
               Try again
             </button>
           </div>
         )}
 
-        {loading && <p className="py-8 text-center text-wood-600">Loading orders…</p>}
+        {loading && <p className="py-8 text-center text-white/60">Loading orders…</p>}
 
         {!loading && !error && orders.length === 0 && (
-          <div className="glass rounded-2xl p-12 text-center border border-white/10">
-            <p className="text-wood-600">No orders yet.</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm">
+            <p className="text-white/70">No orders yet.</p>
             <Link
               href="/menu"
-              className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-accent px-6 py-3 text-base font-medium text-wood-950 hover:bg-accent-hover transition-colors"
+              className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-sm bg-accent px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-wood-950 transition-colors hover:bg-accent-hover"
             >
               Browse menu
             </Link>
@@ -180,19 +192,19 @@ export default function OrdersPage() {
         {!loading && !error && orders.length > 0 && (
           <div className="space-y-6">
             {/* Active / History tabs */}
-            <div className="flex gap-2 rounded-xl bg-white/10 p-1.5 border border-white/10 backdrop-blur-sm">
+            <div className="flex gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setMainTab("active")}
                 className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-4 py-3 text-base font-medium transition-colors active:scale-[0.98] ${
                   mainTab === "active"
-                    ? "bg-white/20 text-wood-900 shadow"
-                    : "text-wood-600 hover:text-wood-900"
+                    ? "bg-accent text-wood-950 shadow"
+                    : "text-white/65 hover:text-white"
                 }`}
               >
                 Active
                 {activeCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-emerald-500/30 px-1.5 py-0.5 text-xs font-medium text-wood-900">
+                  <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-xs font-medium text-current">
                     {activeCount}
                   </span>
                 )}
@@ -202,13 +214,13 @@ export default function OrdersPage() {
                 onClick={() => setMainTab("history")}
                 className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-4 py-3 text-base font-medium transition-colors active:scale-[0.98] ${
                   mainTab === "history"
-                    ? "bg-white/20 text-wood-900 shadow"
-                    : "text-wood-600 hover:text-wood-900"
+                    ? "bg-accent text-wood-950 shadow"
+                    : "text-white/65 hover:text-white"
                 }`}
               >
                 History
                 {historyCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-wood-500/30 px-1.5 py-0.5 text-xs text-wood-900">
+                  <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-xs text-current">
                     {historyCount}
                   </span>
                 )}
@@ -225,7 +237,7 @@ export default function OrdersPage() {
                   className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     statusFilter === s.value
                       ? "bg-accent text-wood-950"
-                      : "bg-white/10 text-wood-700 hover:bg-white/15 border border-white/10"
+                      : "border border-white/10 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {s.label}
@@ -234,24 +246,24 @@ export default function OrdersPage() {
             </div>
 
             {filteredOrders.length === 0 ? (
-              <div className="glass rounded-2xl p-8 text-center border border-white/10">
-                <p className="text-wood-600">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm">
+                <p className="text-white/70">
                   {mainTab === "active" ? "No active orders." : "No orders in history."}
                 </p>
-                <p className="mt-1 text-sm text-wood-500">Try changing the filter or tab.</p>
+                <p className="mt-1 text-sm text-white/45">Try changing the filter or tab.</p>
               </div>
             ) : (
               <ul className="space-y-4">
                 {filteredOrders.map((order) => (
-                  <li key={order.id} className="glass rounded-2xl p-5 border border-white/10">
+                  <li key={order.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <span className="text-lg font-bold text-wood-900">Order #{order.id}</span>
+                        <span className="text-lg font-bold text-white">Order #{order.id}</span>
                         {order.restaurant_name && (
-                          <p className="mt-0.5 text-sm text-wood-600">{order.restaurant_name}</p>
+                          <p className="mt-0.5 text-sm text-white/60">{order.restaurant_name}</p>
                         )}
                         {order.created_at && (
-                          <p className="mt-1 text-sm text-wood-500">{new Date(order.created_at).toLocaleString()}</p>
+                          <p className="mt-1 text-sm text-white/45">{new Date(order.created_at).toLocaleString()}</p>
                         )}
                       </div>
                       <span
@@ -263,9 +275,9 @@ export default function OrdersPage() {
                       </span>
                     </div>
                     <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                      <span className="font-semibold text-wood-900">{formatPrice(order.total ?? order.total_amount)}</span>
+                      <span className="font-semibold text-white">{formatPrice(order.total ?? order.total_amount)}</span>
                       {order.items && order.items.length > 0 && (
-                        <span className="text-sm text-wood-500">
+                        <span className="text-sm text-white/45">
                           {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                         </span>
                       )}

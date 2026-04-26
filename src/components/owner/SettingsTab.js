@@ -34,7 +34,19 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [editRestaurant, setEditRestaurant] = useState({ name: "", address: "", phone: "", google_business_url: "", logo_url: "" });
+  const [editRestaurant, setEditRestaurant] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    google_business_url: "",
+    logo_url: "",
+    social_x_url: "",
+    social_facebook_url: "",
+    social_instagram_url: "",
+    social_tiktok_url: "",
+    google_maps_url: "",
+    tripadvisor_url: "",
+  });
   const [logoFile, setLogoFile] = useState(null);
   const [logoCacheBust, setLogoCacheBust] = useState(0);
   const [editConfig, setEditConfig] = useState({
@@ -140,6 +152,12 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
           phone: rest?.phone ?? "",
           google_business_url: rest?.google_business_url ?? "",
           logo_url: rest?.logo_url ?? "",
+          social_x_url: rest?.social_x_url ?? rest?.social_links?.x ?? "",
+          social_facebook_url: rest?.social_facebook_url ?? rest?.social_links?.facebook ?? "",
+          social_instagram_url: rest?.social_instagram_url ?? rest?.social_links?.instagram ?? "",
+          social_tiktok_url: rest?.social_tiktok_url ?? rest?.social_links?.tiktok ?? "",
+          google_maps_url: rest?.google_maps_url ?? rest?.social_links?.google_maps ?? "",
+          tripadvisor_url: rest?.tripadvisor_url ?? rest?.social_links?.tripadvisor ?? "",
         });
       })
       .catch((err) => setError(err?.message || err?.data?.message || "Failed to load"))
@@ -176,9 +194,26 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
           phone: updated.phone ?? editRestaurant.phone,
           google_business_url: updated.google_business_url ?? editRestaurant.google_business_url,
           logo_url: updated.logo_url ?? editRestaurant.logo_url,
+          social_x_url: updated.social_x_url ?? editRestaurant.social_x_url,
+          social_facebook_url: updated.social_facebook_url ?? editRestaurant.social_facebook_url,
+          social_instagram_url: updated.social_instagram_url ?? editRestaurant.social_instagram_url,
+          social_tiktok_url: updated.social_tiktok_url ?? editRestaurant.social_tiktok_url,
+          google_maps_url: updated.google_maps_url ?? editRestaurant.google_maps_url,
+          tripadvisor_url: updated.tripadvisor_url ?? editRestaurant.tripadvisor_url,
         };
         setEditRestaurant(merged);
-        onRestaurantUpdate?.({ ...updated, ...merged });
+        onRestaurantUpdate?.({
+          ...updated,
+          ...merged,
+          social_links: {
+            x: merged.social_x_url || null,
+            facebook: merged.social_facebook_url || null,
+            instagram: merged.social_instagram_url || null,
+            tiktok: merged.social_tiktok_url || null,
+            google_maps: merged.google_maps_url || null,
+            tripadvisor: merged.tripadvisor_url || null,
+          },
+        });
       } else {
         // API returned success but no restaurant object – propagate form values optimistically
         onRestaurantUpdate?.({
@@ -187,6 +222,20 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
           phone: editRestaurant.phone,
           google_business_url: editRestaurant.google_business_url,
           logo_url: editRestaurant.logo_url,
+          social_x_url: editRestaurant.social_x_url,
+          social_facebook_url: editRestaurant.social_facebook_url,
+          social_instagram_url: editRestaurant.social_instagram_url,
+          social_tiktok_url: editRestaurant.social_tiktok_url,
+          google_maps_url: editRestaurant.google_maps_url,
+          tripadvisor_url: editRestaurant.tripadvisor_url,
+          social_links: {
+            x: editRestaurant.social_x_url || null,
+            facebook: editRestaurant.social_facebook_url || null,
+            instagram: editRestaurant.social_instagram_url || null,
+            tiktok: editRestaurant.social_tiktok_url || null,
+            google_maps: editRestaurant.google_maps_url || null,
+            tripadvisor: editRestaurant.tripadvisor_url || null,
+          },
         });
       }
       setSuccess("Restaurant details updated.");
@@ -273,14 +322,72 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
     }
   };
 
-  const inputClass = "w-full rounded-xl border border-owner-border bg-owner-card px-4 py-3 text-base md:text-sm text-owner-charcoal placeholder:text-owner-muted sm:rounded-lg sm:py-2 sm:text-sm";
-  const labelClass = "block text-sm md:text-xs font-medium text-owner-charcoal mb-1";
+  const handleSaveSocialLinks = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const id = restaurant?.id ?? restaurantId;
+      const payload = {
+        // Include stable core fields so backend validators that require name/address won't reject social-only updates.
+        name: editRestaurant.name || "",
+        address: editRestaurant.address || "",
+        phone: editRestaurant.phone || "",
+        google_business_url: editRestaurant.google_business_url || "",
+        social_x_url: editRestaurant.social_x_url || "",
+        social_facebook_url: editRestaurant.social_facebook_url || "",
+        social_instagram_url: editRestaurant.social_instagram_url || "",
+        social_tiktok_url: editRestaurant.social_tiktok_url || "",
+        google_maps_url: editRestaurant.google_maps_url || "",
+        tripadvisor_url: editRestaurant.tripadvisor_url || "",
+      };
+      const res = await updateOwnerRestaurant(id, payload, token);
+      const updated = res?.data ?? res?.restaurant ?? res ?? {};
+      const merged = {
+        ...payload,
+        social_x_url: updated.social_x_url ?? payload.social_x_url,
+        social_facebook_url: updated.social_facebook_url ?? payload.social_facebook_url,
+        social_instagram_url: updated.social_instagram_url ?? payload.social_instagram_url,
+        social_tiktok_url: updated.social_tiktok_url ?? payload.social_tiktok_url,
+        google_maps_url: updated.google_maps_url ?? payload.google_maps_url,
+        tripadvisor_url: updated.tripadvisor_url ?? payload.tripadvisor_url,
+      };
+      setEditRestaurant((prev) => ({ ...prev, ...merged }));
+      onRestaurantUpdate?.({
+        ...updated,
+        ...merged,
+        social_links: {
+          x: merged.social_x_url || null,
+          facebook: merged.social_facebook_url || null,
+          instagram: merged.social_instagram_url || null,
+          tiktok: merged.social_tiktok_url || null,
+          google_maps: merged.google_maps_url || null,
+          tripadvisor: merged.tripadvisor_url || null,
+        },
+      });
+      setSuccess("Social links updated.");
+    } catch (err) {
+      const msg = err?.data?.message || err?.message || "Failed to update social links";
+      const validationErrors = err?.data?.errors;
+      const detail = validationErrors && typeof validationErrors === "object"
+        ? Object.values(validationErrors).flat().join(" ")
+        : "";
+      setError(detail ? `${msg}: ${detail}` : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass = "w-full rounded-xl border border-owner-border bg-owner-card px-4 py-3 text-sm text-owner-charcoal placeholder:text-owner-muted sm:rounded-lg";
+  const labelClass = "mb-1 block text-sm font-medium text-owner-charcoal";
   const sectionClass = "owner-card rounded-xl p-6 border border-owner-border";
-  const btnPrimaryClass = "touch-manipulation min-h-[48px] w-full rounded-xl bg-owner-action px-5 py-3 text-base md:text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:w-auto sm:rounded-lg sm:py-2 sm:text-sm";
+  const btnPrimaryClass = "touch-manipulation min-h-[48px] w-full rounded-xl bg-owner-action px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:w-auto sm:rounded-lg";
   const timeInputClass = "touch-manipulation min-h-[44px] rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-base md:text-sm text-owner-charcoal";
 
   const navItems = [
     { id: "restaurant-details", label: "Restaurant details" },
+    { id: "social-links", label: "Social links" },
     { id: "reservation-rules", label: "Reservation rules" },
     { id: "payment-gateways", label: "Payment gateways" },
     { id: "opening-hours", label: "Opening hours" },
@@ -369,7 +476,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
       {/* Main content - scrollable */}
       <div className="min-w-0 flex-1 space-y-8 scroll-smooth">
       <section id="restaurant-details" className={sectionClass}>
-        <h3 className="mb-4 text-lg md:text-base font-semibold text-owner-charcoal">
+        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
           Restaurant details
         </h3>
         <form onSubmit={handleSaveRestaurant} className="flex flex-col gap-4 max-w-md">
@@ -448,8 +555,85 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </form>
       </section>
 
+      <section id="social-links" className={sectionClass}>
+        <h3 className="mb-2 text-xl font-semibold text-owner-charcoal">Social links</h3>
+        <p className="mb-4 text-sm text-owner-muted">
+          Public profile URLs shown on your website (X, Facebook, Instagram, TikTok, Google Maps, Tripadvisor).
+        </p>
+        <form onSubmit={handleSaveSocialLinks} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className={labelClass}>X URL</span>
+              <input
+                type="url"
+                value={editRestaurant.social_x_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, social_x_url: e.target.value }))}
+                placeholder="https://x.com/your-page"
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>Facebook URL</span>
+              <input
+                type="url"
+                value={editRestaurant.social_facebook_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, social_facebook_url: e.target.value }))}
+                placeholder="https://facebook.com/your-page"
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>Instagram URL</span>
+              <input
+                type="url"
+                value={editRestaurant.social_instagram_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, social_instagram_url: e.target.value }))}
+                placeholder="https://instagram.com/your-page"
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>TikTok URL</span>
+              <input
+                type="url"
+                value={editRestaurant.social_tiktok_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, social_tiktok_url: e.target.value }))}
+                placeholder="https://tiktok.com/@your-page"
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>Google Maps URL</span>
+              <input
+                type="url"
+                value={editRestaurant.google_maps_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, google_maps_url: e.target.value }))}
+                placeholder="https://maps.google.com/..."
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>Tripadvisor URL</span>
+              <input
+                type="url"
+                value={editRestaurant.tripadvisor_url}
+                onChange={(e) => setEditRestaurant((p) => ({ ...p, tripadvisor_url: e.target.value }))}
+                placeholder="https://tripadvisor.com/..."
+                className={inputClass}
+              />
+            </label>
+          </div>
+
+          <div className="sticky bottom-3 z-10 flex items-center justify-end border border-owner-border bg-owner-paper/95 px-3 py-3 backdrop-blur-sm">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save social links"}
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section id="reservation-rules" className={sectionClass}>
-        <h3 className="mb-4 text-lg md:text-base font-semibold text-owner-charcoal">
+        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
           Reservation rules
         </h3>
         <form onSubmit={handleSaveConfig} className="flex flex-col gap-4 max-w-md">
@@ -482,7 +666,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
       </section>
 
       <section id="payment-gateways" className={sectionClass}>
-        <h3 className="mb-4 text-lg md:text-base font-semibold text-owner-charcoal">
+        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
           Payment gateways
         </h3>
         <form onSubmit={handleSavePayment} className="flex flex-col gap-4 max-w-md">
@@ -512,7 +696,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
 
       <section id="opening-hours" className={sectionClass}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg md:text-base font-semibold text-owner-charcoal">
+          <h3 className="text-xl font-semibold text-owner-charcoal">
             Opening hours
           </h3>
           <div className="flex flex-wrap items-center gap-2">
@@ -629,7 +813,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
       </section>
 
       <section id="device" className={sectionClass}>
-        <h3 className="mb-4 text-lg md:text-base font-semibold text-owner-charcoal">
+        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
           Device
         </h3>
         <p className="mb-4 text-sm text-owner-muted">
