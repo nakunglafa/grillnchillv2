@@ -63,6 +63,8 @@ export async function apiFetch(path, options = {}) {
   if (isFormData) delete headers["Content-Type"];
   const res = await fetch(url, {
     ...fetchOptions,
+    cache: "no-store",
+    next: { revalidate: 0 },
     headers,
   });
   return parseResponse(res);

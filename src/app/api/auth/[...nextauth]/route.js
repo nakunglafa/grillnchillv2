@@ -7,6 +7,8 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_LARAV
 async function laravelLogin(email, password) {
   const res = await fetch(`${apiUrl.replace(/\/?$/, "")}/login`, {
     method: "POST",
+    cache: "no-store",
+    next: { revalidate: 0 },
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ email, password }),
   });
@@ -18,6 +20,8 @@ async function laravelLogin(email, password) {
 async function laravelAuthGoogle(profile) {
   const res = await fetch(`${apiUrl.replace(/\/?$/, "")}/auth/google`, {
     method: "POST",
+    cache: "no-store",
+    next: { revalidate: 0 },
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       name: profile.name,
