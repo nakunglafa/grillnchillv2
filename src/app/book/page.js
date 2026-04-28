@@ -13,7 +13,7 @@ const BOOK_PAGE_IMAGE =
   process.env.NEXT_PUBLIC_BOOK_PAGE_IMAGE ||
   process.env.NEXT_PUBLIC_PARALLAX_RESERVE_BG ||
   process.env.NEXT_PUBLIC_HERO_COLLAGE_MAIN ||
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80";
+  "";
 
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
@@ -124,27 +124,35 @@ function getBookingParallaxImageFromRestaurant(restaurant) {
 
 function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImageSrc = typeof src === "string" && src.trim().length > 0;
 
   useEffect(() => {
     setImageLoaded(false);
+    setImageFailed(false);
   }, [src]);
 
   return (
     <div className="relative aspect-[5/3] max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-[2/1] sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
-      {!imageLoaded ? (
+      {!imageLoaded || imageFailed || !hasImageSrc ? (
         <div className="absolute inset-0 animate-pulse bg-white/10" aria-hidden />
       ) : null}
-      <img
-        key={src || BOOK_PAGE_IMAGE}
-        src={src || BOOK_PAGE_IMAGE}
-        alt={alt}
-        onLoad={() => setImageLoaded(true)}
-        onError={() => setImageLoaded(true)}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-          imageLoaded ? "opacity-100" : "opacity-0"
-        }`}
-        sizes="(max-width: 1024px) 100vw, 50vw"
-      />
+      {hasImageSrc ? (
+        <img
+          key={src}
+          src={src}
+          alt={alt}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setImageFailed(true);
+            setImageLoaded(false);
+          }}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+            imageLoaded && !imageFailed ? "opacity-100" : "opacity-0"
+          }`}
+          sizes="(max-width: 1024px) 100vw, 50vw"
+        />
+      ) : null}
       <div
         className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/90 via-[#0a0908]/15 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-[#0a0908]/65"
         aria-hidden
@@ -175,14 +183,29 @@ export default function BookPage() {
   /** 1 = date/time/guests, 2 = contact & confirm */
   const [bookStep, setBookStep] = useState(1);
   const bookingParallaxImage = useMemo(
-    () => getBookingParallaxImageFromRestaurant(restaurant) || BOOK_PAGE_IMAGE,
+    () => getBookingParallaxImageFromRestaurant(restaurant) || BOOK_PAGE_IMAGE || "",
     [restaurant]
   );
 
   useEffect(() => {
     getRestaurant(RESTAURANT_ID)
       .then((data) => {
-        setRestaurant(data?.restaurant ?? null);
+        const restaurantData = data?.restaurant
+          ? {
+              ...data.restaurant,
+              website_content:
+                data?.restaurant?.website_content ??
+                data?.website_content ??
+                data?.content_json ??
+                null,
+              content_json:
+                data?.restaurant?.content_json ??
+                data?.content_json ??
+                data?.website_content ??
+                null,
+            }
+          : null;
+        setRestaurant(restaurantData);
         setOpeningSlots(data?.opening_hours?.opening_slots ?? []);
       })
       .catch(() => {
