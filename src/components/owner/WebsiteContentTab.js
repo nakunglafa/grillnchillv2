@@ -198,8 +198,9 @@ function apiToFormContent(content) {
   };
 }
 
-function formToApiContent(form) {
+function formToApiContent(form, baseContent = {}) {
   return {
+    ...(baseContent && typeof baseContent === "object" ? baseContent : {}),
     story_title: form.storyTitle || "",
     story_text: form.storyText || "",
     promo_video_url: form.promoVideoUrl || "",
@@ -235,6 +236,7 @@ function formToApiContent(form) {
 
 export function WebsiteContentTab({ restaurantId, token }) {
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [baseContentJson, setBaseContentJson] = useState({});
   const [uploadFiles, setUploadFiles] = useState({});
   const [saving, setSaving] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(true);
@@ -264,12 +266,15 @@ export function WebsiteContentTab({ restaurantId, token }) {
         const saved = res?.content_json ?? res?.data?.content_json ?? res?.data ?? res;
         if (cancelled) return;
         if (saved && typeof saved === "object") {
+          setBaseContentJson(saved);
           setForm({ ...DEFAULT_FORM, ...defaultFromFile, ...apiToFormContent(saved) });
         } else {
+          setBaseContentJson({});
           setForm({ ...DEFAULT_FORM, ...defaultFromFile });
         }
       } catch {
         if (cancelled) return;
+        setBaseContentJson({});
         setForm({ ...DEFAULT_FORM, ...defaultFromFile });
       } finally {
         if (!cancelled) setLoadingSaved(false);
@@ -306,7 +311,9 @@ export function WebsiteContentTab({ restaurantId, token }) {
 
   const persistForm = async (nextForm, successMessage) => {
     if (!token) throw new Error("You must be logged in to save website content.");
-    const res = await updateOwnerWebsiteContent(token, restaurantContentId, formToApiContent(nextForm));
+    const payload = formToApiContent(nextForm, baseContentJson);
+    const res = await updateOwnerWebsiteContent(token, restaurantContentId, payload);
+    setBaseContentJson(payload);
     const message = successMessage || res?.message || res?.data?.message || "Website content saved.";
     setSuccess(message);
     setLastServerUpdate({

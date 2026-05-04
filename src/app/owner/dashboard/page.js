@@ -7,11 +7,31 @@ import { useAuth } from "@/context/AuthContext";
 import {
   getRestaurantOrders,
   getOwnerRestaurantReservations,
+  updateOrderStatus,
+  updateReservationStatus,
 } from "@/lib/api";
 import { toArray } from "@/lib/owner-utils";
 import { useOwnerRefresh } from "@/context/OwnerRefreshContext";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
+
+const ORDER_STATUS_OPTIONS = [
+  { value: "pending_confirmation", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "rejected", label: "Rejected" },
+  { value: "preparing", label: "Preparing" },
+  { value: "ready_for_pickup", label: "Ready for pickup" },
+  { value: "out_for_delivery", label: "Out for delivery" },
+  { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const RESERVATION_STATUS_OPTIONS = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "completed", label: "Completed" },
+];
 
 function getOrderTotal(order) {
   const o = order?.order ?? order;
@@ -21,16 +41,24 @@ function getOrderTotal(order) {
 
 function getReservationDate(r) {
   const res = r?.reservation ?? r;
-  const iso = res?.reservation_datetime ?? res?.datetime ?? res?.reservation_date ?? res?.date;
-  const time = res?.reservation_time ?? res?.time ?? "";
-  if (iso && typeof iso === "string") {
-    const d = new Date(iso.includes("T") ? iso : `${iso}T${time || "00:00"}`);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const dateStr = (res?.reservation_date ?? res?.date ?? "").toString();
-  const timeStr = (res?.reservation_time ?? res?.time ?? "").toString();
+  const dateStr = (res?.reservation_date ?? res?.date ?? "").toString().trim();
+  const timeStr = (res?.reservation_time ?? res?.time ?? "").toString().trim();
+
+  // Prefer explicit date+time fields so 19:00 stays 19:00 (no timezone conversion).
   if (dateStr) {
-    const d = new Date(timeStr ? `${dateStr}T${timeStr}` : dateStr);
+    const normalizedDate = dateStr.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, "$1-$2-$3");
+    let normalizedTime = timeStr.replace(/\.\d+Z?$/i, "").slice(0, 8);
+    if (!normalizedTime) normalizedTime = "00:00:00";
+    if (normalizedTime.length === 5) normalizedTime += ":00";
+    const [y, m, d] = normalizedDate.split("-").map(Number);
+    const [h = 0, min = 0, sec = 0] = normalizedTime.split(":").map(Number);
+    const localDate = new Date(y, m - 1, d, h, min, sec);
+    if (!Number.isNaN(localDate.getTime())) return localDate;
+  }
+
+  const iso = res?.reservation_datetime ?? res?.datetime;
+  if (iso && typeof iso === "string") {
+    const d = new Date(iso);
     if (!Number.isNaN(d.getTime())) return d;
   }
   return null;
@@ -44,6 +72,12 @@ export default function OwnerDashboardPage() {
   const [recentReservations, setRecentReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [updatingReservationId, setUpdatingReservationId] = useState(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null); // { type: "order" | "reservation", id }
 
   const loadDashboardData = useCallback(() => {
     if (!token) return;
@@ -89,6 +123,89 @@ export default function OwnerDashboardPage() {
     return registerRefresh(loadDashboardData);
   }, [registerRefresh, loadDashboardData]);
 
+  async function handleOrderStatusChange(orderId, newStatus) {
+    if (!token || !orderId) return;
+    if (newStatus === "cancelled") {
+      setCancelTarget({ type: "order", id: orderId });
+      setCancelReason("");
+      setCancelDialogOpen(true);
+      return;
+    }
+    const previousOrders = recentOrders;
+    setUpdatingOrderId(orderId);
+    setRecentOrders((prev) =>
+      prev.map((order) =>
+        (order?.order?.id ?? order?.id) === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+    try {
+      await updateOrderStatus(token, RESTAURANT_ID, orderId, newStatus);
+      loadDashboardData();
+    } catch (err) {
+      setRecentOrders(previousOrders);
+      setError(err?.data?.message || err?.message || "Failed to update order status");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }
+
+  async function handleReservationStatusChange(reservationId, newStatus) {
+    if (!token || !reservationId) return;
+    if (newStatus === "cancelled") {
+      setCancelTarget({ type: "reservation", id: reservationId });
+      setCancelReason("");
+      setCancelDialogOpen(true);
+      return;
+    }
+    const previousReservations = recentReservations;
+    setUpdatingReservationId(reservationId);
+    setRecentReservations((prev) =>
+      prev.map((res) =>
+        (res?.reservation?.id ?? res?.id) === reservationId ? { ...res, status: newStatus } : res
+      )
+    );
+    try {
+      await updateReservationStatus(token, RESTAURANT_ID, reservationId, newStatus);
+      loadDashboardData();
+    } catch (err) {
+      setRecentReservations(previousReservations);
+      setError(err?.data?.message || err?.message || "Failed to update reservation status");
+    } finally {
+      setUpdatingReservationId(null);
+    }
+  }
+
+  function closeCancelDialog(force = false) {
+    if (cancelSubmitting && !force) return;
+    setCancelDialogOpen(false);
+    setCancelReason("");
+    setCancelTarget(null);
+  }
+
+  async function submitCancellation() {
+    const reason = cancelReason.trim();
+    if (!token || !cancelTarget?.id) return;
+    if (!reason) {
+      setError("Cancellation reason is required.");
+      return;
+    }
+    setError("");
+    setCancelSubmitting(true);
+    try {
+      if (cancelTarget.type === "order") {
+        await updateOrderStatus(token, RESTAURANT_ID, cancelTarget.id, "cancelled", reason);
+      } else {
+        await updateReservationStatus(token, RESTAURANT_ID, cancelTarget.id, "cancelled", reason);
+      }
+      closeCancelDialog(true);
+      loadDashboardData();
+    } catch (err) {
+      setError(err?.data?.message || err?.message || "Failed to cancel item");
+    } finally {
+      setCancelSubmitting(false);
+    }
+  }
+
   if (authLoading || !isAuthenticated) return null;
 
   const totalRevenue = recentOrders.reduce((sum, o) => sum + getOrderTotal(o), 0);
@@ -105,6 +222,7 @@ export default function OwnerDashboardPage() {
   const iconSize = 20;
 
   return (
+    <>
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-owner-charcoal">
@@ -228,19 +346,34 @@ export default function OwnerDashboardPage() {
                   const total = getOrderTotal(order);
                   const date = o?.created_at ?? order?.created_at;
                   const status = o?.status ?? order?.status ?? "—";
+                  const orderId = o?.id ?? order?.id;
                   return (
-                    <li key={o?.id ?? order?.id} className="flex items-center justify-between px-4 py-3">
-                      <div>
+                    <li key={orderId} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
                         <p className="font-medium text-owner-charcoal">
-                          Order #{o?.id ?? order?.id}
+                          Order #{orderId}
                         </p>
                         <p className="text-sm text-owner-muted">
                           {date ? new Date(date).toLocaleString() : "—"} · {String(status).replace(/_/g, " ")}
                         </p>
                       </div>
-                      <p className="font-semibold text-owner-charcoal">
-                        €{total.toFixed(2)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-owner-charcoal">
+                          €{total.toFixed(2)}
+                        </p>
+                        <select
+                          value={status}
+                          onChange={(e) => handleOrderStatusChange(orderId, e.target.value)}
+                          disabled={updatingOrderId === orderId}
+                          className="touch-manipulation min-h-[40px] rounded-lg border border-owner-border bg-owner-card px-2 py-1 text-xs text-owner-charcoal disabled:opacity-60"
+                        >
+                          {ORDER_STATUS_OPTIONS.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </li>
                   );
                 })}
@@ -274,12 +407,27 @@ export default function OwnerDashboardPage() {
                   const name = r?.customer_name ?? r?.user?.name ?? "Guest";
                   const date = getReservationDate(res);
                   const status = r?.status ?? "—";
+                  const reservationId = r?.id ?? res?.id;
                   return (
-                    <li key={r?.id ?? res?.id} className="px-4 py-3">
-                      <p className="font-medium text-owner-charcoal">{name}</p>
-                      <p className="text-sm text-owner-muted">
-                        {date ? date.toLocaleString() : "—"} · {String(status).replace(/_/g, " ")}
-                      </p>
+                    <li key={reservationId} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-owner-charcoal">{name}</p>
+                        <p className="text-sm text-owner-muted">
+                          {date ? date.toLocaleString() : "—"} · {String(status).replace(/_/g, " ")}
+                        </p>
+                      </div>
+                      <select
+                        value={status}
+                        onChange={(e) => handleReservationStatusChange(reservationId, e.target.value)}
+                        disabled={updatingReservationId === reservationId}
+                        className="touch-manipulation min-h-[40px] rounded-lg border border-owner-border bg-owner-card px-2 py-1 text-xs text-owner-charcoal disabled:opacity-60"
+                      >
+                        {RESERVATION_STATUS_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
                     </li>
                   );
                 })}
@@ -289,5 +437,44 @@ export default function OwnerDashboardPage() {
         </section>
       </div>
     </div>
+    {cancelDialogOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-md rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">
+          <h3 className="text-lg font-semibold text-owner-charcoal">Cancellation reason required</h3>
+          <p className="mt-1 text-sm text-owner-muted">
+            Please enter the reason for cancellation before continuing.
+          </p>
+          <label className="mt-3 block text-sm font-medium text-owner-charcoal">
+            Reason
+          </label>
+          <textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Reason for cancellation..."
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-owner-border bg-white px-3 py-2 text-sm text-owner-charcoal outline-none focus:border-owner-action"
+          />
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => closeCancelDialog(false)}
+              disabled={cancelSubmitting}
+              className="touch-manipulation min-h-[44px] rounded-lg border border-owner-border px-4 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-60"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={submitCancellation}
+              disabled={cancelSubmitting}
+              className="touch-manipulation min-h-[44px] rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {cancelSubmitting ? "Cancelling..." : "Confirm cancel"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

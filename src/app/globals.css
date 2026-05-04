@@ -234,3 +234,53 @@ body {
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
 }
+
+/* Language switcher + hide Google translation chrome */
+.language-switcher {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(20, 17, 15, 0.28);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+}
+
+.language-switcher__select {
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(20, 17, 15, 0.42);
+  color: #fff7ed;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.1;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+.language-switcher__select:focus {
+  outline: none;
+  border-color: rgba(197, 157, 95, 0.95);
+  box-shadow: 0 0 0 2px rgba(197, 157, 95, 0.22);
+}
+
+/* Google translate bar/iframe cleanup */
+body {
+  top: 0 !important;
+}
+
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+.goog-te-gadget,
+.goog-logo-link,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}

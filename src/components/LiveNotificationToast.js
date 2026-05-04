@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { EVENTS } from "@/context/RealTimeNotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { updateOrderStatus, updateReservationStatus } from "@/lib/api";
@@ -20,9 +20,72 @@ function getRestaurantIdFromPath() {
  */
 export function LiveNotificationToast() {
   const [toasts, setToasts] = useState([]);
+  const ringIntervalRef = useRef(null);
+
+  const playNotificationSound = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.connect(ctx.destination);
+
+      // Two-tone ringtone pattern (different from previous short beep).
+      const toneA = ctx.createOscillator();
+      toneA.type = "triangle";
+      toneA.frequency.setValueAtTime(720, ctx.currentTime);
+      toneA.connect(gain);
+      toneA.start(ctx.currentTime);
+      toneA.stop(ctx.currentTime + 0.28);
+
+      const toneB = ctx.createOscillator();
+      toneB.type = "triangle";
+      toneB.frequency.setValueAtTime(980, ctx.currentTime + 0.32);
+      toneB.connect(gain);
+      toneB.start(ctx.currentTime + 0.32);
+      toneB.stop(ctx.currentTime + 0.68);
+
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.72);
+      setTimeout(() => ctx.close().catch(() => {}), 900);
+    } catch (_) {
+      // Ignore autoplay/sound API errors to avoid breaking notifications.
+    }
+  }, []);
 
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const markToastResolved = useCallback((id) => {
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, resolved: true } : t)));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasPending = toasts.some((t) => (t.type === "reservation" || t.type === "order") && !t.resolved);
+    if (hasPending && ringIntervalRef.current == null) {
+      // Ring continuously until owner resolves all actionable notifications.
+      ringIntervalRef.current = window.setInterval(() => {
+        playNotificationSound();
+      }, 2000);
+      return;
+    }
+    if (!hasPending && ringIntervalRef.current != null) {
+      window.clearInterval(ringIntervalRef.current);
+      ringIntervalRef.current = null;
+    }
+  }, [toasts, playNotificationSound]);
+
+  useEffect(() => {
+    return () => {
+      if (ringIntervalRef.current != null) {
+        window.clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -44,12 +107,13 @@ export function LiveNotificationToast() {
       const key = getReservationKey(detail);
       setToasts((prev) => {
         if (prev.some((t) => t.type === "reservation" && t.dedupeKey === key)) return prev;
+        playNotificationSound();
         const id = `res-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const restaurantName = detail.restaurant?.name ?? "Restaurant";
         const customerName = detail.customer_name ?? detail.user?.name ?? "A customer";
         return [
           ...prev,
-          { id, dedupeKey: key, type: "reservation", title: "New Reservation", message: `${customerName} made a reservation at ${restaurantName}`, detail },
+          { id, dedupeKey: key, type: "reservation", title: "New Reservation", message: `${customerName} made a reservation at ${restaurantName}`, detail, resolved: false },
         ];
       });
     };
@@ -59,17 +123,26 @@ export function LiveNotificationToast() {
       const key = getOrderKey(detail);
       setToasts((prev) => {
         if (prev.some((t) => t.type === "order" && t.dedupeKey === key)) return prev;
+        playNotificationSound();
         const id = `ord-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const restaurantName = detail.restaurant_name ?? detail.restaurant?.name ?? "Restaurant";
         return [
           ...prev,
-          { id, dedupeKey: key, type: "order", title: "New Order", message: `New order received for ${restaurantName}`, detail },
+          { id, dedupeKey: key, type: "order", title: "New Order", message: `New order received for ${restaurantName}`, detail, resolved: false },
         ];
       });
     };
 
     const handleReservationUpdated = (e) => {
       const detail = e.detail ?? {};
+      const key = getReservationKey(detail);
+      setToasts((prev) =>
+        prev.map((t) =>
+          t.type === "reservation" && t.dedupeKey === key
+            ? { ...t, resolved: true, detail: { ...t.detail, ...detail } }
+            : t
+        )
+      );
       const restaurantName = detail.restaurant?.name ?? "Restaurant";
       const status = detail.status ?? "updated";
       const id = `res-upd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -86,16 +159,44 @@ export function LiveNotificationToast() {
       setTimeout(() => removeToast(id), 8000);
     };
 
+    const handleOrderUpdated = (e) => {
+      const detail = e.detail ?? {};
+      const key = getOrderKey(detail);
+      setToasts((prev) =>
+        prev.map((t) =>
+          t.type === "order" && t.dedupeKey === key
+            ? { ...t, resolved: true, detail: { ...t.detail, ...detail } }
+            : t
+        )
+      );
+      const restaurantName = detail.restaurant?.name ?? detail.restaurant_name ?? "Restaurant";
+      const status = detail.status ?? "updated";
+      const id = `ord-upd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setToasts((prev) => [
+        ...prev,
+        {
+          id,
+          type: "reservation-updated",
+          title: "Order updated",
+          message: `Order at ${restaurantName} is now ${status}`,
+          detail,
+        },
+      ]);
+      setTimeout(() => removeToast(id), 8000);
+    };
+
     window.addEventListener(EVENTS.NEW_RESERVATION, handleReservation);
     window.addEventListener(EVENTS.NEW_ORDER, handleOrder);
     window.addEventListener(EVENTS.RESERVATION_UPDATED, handleReservationUpdated);
+    window.addEventListener(EVENTS.ORDER_UPDATED, handleOrderUpdated);
 
     return () => {
       window.removeEventListener(EVENTS.NEW_RESERVATION, handleReservation);
       window.removeEventListener(EVENTS.NEW_ORDER, handleOrder);
       window.removeEventListener(EVENTS.RESERVATION_UPDATED, handleReservationUpdated);
+      window.removeEventListener(EVENTS.ORDER_UPDATED, handleOrderUpdated);
     };
-  }, [removeToast]);
+  }, [playNotificationSound, removeToast]);
 
   if (toasts.length === 0) return null;
 
@@ -115,6 +216,7 @@ export function LiveNotificationToast() {
           <LiveCardItem
             key={t.id}
             {...t}
+            onResolved={() => markToastResolved(t.id)}
             onDismiss={() => removeToast(t.id)}
           />
         )
@@ -123,16 +225,60 @@ export function LiveNotificationToast() {
   );
 }
 
-function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
+function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, onDismiss }) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const isReservation = type === "reservation";
-  const isActionable = !success;
+  const isActionable = !success && !resolved;
 
-  const handleAction = async (status) => {
+  const formatReadableDateTime = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getReservationDateTimeText = (reservation) => {
+    const datePart = (reservation?.reservation_date ?? reservation?.date ?? "").toString().trim();
+    const timePart = (reservation?.reservation_time ?? reservation?.time ?? "").toString().trim().replace(/\.\d+Z?$/i, "").slice(0, 5);
+    if (datePart) {
+      const normalizedDate = datePart.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, "$1-$2-$3");
+      const source = timePart ? `${normalizedDate}T${timePart}` : normalizedDate;
+      const pretty = formatReadableDateTime(source);
+      if (pretty) return pretty;
+    }
+    return (
+      formatReadableDateTime(
+        reservation?.reservation_datetime ??
+        reservation?.datetime ??
+        reservation?.created_at
+      ) || [datePart, timePart].filter(Boolean).join(" at ") || "—"
+    );
+  };
+
+  const getOrderDateTimeText = (order) => {
+    return (
+      formatReadableDateTime(
+        order?.placed_at ??
+        order?.created_at ??
+        order?.updated_at
+      ) || "—"
+    );
+  };
+
+  const handleAction = async (status, cancellationReason) => {
     setLoading(true);
     setError(null);
     try {
@@ -159,12 +305,13 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
       itemId = String(itemId);
 
       if (type === "reservation") {
-        await updateReservationStatus(token, restaurantId, itemId, status);
+        await updateReservationStatus(token, restaurantId, itemId, status, cancellationReason);
       } else if (type === "order") {
         await updateOrderStatus(token, restaurantId, itemId, status === "confirmed" ? "confirmed" : "rejected");
       }
 
       setSuccess(true);
+      onResolved?.();
       if (type === "order") {
         window.dispatchEvent(new CustomEvent(EVENTS.ORDER_UPDATED, { detail }));
       } else {
@@ -176,6 +323,28 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openRejectDialog = () => {
+    setError(null);
+    setRejectReason("");
+    setShowRejectDialog(true);
+  };
+
+  const closeRejectDialog = () => {
+    if (loading) return;
+    setShowRejectDialog(false);
+    setRejectReason("");
+  };
+
+  const submitRejectWithReason = async () => {
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setError("Please provide a cancellation reason.");
+      return;
+    }
+    await handleAction("cancelled", reason);
+    setShowRejectDialog(false);
   };
 
   return (
@@ -205,7 +374,7 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
         <div className="mt-3 rounded-xl bg-wood-800 p-3 dark:bg-wood-800/50 text-sm text-wood-100 max-h-32 overflow-y-auto">
           {type === "reservation" && (
             <ul className="space-y-1">
-              <li><strong className="text-wood-100">Date:</strong> {detail.reservation_date} at {detail.reservation_time}</li>
+              <li><strong className="text-wood-100">Date:</strong> {getReservationDateTimeText(detail)}</li>
               <li><strong className="text-wood-100">Party:</strong> {detail.party_size != null ? `${detail.party_size} guest${Number(detail.party_size) === 1 ? "" : "s"}` : "—"}</li>
               <li><strong className="text-wood-100">Customer:</strong> {detail.customer_name || detail.user?.name}</li>
               {detail.special_requests && <li className="truncate"><strong>Notes:</strong> {detail.special_requests}</li>}
@@ -213,6 +382,7 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
           )}
           {type === "order" && (
             <ul className="space-y-1">
+              <li><strong className="text-wood-100">Date:</strong> {getOrderDateTimeText(detail)}</li>
               <li><strong className="text-wood-100">Total:</strong> ${detail.total_amount ?? "—"}</li>
               <li><strong className="text-wood-100">Type:</strong> {detail.order_type ?? (detail.delivery_address?.toLowerCase?.().includes("pickup") ? "Pickup" : "Delivery") ?? "—"}</li>
               <li><strong className="text-wood-100">Customer:</strong> {detail.customer_name || detail.user?.name || "—"}</li>
@@ -227,6 +397,13 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
 
       {error && <p className="mt-2 text-sm text-red-500 font-medium">{error}</p>}
       {success && <p className="mt-2 text-sm text-emerald-500 font-medium">Status updated!</p>}
+      {resolved && !success && (
+        <p className="mt-2 text-sm text-amber-300 font-medium">
+          {detail?.handled_by
+            ? `Handled by ${detail.handled_by} at ${detail?.handled_at ? formatReadableDateTime(detail.handled_at) || detail.handled_at : "another device"}.`
+            : "Already handled from another tab/device."}
+        </p>
+      )}
 
       {isActionable && (
         <div className="mt-4 flex gap-2">
@@ -238,12 +415,43 @@ function LiveCardItem({ id, type, title, message, detail, onDismiss }) {
             {loading ? "..." : "Accept"}
           </button>
           <button
-            onClick={() => handleAction("rejected")}
+            onClick={() => (isReservation ? openRejectDialog() : handleAction("rejected"))}
             disabled={loading}
             className="flex-1 rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:outline-none disabled:opacity-50 transition-colors"
           >
             {loading ? "..." : "Reject"}
           </button>
+        </div>
+      )}
+
+      {showRejectDialog && (
+        <div className="mt-3 rounded-xl border border-red-300 bg-red-950/30 p-3">
+          <p className="text-sm font-medium text-red-200">Cancellation reason</p>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            placeholder="Enter reason for cancellation..."
+            className="mt-2 w-full rounded-lg border border-red-300/40 bg-wood-900 px-3 py-2 text-sm text-wood-100 outline-none focus:border-red-300"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={closeRejectDialog}
+              disabled={loading}
+              className="flex-1 rounded-lg border border-wood-500 px-3 py-2 text-sm font-medium text-wood-100 hover:bg-wood-700 disabled:opacity-50"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={submitRejectWithReason}
+              disabled={loading}
+              className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? "Saving..." : "Confirm reject"}
+            </button>
+          </div>
         </div>
       )}
 

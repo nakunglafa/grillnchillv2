@@ -10,14 +10,29 @@ import { toArray } from "@/lib/owner-utils";
 
 function getReservationDate(r) {
   const res = r?.reservation ?? r;
+  const dateStr = (res.reservation_date ?? res.reservationDate ?? res.date ?? res.booking_date ?? res.booking?.date ?? "").toString().trim();
+  const timeStr = (res.reservation_time ?? res.reservationTime ?? res.time ?? res.booking_time ?? res.booking?.time ?? "").toString().trim();
+  // Prefer explicit date+time fields so wall-clock times are not shifted by timezone conversions.
+  if (dateStr) {
+    const normalized = dateStr.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, "$1-$2-$3");
+    if (normalized && normalized.length >= 10) {
+      const [y, m, day] = normalized.split("-").map(Number);
+      let timePart = timeStr ? timeStr.replace(/\.\d+Z?$/i, "").replace(/:$/, "").slice(0, 8) : "00:00:00";
+      if (timePart && timePart.length === 5) timePart += ":00";
+      const [h = 0, min = 0, sec = 0] = (timePart || "00:00:00").split(":").map(Number);
+      const d = new Date(y, m - 1, day, h, min, sec);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+  }
+
   const possibleIso =
     res.reservation_datetime ??
     res.datetime ??
     res.date_time ??
-    res.reservation_time ??
-    res.reservationTime ??
     res.scheduled_at ??
     res.booking_datetime ??
+    res.reservation_time ??
+    res.reservationTime ??
     res.reservation_date ??
     res.date;
   if (possibleIso && typeof possibleIso === "string" && possibleIso.includes("T")) {
@@ -25,8 +40,7 @@ function getReservationDate(r) {
     const d = new Date(normalized);
     if (!Number.isNaN(d.getTime())) return d;
   }
-  const dateStr = (res.reservation_date ?? res.reservationDate ?? res.date ?? res.booking_date ?? res.booking?.date ?? "").toString().trim();
-  const timeStr = (res.reservation_time ?? res.reservationTime ?? res.time ?? res.booking_time ?? res.booking?.time ?? "").toString().trim();
+
   if (!dateStr) {
     if (timeStr && timeStr.includes("T")) {
       const d = new Date(timeStr);
@@ -38,14 +52,7 @@ function getReservationDate(r) {
     const d = new Date(dateStr);
     if (!Number.isNaN(d.getTime())) return d;
   }
-  const normalized = dateStr.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, "$1-$2-$3");
-  if (!normalized || normalized.length < 10) return null;
-  const [y, m, day] = normalized.split("-").map(Number);
-  let timePart = timeStr ? timeStr.replace(/\.\d+Z?$/i, "").replace(/:$/, "").slice(0, 8) : "00:00:00";
-  if (timePart && timePart.length === 5) timePart += ":00";
-  const [h = 0, min = 0, sec = 0] = (timePart || "00:00:00").split(":").map(Number);
-  const d = new Date(y, m - 1, day, h, min, sec);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return null;
 }
 
 function formatDateTime(r) {
@@ -155,6 +162,10 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTargetId, setCancelTargetId] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [mainTab, setMainTab] = useState("upcoming");
   const [upcomingSubTab, setUpcomingSubTab] = useState("pending");
   const [historyPage, setHistoryPage] = useState(1);
@@ -187,12 +198,46 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
 
   async function handleStatusChange(reservationId, newStatus) {
     if (!token || !restaurantId) return;
+    if (newStatus === "cancelled") {
+      setCancelTargetId(reservationId);
+      setCancelReason("");
+      setCancelDialogOpen(true);
+      return;
+    }
     try {
       await updateReservationStatus(token, restaurantId, reservationId, newStatus);
       if (onRefresh) onRefresh();
       else loadReservations();
     } catch (err) {
       setError(err?.data?.message || err?.message || "Failed to update status");
+    }
+  }
+
+  function closeCancelDialog(force = false) {
+    if (cancelSubmitting && !force) return;
+    setCancelDialogOpen(false);
+    setCancelTargetId(null);
+    setCancelReason("");
+  }
+
+  async function submitCancellation() {
+    if (!token || !restaurantId || !cancelTargetId) return;
+    const reason = cancelReason.trim();
+    if (!reason) {
+      setError("Please provide a cancellation reason.");
+      return;
+    }
+    setError("");
+    setCancelSubmitting(true);
+    try {
+      await updateReservationStatus(token, restaurantId, cancelTargetId, "cancelled", reason);
+      closeCancelDialog(true);
+      if (onRefresh) onRefresh();
+      else loadReservations();
+    } catch (err) {
+      setError(err?.data?.message || err?.message || "Failed to update status");
+    } finally {
+      setCancelSubmitting(false);
     }
   }
 
@@ -268,6 +313,7 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
   const displayList = mainTab === "upcoming" ? upcomingFiltered : historyPaginated;
 
   return (
+    <>
     <div className="space-y-6 max-w-full min-w-0">
       {/* Main tabs: Upcoming | History */}
       <div className="flex gap-2 rounded-xl bg-owner-paper p-1.5 border border-owner-border">
@@ -465,5 +511,45 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
         </ul>
       )}
     </div>
+
+    {cancelDialogOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-md rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">
+          <h3 className="text-lg font-semibold text-owner-charcoal">Cancel Reservation</h3>
+          <p className="mt-1 text-sm text-owner-muted">
+            Please enter the cancellation reason. This will be sent to the API and saved.
+          </p>
+          <label className="mt-3 block text-sm font-medium text-owner-charcoal">
+            Cancellation reason
+          </label>
+          <textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Reason for cancellation..."
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-owner-border bg-white px-3 py-2 text-sm text-owner-charcoal outline-none focus:border-owner-action"
+          />
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeCancelDialog}
+              disabled={cancelSubmitting}
+              className="touch-manipulation min-h-[44px] rounded-lg border border-owner-border px-4 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-60"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={submitCancellation}
+              disabled={cancelSubmitting}
+              className="touch-manipulation min-h-[44px] rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {cancelSubmitting ? "Cancelling..." : "Confirm cancel"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

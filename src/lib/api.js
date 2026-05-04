@@ -242,10 +242,16 @@ export async function getRestaurantOrders(token, restaurantId, status, cacheBust
   return apiFetch(`/owner/restaurants/${restaurantId}/orders${q}`, { token });
 }
 
-export async function updateOrderStatus(token, restaurantId, orderId, newStatus) {
+export async function updateOrderStatus(token, restaurantId, orderId, newStatus, cancellationReason) {
+  const body = {
+    status: newStatus,
+    ...(newStatus === "cancelled" && cancellationReason
+      ? { cancellation_reason: cancellationReason }
+      : {}),
+  };
   return apiFetch(
     `/owner/restaurants/${restaurantId}/orders/${orderId}/status`,
-    { method: "PATCH", body: JSON.stringify({ status: newStatus }), token }
+    { method: "PATCH", body: JSON.stringify(body), token }
   );
 }
 
@@ -459,10 +465,16 @@ export async function getOwnerReservation(token, restaurantId, reservationId) {
   );
 }
 
-export async function updateReservationStatus(token, restaurantId, reservationId, status) {
+export async function updateReservationStatus(token, restaurantId, reservationId, status, cancellationReason) {
+  const body = {
+    status,
+    ...(status === "cancelled" && cancellationReason
+      ? { cancellation_reason: cancellationReason }
+      : {}),
+  };
   return apiFetch(
     `/owner/restaurants/${restaurantId}/reservations/${reservationId}/status`,
-    { method: "PATCH", body: JSON.stringify({ status }), token }
+    { method: "PATCH", body: JSON.stringify(body), token }
   );
 }
 

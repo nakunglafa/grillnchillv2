@@ -161,6 +161,12 @@ export function RealTimeNotificationProvider({ children }) {
       window.dispatchEvent(new CustomEvent(EVENTS.NEW_ORDER, { detail }));
     };
 
+    const dispatchOrderUpdated = (payload) => {
+      if (DEBUG) console.log("[Notifications] Order updated:", payload);
+      const detail = payload?.data ?? payload ?? {};
+      window.dispatchEvent(new CustomEvent(EVENTS.ORDER_UPDATED, { detail }));
+    };
+
     const handleNotification = (n) => {
       const type = (n?.type ?? "").toString();
       if (type === "NewReservation" || type?.toLowerCase().includes("reservation")) {
@@ -275,6 +281,11 @@ export function RealTimeNotificationProvider({ children }) {
             const detail = typeof res === "object" && res !== null ? { ...res, restaurant_id: res.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };
             dispatchReservationUpdated(detail);
           })
+          .listen(".ReservationUpdated", (e) => {
+            const res = e?.reservation ?? e?.data ?? e ?? {};
+            const detail = typeof res === "object" && res !== null ? { ...res, restaurant_id: res.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };
+            dispatchReservationUpdated(detail);
+          })
           .listen(".new.order", orderHandler)
           .listen("new.order", orderHandler)
           .listen("OrderCreated", orderHandler)
@@ -283,7 +294,21 @@ export function RealTimeNotificationProvider({ children }) {
           .listen("order.created", orderHandler)
           .listen("TableOrderCreated", orderHandler)
           .listen("FoodOrderCreated", orderHandler)
-          .listen("order.updated", injectRestaurantIdOrder)
+          .listen("order.updated", (e) => {
+            const ord = e?.order ?? e?.table_order ?? e?.data ?? e ?? {};
+            const detail = typeof ord === "object" && ord !== null ? { ...ord, restaurant_id: ord.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };
+            dispatchOrderUpdated(detail);
+          })
+          .listen("OrderStatusUpdated", (e) => {
+            const ord = e?.order ?? e?.table_order ?? e?.data ?? e ?? {};
+            const detail = typeof ord === "object" && ord !== null ? { ...ord, restaurant_id: ord.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };
+            dispatchOrderUpdated(detail);
+          })
+          .listen(".OrderStatusUpdated", (e) => {
+            const ord = e?.order ?? e?.table_order ?? e?.data ?? e ?? {};
+            const detail = typeof ord === "object" && ord !== null ? { ...ord, restaurant_id: ord.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };
+            dispatchOrderUpdated(detail);
+          })
           .listen("reservation.confirmed", (e) => {
             const res = e?.reservation ?? e?.data ?? e ?? {};
             const detail = typeof res === "object" && res !== null ? { ...res, restaurant_id: res.restaurant_id ?? restaurantId } : { restaurant_id: restaurantId };

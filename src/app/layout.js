@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Footer } from "@/components/Footer";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { getRestaurant } from "@/lib/api";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
@@ -166,6 +167,7 @@ export default async function RootLayout({ children }) {
         />
         <div className="flex min-h-screen flex-col">
           <Providers>{children}</Providers>
+          <LanguageSwitcher />
           <Footer restaurantName={restaurantName} socialLinks={socialLinks} />
         </div>
       </body>

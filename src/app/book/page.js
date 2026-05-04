@@ -61,7 +61,7 @@ function getTimeSlotsForDay(openingSlots, dateStr) {
   if (!openingSlots || openingSlots.length === 0) return FULL_DAY_TIME_SLOTS;
   const day = getDayOfWeekForDate(dateStr);
   const daySlots = openingSlots.filter((s) => (s.day_of_week || "").toLowerCase() === day);
-  if (daySlots.length === 0) return FULL_DAY_TIME_SLOTS;
+  if (daySlots.length === 0) return [];
   const minuteSet = new Set();
   daySlots.forEach((s) => {
     const ranges = [];
@@ -80,7 +80,7 @@ function getTimeSlotsForDay(openingSlots, dateStr) {
   const fromSlots = Array.from(minuteSet)
     .sort((a, b) => a - b)
     .map((m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
-  return fromSlots.length > 0 ? fromSlots : FULL_DAY_TIME_SLOTS;
+  return fromSlots.length > 0 ? fromSlots : [];
 }
 
 /** Next 7 days, filtered to open days only */
@@ -123,14 +123,17 @@ function getBookingParallaxImageFromRestaurant(restaurant) {
 }
 
 function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
+  const normalizedSrc = typeof src === "string" ? src.trim() : "";
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const hasImageSrc = typeof src === "string" && src.trim().length > 0;
+  const [resolvedSrc, setResolvedSrc] = useState(normalizedSrc || BOOK_PAGE_IMAGE || "");
+  const hasImageSrc = typeof resolvedSrc === "string" && resolvedSrc.trim().length > 0;
 
   useEffect(() => {
+    setResolvedSrc(normalizedSrc || BOOK_PAGE_IMAGE || "");
     setImageLoaded(false);
     setImageFailed(false);
-  }, [src]);
+  }, [normalizedSrc]);
 
   return (
     <div className="relative aspect-[5/3] max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-[2/1] sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
@@ -139,11 +142,21 @@ function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
       ) : null}
       {hasImageSrc ? (
         <img
-          key={src}
-          src={src}
+          key={resolvedSrc}
+          src={resolvedSrc}
           alt={alt}
+          loading="eager"
+          decoding="async"
           onLoad={() => setImageLoaded(true)}
           onError={() => {
+            const fallback = (BOOK_PAGE_IMAGE || "").trim();
+            if (resolvedSrc !== fallback && fallback) {
+              // Retry with a stable fallback when remote image intermittently fails.
+              setResolvedSrc(fallback);
+              setImageLoaded(false);
+              setImageFailed(false);
+              return;
+            }
             setImageFailed(true);
             setImageLoaded(false);
           }}
@@ -187,6 +200,19 @@ export default function BookPage() {
     [restaurant]
   );
 
+  function handleReservationDateChange(nextDate) {
+    setReservation_date(nextDate);
+    if (!nextDate) {
+      setError("");
+      return;
+    }
+    if (!isDayOpen(openingSlots, nextDate)) {
+      setError("Restaurant is closed on the selected date. Please choose another date.");
+      return;
+    }
+    setError("");
+  }
+
   useEffect(() => {
     getRestaurant(RESTAURANT_ID)
       .then((data) => {
@@ -227,9 +253,10 @@ export default function BookPage() {
 
   const dateOptions = useMemo(() => buildDateOptions(7, openingSlots), [openingSlots]);
 
-  // If current date is a closed day, switch to first open day
+  // Keep the currently chosen date; do not auto-overwrite user selection.
+  // We only auto-pick a date once if nothing has been selected yet.
   useEffect(() => {
-    if (dateOptions.length > 0 && reservation_date && !dateOptions.some((o) => o.value === reservation_date)) {
+    if (!reservation_date && dateOptions.length > 0) {
       setReservation_date(dateOptions[0].value);
     }
   }, [dateOptions, reservation_date]);
@@ -331,6 +358,10 @@ export default function BookPage() {
     () => getTimeSlotsForDay(openingSlots, reservation_date || ""),
     [openingSlots, reservation_date]
   );
+  const isSelectedDateClosed = useMemo(() => {
+    if (!reservation_date) return false;
+    return !isDayOpen(openingSlots, reservation_date);
+  }, [openingSlots, reservation_date]);
 
   // Always show all time slots for the day (both lunch and dinner etc.); use API to mark which are bookable
   const timeSlotsToShow = timeSlotsForDay;
@@ -394,6 +425,10 @@ export default function BookPage() {
     }
     if (!reservation_date?.trim()) {
       setError("Please choose a date.");
+      return;
+    }
+    if (isSelectedDateClosed) {
+      setError("Restaurant is closed on the selected date. Please choose another date.");
       return;
     }
     if (availabilityLoading) {
@@ -579,7 +614,7 @@ export default function BookPage() {
                 <input
                   type="date"
                   value={reservation_date}
-                  onChange={(e) => setReservation_date(e.target.value)}
+                  onChange={(e) => handleReservationDateChange(e.target.value)}
                   min={(() => {
                     const t = new Date();
                     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
@@ -596,7 +631,7 @@ export default function BookPage() {
                           {i > 0 ? <span className="mx-0.5 text-white/25" aria-hidden>·</span> : null}
                           <button
                             type="button"
-                            onClick={() => setReservation_date(opt.value)}
+                            onClick={() => handleReservationDateChange(opt.value)}
                             className={`touch-manipulation underline-offset-2 transition-colors ${
                               selected
                                 ? "font-medium text-accent"
@@ -618,6 +653,8 @@ export default function BookPage() {
                 </label>
                 {availabilityLoading ? (
                   <p className="py-2 text-xs text-white/45">Loading availability…</p>
+                ) : isSelectedDateClosed ? (
+                  <p className="py-2 text-xs text-amber-300">Restaurant is closed on this date.</p>
                 ) : timeSlotsToShow.length === 0 ? (
                   <p className="py-2 text-xs text-white/45">No times for this day.</p>
                 ) : (

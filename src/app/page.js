@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { getRestaurant } from "@/lib/api";
-import { useCart } from "@/context/CartContext";
 import websiteContentDefaults from "@/data/website-content.json";
 
 /** Hero collage (defaults to Unsplash — override via .env for your own photos) */
@@ -34,7 +33,7 @@ const PARALLAX_RESERVE_BG =
 const RESERVE_INFO_FALLBACK = {
   address: "Sovy Restaurant, Jl. Raya / Canggu, Badung, Bali.",
   phones: "(+62) 81 224 557 900 / (+62) 82 222 577 912",
-  emails: "Reservation@sovy.com / Books@sovy.com",
+  emails: "thaimaki25@gmail.com",
   hours: "Open 04:00 pm WITA / Closed 01:00 am WITA",
 };
 
@@ -99,36 +98,47 @@ function formatOpeningHoursSentence(openingHours) {
     scheduleMap[timeStr].push(day);
   });
 
-  const uniqueSchedules = Object.keys(scheduleMap);
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const dayIndex = Object.fromEntries(daysOfWeek.map((d, i) => [d, i]));
 
-  if (uniqueSchedules.length === 1) {
-    if (uniqueSchedules[0] === "Closed") return "Closed every day.";
-    return `Open every day from ${uniqueSchedules[0]}.`;
-  }
+  const formatDayRange = (start, end) => {
+    const s = capitalize(start);
+    const e = capitalize(end);
+    return start === end ? s : `${s}-${e}`;
+  };
 
-  if (uniqueSchedules.length === 2 && uniqueSchedules.includes("Closed")) {
-    const openSchedule = uniqueSchedules.find((s) => s !== "Closed");
-    const closedDays = scheduleMap["Closed"];
-    
-    if (closedDays.length === 1) {
-      return `Open every day from ${openSchedule} except ${capitalize(closedDays[0])} (Closed).`;
-    } else if (closedDays.length === 2) {
-      return `Open every day from ${openSchedule} except ${capitalize(closedDays[0])} and ${capitalize(closedDays[1])} (Closed).`;
+  const toRanges = (days) => {
+    const sorted = [...days].sort((a, b) => dayIndex[a] - dayIndex[b]);
+    const ranges = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i];
+      if (dayIndex[current] === dayIndex[prev] + 1) {
+        prev = current;
+        continue;
+      }
+      ranges.push(formatDayRange(start, prev));
+      start = current;
+      prev = current;
     }
-  }
+    ranges.push(formatDayRange(start, prev));
+    return ranges;
+  };
 
-  // Fallback for more complex schedules
-  return Object.entries(scheduleMap)
-    .filter(([timeStr]) => timeStr !== "Closed")
-    .map(([timeStr, days]) => {
-      const formattedDays = days.map(capitalize).join(", ");
-      return `${formattedDays}: ${timeStr}`;
+  const parts = Object.entries(scheduleMap)
+    .sort((a, b) => {
+      const aFirst = Math.min(...a[1].map((d) => dayIndex[d]));
+      const bFirst = Math.min(...b[1].map((d) => dayIndex[d]));
+      return aFirst - bFirst;
     })
-    .join(" | ");
-}
+    .flatMap(([timeStr, days]) => {
+      const ranges = toRanges(days);
+      return ranges.map((range) => `${range}: ${timeStr}`);
+    });
 
-const AUTO_SLIDE_MS = 5000;
+  return parts.join(" | ");
+}
 
 /** Shown when API has no curated testimonials yet */
 const DEFAULT_TESTIMONIAL_FALLBACK = {
@@ -230,6 +240,12 @@ function getItemDisplayPrice(item) {
 
 function normalizeWebsiteContent(content) {
   if (!content || typeof content !== "object") return {};
+  const rawGalleryImages =
+    content.gallery_images ??
+    content.galleryImages ??
+    content.image_gallery ??
+    content.imageGallery ??
+    [];
   return {
     storyTitle: content.story_title ?? content.storyTitle ?? "",
     storyText: content.story_text ?? content.storyText ?? "",
@@ -271,6 +287,11 @@ function normalizeWebsiteContent(content) {
       content.menu_showcase_dessert_subtext ?? content.menuShowcaseDessertSubtext ?? "",
     menuShowcaseDessertImage:
       content.menu_showcase_dessert_image_url ?? content.menuShowcaseDessertImage ?? "",
+    galleryImages: Array.isArray(rawGalleryImages)
+      ? rawGalleryImages
+          .map((src) => String(src ?? "").trim())
+          .filter(Boolean)
+      : [],
   };
 }
 
@@ -290,16 +311,12 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const specialsRowRef = useRef(null);
-  const specialMenusRowRefs = useRef([]);
-  const { addItem } = useCart();
-  const [activeSpecialId, setActiveSpecialId] = useState(null);
-  const [activeSpecialMenuItemId, setActiveSpecialMenuItemId] = useState(null);
   const servicesStatsRef = useRef(null);
   const servicesStatsAnimRafRef = useRef(null);
   const [statFoodVariant, setStatFoodVariant] = useState(0);
   const [statPersonCapacity, setStatPersonCapacity] = useState(0);
   const [testimonialCarouselIndex, setTestimonialCarouselIndex] = useState(0);
+  const [activeGalleryImage, setActiveGalleryImage] = useState(null);
 
   useEffect(() => {
     getRestaurant(RESTAURANT_ID)
@@ -640,73 +657,22 @@ export default function Home() {
     }));
   }, [restaurant?.menus, heroMainImage, heroSideImage, mergedWebsiteContent]);
 
-  const specialMenuListsForUI = useMemo(() => {
-    const lists =
-      restaurant?.special_menu_lists ??
-      data?.special_menu_lists ??
-      [];
-    if (!Array.isArray(lists)) return [];
+  const getMenuShowcaseHref = (card) => {
+    if (card?.id === "thai") return "/menu#menu-cat-49";
+    if (card?.id === "sushi") return "/menu#menu-cat-60";
+    return "/menu";
+  };
 
-    return lists
-      .filter((l) => l && l.is_active !== false)
-      .map((l) => {
-        const items = Array.isArray(l.items) ? l.items : [];
-        const filtered = items.filter((it) => it?.is_available !== false);
-        return {
-          id: l.id ?? l.slug ?? l.name,
-          name: l.name ?? "Special",
-          items: filtered,
-        };
-      })
-      .filter((l) => l.items.length > 0);
-  }, [data, restaurant]);
-
-  // Auto-slide horizontal "Chef's specials" row
-  useEffect(() => {
-    if (!specialsRowRef.current || specialItems.length === 0) return;
-    const row = specialsRowRef.current;
-    const card = row.querySelector("article");
-    if (!card) return;
-
-    const cardWidth = card.getBoundingClientRect().width + 16; // include gap
-
-    const interval = setInterval(() => {
-      if (!row) return;
-      const maxScroll = row.scrollWidth - row.clientWidth;
-      const next = row.scrollLeft + cardWidth;
-      row.scrollTo({
-        left: next >= maxScroll ? 0 : next,
-        behavior: "smooth",
-      });
-    }, AUTO_SLIDE_MS);
-
-    return () => clearInterval(interval);
-  }, [specialItems.length]);
-
-  // Auto-slide all special menu rows
-  useEffect(() => {
-    const rows = (specialMenusRowRefs.current || []).filter(Boolean);
-    if (rows.length === 0) return;
-
-    const intervals = rows.map((row) => {
-      const card = row.querySelector("article");
-      if (!card) return null;
-      const cardWidth = card.getBoundingClientRect().width + 16;
-
-      return setInterval(() => {
-        const maxScroll = row.scrollWidth - row.clientWidth;
-        const next = row.scrollLeft + cardWidth;
-        row.scrollTo({
-          left: next >= maxScroll ? 0 : next,
-          behavior: "smooth",
-        });
-      }, AUTO_SLIDE_MS);
-    });
-
-    return () => {
-      intervals.forEach((id) => id && clearInterval(id));
-    };
-  }, [specialMenuListsForUI.length]);
+  const galleryImages = useMemo(() => {
+    const fromWebsiteContent = Array.isArray(mergedWebsiteContent?.galleryImages)
+      ? mergedWebsiteContent.galleryImages
+      : [];
+    const fromSpecialItems = specialItems
+      .map((item) => String(item?.image_url ?? "").trim())
+      .filter(Boolean);
+    const merged = [...fromWebsiteContent, ...fromSpecialItems];
+    return Array.from(new Set(merged));
+  }, [mergedWebsiteContent, specialItems]);
 
   /** Count-up stats when the services band is in view; reset when it leaves (re-animates on each visit) */
   useEffect(() => {
@@ -775,30 +741,16 @@ export default function Home() {
     return () => clearInterval(id);
   }, [testimonialParallaxSlides.length]);
 
-  // Enable mouse-drag horizontal scrolling for specials rows (desktop)
-  const isDraggingRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragScrollLeftRef = useRef(0);
-
-  const handleDragStart = (e) => {
-    const el = e.currentTarget;
-    isDraggingRef.current = true;
-    dragStartXRef.current = e.pageX - el.offsetLeft;
-    dragScrollLeftRef.current = el.scrollLeft;
-  };
-
-  const handleDragMove = (e) => {
-    if (!isDraggingRef.current) return;
-    const el = e.currentTarget;
-    e.preventDefault();
-    const x = e.pageX - el.offsetLeft;
-    const walk = x - dragStartXRef.current;
-    el.scrollLeft = dragScrollLeftRef.current - walk;
-  };
-
-  const handleDragEnd = () => {
-    isDraggingRef.current = false;
-  };
+  useEffect(() => {
+    if (!activeGalleryImage) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setActiveGalleryImage(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeGalleryImage]);
 
   if (loading) {
     return (
@@ -1418,21 +1370,21 @@ export default function Home() {
       )}
 
       <main>
-        {!loading && !error && specialItems.length > 0 && (
+        {!loading && !error && galleryImages.length > 0 && (
           <section className="mb-12 md:mb-20">
             <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 px-4 sm:px-6 lg:px-8">
               <div className="max-w-6xl mx-auto">
                 <div className="mb-2 text-center">
                   <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
-                    This week
+                    Discover
                   </p>
                   <h2 className="mt-2 font-sans text-3xl font-extrabold uppercase tracking-[0.05em] text-wood-900 md:text-4xl">
-                    Specials menu
+                    Image gallery
                   </h2>
                 </div>
                 <div className="mb-8 flex flex-col items-center justify-center gap-4">
                   <p className="max-w-2xl text-center font-sans text-[13px] uppercase tracking-[0.08em] text-wood-600 md:text-[14px]">
-                    A curated selection of highlighted dishes from our kitchen.
+                    Moments from our dishes, atmosphere, and restaurant experience.
                   </p>
                   <Link
                     href="/menu"
@@ -1442,207 +1394,61 @@ export default function Home() {
                   </Link>
                 </div>
 
-                <div
-                  ref={specialsRowRef}
-                  className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing md:flex-wrap md:justify-center md:overflow-visible"
-                  onMouseDown={handleDragStart}
-                  onMouseMove={handleDragMove}
-                  onMouseLeave={handleDragEnd}
-                  onMouseUp={handleDragEnd}
-                >
-                  {specialItems.map((item) => {
-                    const itemKey = item.id ?? item.menu_item_id;
-                    const isActive = activeSpecialId === itemKey;
-                    return (
+                <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
+                  {galleryImages.map((imageSrc, idx) => (
                     <article
-                      key={itemKey}
-                      className="group relative w-56 shrink-0 overflow-hidden rounded-sm bg-white/5 text-center shadow-md ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                      onClick={() =>
-                        setActiveSpecialId((prev) => (prev === itemKey ? null : itemKey))
-                      }
+                      key={`${imageSrc}-${idx}`}
+                      className="group relative mb-4 break-inside-avoid overflow-hidden rounded-sm bg-white shadow-[0_10px_28px_rgba(0,0,0,0.16)] ring-1 ring-black/5 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,0,0,0.22)]"
                     >
-                      <div className="h-56 w-full overflow-hidden bg-black/5">
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.name ?? "Special item"}
-                            className="h-full w-full object-cover transition duration-200 group-hover:blur-sm group-hover:brightness-75"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-wood-300/40 text-wood-700 text-sm font-semibold">
-                            {item.name ?? "Special item"}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="px-3 py-3 space-y-1.5">
-                        <h3 className="line-clamp-2 font-sans text-base font-extrabold uppercase tracking-[0.03em] text-wood-900">
-                          {item.name}
-                        </h3>
-                        {item.price != null && item.price !== "" && (
-                          <p className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-accent">
-                            {formatPrice(item.price)}
-                          </p>
-                        )}
-                      </div>
-
-                      {item.description && (
-                        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
-                          isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
-                        }`}>
-                          <div className="mx-1 mb-1 max-h-40 overflow-y-auto rounded-2xl bg-white p-3 font-sans text-[11px] leading-snug text-wood-800 shadow-xl backdrop-blur-md">
-                            <p className="whitespace-pre-line text-center">{item.description}</p>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addItem(item, 1);
-                              }}
-                              className="mt-2 w-full rounded-full bg-accent px-3 py-1.5 text-[11px] font-semibold text-wood-950 hover:bg-accent-hover transition-colors pointer-events-auto"
-                            >
-                              Add to cart
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {!item.description && (
-                        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
-                          isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
-                        }`}>
-                          <div className="mx-1 mb-1 rounded-2xl bg-white text-wood-800 text-[11px] leading-snug p-3 shadow-xl backdrop-blur-md">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addItem(item, 1);
-                              }}
-                              className="w-full rounded-full bg-accent px-3 py-1.5 text-[11px] font-semibold text-wood-950 hover:bg-accent-hover transition-colors pointer-events-auto"
-                            >
-                              Add to cart
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  )})}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {!loading && !error && specialMenuListsForUI.length > 0 && (
-          <section className="mb-12 md:mb-20">
-            <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 px-4 sm:px-6 lg:px-8">
-              <div className="max-w-6xl mx-auto">
-                <div className="mb-8 text-center">
-                  <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
-                    Featured
-                  </p>
-                  <h2 className="mt-2 font-sans text-3xl font-extrabold uppercase tracking-[0.05em] text-wood-900 md:text-4xl">
-                    Special menus
-                  </h2>
-                </div>
-
-                <div className="space-y-10">
-                  {specialMenuListsForUI.map((list) => (
-                    <div key={String(list.id)} className="space-y-3 text-center">
-                      <h3 className="font-sans text-xl font-extrabold uppercase tracking-[0.04em] text-wood-900 md:text-2xl">
-                        {list.name}
-                      </h3>
-                      <div
-                        ref={(el) => {
-                          if (el) {
-                            specialMenusRowRefs.current[list.id] = el;
-                          }
-                        }}
-                        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide cursor-grab active:cursor-grabbing md:flex-wrap md:justify-center md:overflow-visible"
-                        onMouseDown={handleDragStart}
-                        onMouseMove={handleDragMove}
-                        onMouseLeave={handleDragEnd}
-                        onMouseUp={handleDragEnd}
+                      <button
+                        type="button"
+                        onClick={() => setActiveGalleryImage(imageSrc)}
+                        className="block w-full text-left md:cursor-zoom-in"
+                        aria-label={`Open gallery image ${idx + 1} fullscreen`}
                       >
-                        {list.items.map((item) => {
-                          const itemKey = item.id ?? item.menu_category_id ?? item.name;
-                          const isActive = activeSpecialMenuItemId === itemKey;
-                          return (
-                          <article
-                            key={itemKey}
-                            className="group relative w-56 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5 text-center shadow-md transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                            onClick={() =>
-                              setActiveSpecialMenuItemId((prev) => (prev === itemKey ? null : itemKey))
-                            }
-                          >
-                            <div className="h-48 w-full overflow-hidden bg-black/5">
-                              {item.image_url ? (
-                                <img
-                                  src={item.image_url}
-                                  alt={item.name ?? "Special item"}
-                                  className="h-full w-full object-cover transition duration-200 group-hover:blur-sm group-hover:brightness-75"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-wood-300/40 text-wood-700 text-sm font-semibold">
-                                  {item.name ? item.name.slice(0, 18) : "Special item"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="px-3 py-3 space-y-1.5">
-                              <h4 className="line-clamp-2 font-sans text-base font-extrabold uppercase tracking-[0.03em] text-wood-900">
-                                {item.name}
-                              </h4>
-                              {item.price != null && item.price !== "" && (
-                                <p className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-accent">
-                                  {formatPrice(item.price)}
-                                </p>
-                              )}
-                            </div>
-                            {item.description && (
-                              <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
-                                isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
-                              }`}>
-                                <div className="mx-1 mb-1 max-h-40 overflow-y-auto rounded-2xl bg-white p-3 font-sans text-[11px] leading-snug text-wood-800 shadow-xl backdrop-blur-md">
-                                  <p className="whitespace-pre-line text-center">{item.description}</p>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addItem(item, 1);
-                                    }}
-                                    className="mt-2 w-full rounded-full bg-accent px-3 py-1.5 text-[11px] font-semibold text-wood-950 hover:bg-accent-hover transition-colors pointer-events-auto"
-                                  >
-                                    Add to cart
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            {!item.description && (
-                              <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-all duration-200 ${
-                                isActive ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
-                              }`}>
-                                <div className="mx-1 mb-1 rounded-2xl bg-white text-wood-800 text-[11px] leading-snug p-3 shadow-xl backdrop-blur-md">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addItem(item, 1);
-                                    }}
-                                    className="w-full rounded-full bg-accent px-3 py-1.5 text-[11px] font-semibold text-wood-950 hover:bg-accent-hover transition-colors pointer-events-auto"
-                                  >
-                                    Add to cart
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </article>
-                        )})}
-                      </div>
-                    </div>
+                        <img
+                          src={imageSrc}
+                          alt={`Gallery image ${idx + 1}`}
+                          className="w-full object-cover transform-gpu transition-transform duration-500 ease-in-out will-change-transform group-hover:scale-[1.04] group-active:scale-[1.04]"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </button>
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100 group-active:opacity-100"
+                        aria-hidden
+                      />
+                    </article>
                   ))}
                 </div>
               </div>
             </div>
           </section>
         )}
+
+        {activeGalleryImage ? (
+          <div
+            className="fixed inset-0 z-[120] hidden items-center justify-center bg-black/85 p-6 md:flex"
+            onClick={() => setActiveGalleryImage(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Fullscreen gallery image"
+          >
+            <button
+              type="button"
+              onClick={() => setActiveGalleryImage(null)}
+              className="absolute right-5 top-5 rounded-full border border-white/35 bg-black/45 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white hover:bg-black/70"
+            >
+              Close
+            </button>
+            <img
+              src={activeGalleryImage}
+              alt="Fullscreen gallery"
+              className="max-h-[90vh] max-w-[92vw] rounded-sm object-contain shadow-[0_20px_70px_rgba(0,0,0,0.7)]"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : null}
 
         {/* Our menus — backend categories (prioritized: Thai, Sushi, Dessert) */}
         {!loading && (
@@ -1668,7 +1474,7 @@ export default function Home() {
                 {menuShowcaseCards.map((card) => (
                   <Link
                     key={card.id}
-                    href="/menu"
+                    href={getMenuShowcaseHref(card)}
                     className="group flex flex-col overflow-hidden rounded-sm border border-white/10 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.35)] transition-transform duration-300 hover:-translate-y-1"
                   >
                     <div className="aspect-square overflow-hidden bg-neutral-900">
@@ -1714,9 +1520,10 @@ export default function Home() {
                       Reserve A Table
                     </h2>
                     <p className="mt-5 text-[15px] leading-relaxed text-white/88">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean commodo ligula
-                      eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient
-                      montes, nascetur ridiculus mus.
+                      Book your table in advance to enjoy a smooth arrival and the best dining
+                      experience. Whether it&apos;s a casual lunch, a family dinner, or a special
+                      celebration, our team is ready to welcome you with attentive service and fresh,
+                      carefully prepared dishes.
                     </p>
                   </div>
                   <div className="flex shrink-0 justify-start lg:justify-end">
@@ -1805,7 +1612,10 @@ export default function Home() {
                     key: "hours",
                     lines: (() => {
                       if (openingHours.length > 0) {
-                        return [formatOpeningHoursSentence(openingHours)];
+                        return formatOpeningHoursSentence(openingHours)
+                          .split(" | ")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
                       }
                       return RESERVE_INFO_FALLBACK.hours.split(/\s*\/\s*/).map((s) => s.trim());
                     })(),
@@ -1830,9 +1640,23 @@ export default function Home() {
                   <div key={item.key} className="flex gap-4">
                     {item.icon}
                     <div className="min-w-0 space-y-1 text-[13px] leading-snug text-accent sm:text-sm">
-                      {item.lines.map((line, i) => (
-                        <p key={`${item.key}-${i}`}>{line}</p>
-                      ))}
+                      {item.key === "hours"
+                        ? item.lines.map((line, i) => {
+                            const [rawDay, ...rest] = String(line).split(":");
+                            const dayLabel = rawDay?.trim() || "Schedule";
+                            const timeLabel = rest.join(":").trim() || "Closed";
+                            return (
+                              <div key={`${item.key}-${i}`} className={i > 0 ? "pt-1.5" : ""}>
+                                <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">
+                                  {dayLabel}
+                                </p>
+                                <p className="text-[12px] leading-relaxed text-accent/90">
+                                  {timeLabel}
+                                </p>
+                              </div>
+                            );
+                          })
+                        : item.lines.map((line, i) => <p key={`${item.key}-${i}`}>{line}</p>)}
                     </div>
                   </div>
                 ))}
