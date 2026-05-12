@@ -72,8 +72,8 @@ function OwnerLayoutInner({ children }) {
   return (
     <OwnerRefreshProvider>
       <div className="owner-theme min-h-screen">
-        <header className="border-b border-owner-walnut/20 bg-owner-walnut">
-          <div className="mx-auto flex min-h-[56px] max-w-7xl items-center justify-between gap-4 px-4 py-3">
+        <header className="sticky top-0 z-40 h-[60px] border-b border-owner-walnut/20 bg-owner-walnut">
+          <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
             <Link
               href="/owner/dashboard"
               className="touch-manipulation min-h-[44px] inline-flex items-center gap-2 text-lg md:text-base font-semibold text-owner-nav"

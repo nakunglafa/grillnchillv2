@@ -242,179 +242,195 @@ export default function OwnerDashboardRestaurantPage() {
     );
   }
 
-  const tabButtonBase = "touch-manipulation inline-flex items-center justify-center transition-colors active:scale-[0.98]";
-  const tabButtonActive = "bg-owner-action text-white shadow";
-  const tabButtonInactive = "text-owner-nav hover:bg-white/10";
+  const tabButtonBase = "touch-manipulation inline-flex items-center transition-colors active:scale-[0.98]";
 
   return (
-    <div className="owner-theme-bg min-h-screen pb-20 md:pb-0">
-      <header className="sticky top-0 z-10 border-b border-owner-walnut/20 bg-owner-walnut/95 backdrop-blur text-owner-nav">
-        <div className="mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between max-w-6xl">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+    <div className="owner-theme-bg min-h-screen pb-20 md:pb-0 flex flex-col md:flex-row md:items-start">
+      {/* Mobile restaurant switcher (only if owner has multiple restaurants) */}
+      {restaurants.length > 1 && (
+        <div className="md:hidden border-b border-owner-border bg-owner-paper px-3 py-2">
+          <select
+            value={restaurantId}
+            onChange={handleRestaurantChange}
+            className="touch-manipulation h-9 w-full rounded-lg border border-owner-border bg-owner-card px-3 text-sm text-owner-charcoal"
+          >
+            {restaurants.map((r) => (
+              <option key={r.id} value={r.id} className="bg-owner-card text-owner-charcoal">
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Desktop sidebar: sticky between owner header (60px) and footer */}
+      <aside className="hidden md:flex md:flex-col sticky top-[60px] z-20 shrink-0 w-60 lg:w-64 h-[calc(100vh-60px)] overflow-y-auto border-r border-owner-border bg-owner-card shadow-[1px_0_4px_rgba(45,36,30,0.04)]">
+          <div className="px-4 pt-5 pb-4 border-b border-owner-border/50">
             <Link
               href="/owner/dashboard"
-              className="touch-manipulation inline-flex min-h-[48px] items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-owner-nav hover:bg-white/10"
+              aria-label="Back to dashboard"
+              className="touch-manipulation inline-flex h-9 items-center gap-1.5 -ml-2 rounded-lg px-2 text-xs font-semibold uppercase tracking-wider text-owner-muted hover:bg-owner-paper hover:text-owner-charcoal"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-owner-nav">
+              <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M19 12H5" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
-              Dashboard
+              Back
             </Link>
-            <h1 className="text-2xl font-bold text-owner-nav sm:text-3xl">
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-owner-muted">
+              Managing
+            </p>
+            <p className="mt-1 text-lg font-bold leading-tight text-owner-charcoal wrap-break-word">
               {restaurant?.name ?? `Restaurant #${restaurantId}`}
-            </h1>
+            </p>
+            {restaurants.length > 1 && (
+              <select
+                value={restaurantId}
+                onChange={handleRestaurantChange}
+                className="touch-manipulation mt-3 h-10 w-full rounded-lg border border-owner-border bg-owner-card px-3 text-sm text-owner-charcoal"
+              >
+                {restaurants.map((r) => (
+                  <option key={r.id} value={r.id} className="bg-owner-card text-owner-charcoal">
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          {restaurants.length > 1 && (
-            <select
-              value={restaurantId}
-              onChange={handleRestaurantChange}
-              className="touch-manipulation min-h-[48px] w-full rounded-xl border border-owner-nav/30 bg-owner-walnut px-4 py-3 text-sm text-owner-nav sm:w-auto sm:rounded-lg"
-            >
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id} className="bg-owner-card text-owner-charcoal">
-                  {r.name}
-                </option>
-              ))}
-            </select>
+          <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Dashboard sections">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`${tabButtonBase} h-11 w-full justify-start gap-3 rounded-lg px-3 text-sm font-semibold ${
+                    isActive
+                      ? "bg-owner-action text-white shadow"
+                      : "text-owner-charcoal hover:bg-owner-paper"
+                  }`}
+                >
+                  <span className="shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 min-w-0 w-full p-4 md:p-6 text-sm">
+        <div className="mx-auto w-full max-w-[1400px]">
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={loadData}
+                className="touch-manipulation mt-2 min-h-[48px] rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {activeTab === "orders" && (
+            <OrdersTab
+              orders={orders}
+              restaurantId={restaurantId}
+              token={token}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === "menu" && (
+            <MenuTab
+              menus={menus}
+              restaurantId={restaurantId}
+              token={token}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === "special-menus" && (
+            <SpecialMenusTab
+              restaurantId={restaurantId}
+              token={token}
+            />
+          )}
+          {activeTab === "tables" && (
+            <TablesTab
+              tables={tables}
+              restaurantId={restaurantId}
+              token={token}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === "reservations" && (
+            <ReservationsTab
+              reservations={reservations}
+              restaurantId={restaurantId}
+              token={token}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === "settings" && (
+            <SettingsTab
+              restaurant={restaurant}
+              restaurantId={restaurantId}
+              token={token}
+              onRefresh={loadData}
+              onRestaurantUpdate={(updated) => {
+                if (updated && typeof updated === "object") {
+                  setRestaurant((prev) => (prev ? { ...prev, ...updated } : updated));
+                }
+              }}
+              keepScreenOn={keepScreenOn}
+              onKeepScreenOnChange={setKeepScreenOn}
+            />
+          )}
+          {activeTab === "testimonials" && (
+            <TestimonialsTab
+              restaurantId={restaurantId}
+              token={token}
+              restaurant={restaurant}
+              onRestaurantUpdate={(updated) => {
+                if (updated && typeof updated === "object") {
+                  setRestaurant((prev) => (prev ? { ...prev, ...updated } : updated));
+                }
+              }}
+            />
+          )}
+          {activeTab === "website-content" && (
+            <WebsiteContentTab restaurantId={restaurantId} token={token} />
+          )}
+          {activeTab === "gallery" && (
+            <GalleryTab restaurantId={restaurantId} token={token} />
           )}
         </div>
-        {/* Desktop: icon + bold label in same row */}
-        <nav className="hidden md:flex md:gap-2 md:overflow-x-auto md:pb-2 mx-auto px-4 max-w-6xl">
-          {TABS.map((tab) => (
+      </main>
+
+      {/* Mobile: fixed bottom nav (icons only) */}
+      <nav
+        aria-label="Dashboard sections"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-2 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav"
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`${tabButtonBase} min-h-[44px] flex-1 min-w-0 shrink-0 flex-row gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold ${
-                activeTab === tab.id ? tabButtonActive : tabButtonInactive
+              aria-label={tab.label}
+              aria-current={isActive ? "page" : undefined}
+              className={`${tabButtonBase} flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
+                isActive ? "bg-owner-action text-white shadow" : "text-owner-nav hover:bg-white/10"
               }`}
             >
-              <span className="shrink-0">{tab.icon}</span>
-              {tab.label}
+              {tab.icon}
             </button>
-          ))}
-        </nav>
-      </header>
-
-      {/* Mobile: fixed bottom bar, icons only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-2 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`${tabButtonBase} flex-1 min-w-0 py-3 ${
-              activeTab === tab.id ? tabButtonActive : tabButtonInactive
-            }`}
-            aria-label={tab.label}
-          >
-            {tab.icon}
-          </button>
-        ))}
-      </nav>
-
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-8 text-sm sm:pb-6">
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-600">{error}</p>
-            <button
-              type="button"
-              onClick={loadData}
-              className="touch-manipulation mt-2 min-h-[48px] rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-        {activeTab === "orders" && (
-          <OrdersTab
-            orders={orders}
-            restaurantId={restaurantId}
-            token={token}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === "menu" && (
-          <MenuTab
-            menus={menus}
-            restaurantId={restaurantId}
-            token={token}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === "special-menus" && (
-          <SpecialMenusTab
-            restaurantId={restaurantId}
-            token={token}
-          />
-        )}
-        {activeTab === "tables" && (
-          <TablesTab
-            tables={tables}
-            restaurantId={restaurantId}
-            token={token}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === "reservations" && (
-          <ReservationsTab
-            reservations={reservations}
-            restaurantId={restaurantId}
-            token={token}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === "settings" && (
-          <SettingsTab
-            restaurant={restaurant}
-            restaurantId={restaurantId}
-            token={token}
-            onRefresh={loadData}
-            onRestaurantUpdate={(updated) => {
-              if (updated && typeof updated === "object") {
-                setRestaurant((prev) => (prev ? { ...prev, ...updated } : updated));
-              }
-            }}
-            keepScreenOn={keepScreenOn}
-            onKeepScreenOnChange={setKeepScreenOn}
-          />
-        )}
-        {activeTab === "testimonials" && (
-          <TestimonialsTab
-            restaurantId={restaurantId}
-            token={token}
-            restaurant={restaurant}
-            onRestaurantUpdate={(updated) => {
-              if (updated && typeof updated === "object") {
-                setRestaurant((prev) => (prev ? { ...prev, ...updated } : updated));
-              }
-            }}
-          />
-        )}
-        {activeTab === "website-content" && (
-          <WebsiteContentTab restaurantId={restaurantId} token={token} />
-        )}
-        {activeTab === "gallery" && (
-          <GalleryTab restaurantId={restaurantId} token={token} />
-        )}
-      </main>
-
-      {/* Mobile: fixed bottom bar, icons only (spacer duplicate) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-2 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`${tabButtonBase} flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
-              activeTab === tab.id ? tabButtonActive : tabButtonInactive
-            }`}
-            aria-label={tab.label}
-          >
-            {tab.icon}
-          </button>
-        ))}
+          );
+        })}
       </nav>
     </div>
   );

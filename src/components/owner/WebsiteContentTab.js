@@ -412,7 +412,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-full min-w-0">
       {(error || success) && (
         <div className="space-y-2">
           {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</p>}

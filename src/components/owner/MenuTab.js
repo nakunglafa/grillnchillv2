@@ -493,7 +493,7 @@ export function MenuTab({ restaurantId, token }) {
     Array.isArray(selectedMenuCategories) ? selectedMenuCategories.filter((c) => !c.parent_id) : [];
 
   return (
-    <div className="space-y-6 relative max-w-full min-w-0">
+    <div className="space-y-4 relative max-w-full min-w-0">
       <Toast
         message={toastMessage}
         type={toastType}
@@ -510,23 +510,23 @@ export function MenuTab({ restaurantId, token }) {
       {/* Two columns: left = main menu + categories (forms), right = menu items (editor). */}
       <div
         data-menu-layout="two-col"
-        className="grid grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[360px_minmax(0,1fr)] items-start gap-6 h-auto"
+        className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)] items-start gap-6"
       >
         {/* Left: add menu + main category + sub-category forms */}
-        <aside className="order-2 md:order-1 w-full md:w-[320px] lg:w-[360px] shrink-0 md:sticky md:top-4 mt-4 md:mt-6 space-y-6 md:pr-2 pb-6">
-          <div className="rounded-xl border border-owner-border bg-white p-4 dark:bg-zinc-800/80 dark:border-zinc-600">
-            <h3 className="text-lg md:text-base font-semibold text-zinc-800 dark:text-zinc-100">Menus</h3>
-            <form onSubmit={handleCreateMenu} className="mt-2 flex flex-col gap-3">
+        <aside className="order-2 md:order-1 w-full shrink-0 md:sticky md:top-20 space-y-4">
+          <div className="owner-card rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-owner-charcoal">Menus</h3>
+            <form onSubmit={handleCreateMenu} className="mt-2 flex flex-col gap-2">
               <input
                 type="text"
                 placeholder="New menu name"
                 value={formData.menuName || ""}
                 onChange={(e) => setFormData((p) => ({ ...p, menuName: e.target.value }))}
-                className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base md:text-sm text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-400"
+                className="flex-1 rounded-md border border-owner-border bg-owner-paper px-3 py-1.5 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
               />
               <button
                 type="submit"
-                className="touch-manipulation min-h-[44px] rounded-xl bg-owner-action px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                className="touch-manipulation h-8 rounded-md bg-owner-action px-3 text-xs font-medium text-white hover:opacity-90"
               >
                 Add Menu
               </button>
@@ -534,8 +534,8 @@ export function MenuTab({ restaurantId, token }) {
           </div>
 
           {menus.length > 0 && (
-            <div className="space-y-2 rounded-xl border border-owner-border bg-white p-4 dark:bg-zinc-800/80 dark:border-zinc-600">
-              <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Select menu</p>
+            <div className="space-y-1.5 owner-card rounded-lg p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted">Select menu</p>
               <div className="space-y-1">
                 {menus.map((menu) => (
                   <button
@@ -545,10 +545,10 @@ export function MenuTab({ restaurantId, token }) {
                       setSelectedMenuId(menu.id);
                       setExpandedCategory(null);
                     }}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium ${
+                    className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm font-medium transition-colors ${
                       String(selectedMenu?.id) === String(menu.id)
-                        ? "bg-owner-action text-white"
-                        : "bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+                        ? "bg-owner-action text-white shadow-sm"
+                        : "text-owner-charcoal hover:bg-owner-paper"
                     }`}
                   >
                     {menu.name}
@@ -559,16 +559,16 @@ export function MenuTab({ restaurantId, token }) {
           )}
 
           {selectedMenu && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Main category: toggle to open/close form */}
-              <div className="min-w-0 rounded-xl border border-owner-border bg-white dark:bg-zinc-800/80 p-4 shadow-sm">
+              <div className="min-w-0 owner-card rounded-lg p-3">
                 <button
                   type="button"
                   onClick={() => setOpenMainCatForm((v) => !v)}
-                  className="flex w-full items-center justify-between text-left text-sm font-semibold text-zinc-800 dark:text-zinc-100"
+                  className="flex w-full items-center justify-between text-left text-xs font-semibold text-owner-charcoal"
                 >
-                  <span>Main category</span>
-                  <span className="text-owner-muted">{openMainCatForm ? "▼ Close" : "▶ Add new"}</span>
+                  <span className="uppercase tracking-wide">Main category</span>
+                  <span className="text-owner-action hover:underline">{openMainCatForm ? "Close" : "Add new"}</span>
                 </button>
                 {openMainCatForm && (
                   <form
@@ -577,11 +577,11 @@ export function MenuTab({ restaurantId, token }) {
                       handleCreateCategory(selectedMenu.id, "main");
                       setOpenMainCatForm(false);
                     }}
-                    className="mt-3 flex flex-col gap-3"
+                    className="mt-3 flex flex-col gap-2.5 border-t border-owner-border pt-3"
                   >
                     <input
                       type="text"
-                      placeholder="Main category name *"
+                      placeholder="Category name *"
                       required
                       value={formData[`cat-main-${selectedMenu.id}`]?.name ?? ""}
                       onChange={(e) =>
@@ -590,7 +590,7 @@ export function MenuTab({ restaurantId, token }) {
                           [`cat-main-${selectedMenu.id}`]: { ...(p[`cat-main-${selectedMenu.id}`] || {}), name: e.target.value },
                         }))
                       }
-                      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-400"
+                      className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-1.5 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                     />
                     <textarea
                       placeholder="Description (optional)"
@@ -602,11 +602,11 @@ export function MenuTab({ restaurantId, token }) {
                         }))
                       }
                       rows={2}
-                      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-400"
+                      className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-1.5 text-xs text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                     />
                     <ImageUploadDropzone
                       id={`cat-main-img-${selectedMenu.id}`}
-                      label="Image (optional)"
+                      label="Image"
                       value={formData[`cat-main-${selectedMenu.id}`]?._imageFile}
                       onChange={(file) =>
                         setFormData((p) => ({
@@ -615,30 +615,30 @@ export function MenuTab({ restaurantId, token }) {
                         }))
                       }
                       onError={showToast}
-                      className="mt-1"
+                      className="mt-0.5"
                       maxBytes={MAX_MENU_IMAGE_BYTES}
                       accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                      dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
+                      dropHint="Drop or click (max 2MB)"
                     />
                     <button
                       type="submit"
-                      className="touch-manipulation min-h-[44px] w-full rounded-xl bg-owner-action px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                      className="touch-manipulation h-8 w-full rounded-md bg-owner-action px-3 text-xs font-medium text-white hover:opacity-90"
                     >
-                      Add main category
+                      Save Category
                     </button>
                   </form>
                 )}
               </div>
 
               {mainCategoriesForSelected.length > 0 && (
-                <div className="min-w-0 rounded-xl border border-owner-border bg-white dark:bg-zinc-800/80 p-4 shadow-sm">
+                <div className="min-w-0 owner-card rounded-lg p-3">
                   <button
                     type="button"
                     onClick={() => setOpenSubCatForm((v) => !v)}
-                    className="flex w-full items-center justify-between text-left text-sm font-semibold text-zinc-800 dark:text-zinc-100"
+                    className="flex w-full items-center justify-between text-left text-xs font-semibold text-owner-charcoal"
                   >
-                    <span>Sub-category</span>
-                    <span className="text-owner-muted">{openSubCatForm ? "▼ Close" : "▶ Add new"}</span>
+                    <span className="uppercase tracking-wide">Sub-category</span>
+                    <span className="text-owner-action hover:underline">{openSubCatForm ? "Close" : "Add new"}</span>
                   </button>
                   {openSubCatForm && (
                     <form
@@ -647,7 +647,7 @@ export function MenuTab({ restaurantId, token }) {
                         handleCreateCategory(selectedMenu.id, "sub");
                         setOpenSubCatForm(false);
                       }}
-                      className="mt-3 flex flex-col gap-3"
+                      className="mt-3 flex flex-col gap-2.5 border-t border-owner-border pt-3"
                     >
                       <input
                         type="text"
@@ -664,10 +664,10 @@ export function MenuTab({ restaurantId, token }) {
                             },
                           }))
                         }
-                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-400"
+                        className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-1.5 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                       />
                       <div>
-                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Under main category</label>
+                        <label className="block text-[10px] font-medium text-owner-muted uppercase tracking-wide">Under main category</label>
                         <select
                           value={formData[`cat-sub-${selectedMenu.id}`]?.parent_id ?? mainCategoriesForSelected[0]?.id ?? ""}
                           onChange={(e) =>
@@ -679,7 +679,7 @@ export function MenuTab({ restaurantId, token }) {
                               },
                             }))
                           }
-                          className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                          className="mt-1 w-full rounded-md border border-owner-border bg-owner-paper px-2.5 py-1.5 text-xs text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                         >
                           {mainCategoriesForSelected.map((mc) => (
                             <option key={mc.id} value={mc.id}>
@@ -698,11 +698,11 @@ export function MenuTab({ restaurantId, token }) {
                           }))
                         }
                         rows={2}
-                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-400"
+                        className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-1.5 text-xs text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                       />
                       <ImageUploadDropzone
                         id={`cat-sub-img-${selectedMenu.id}`}
-                        label="Image (optional)"
+                        label="Image"
                         value={formData[`cat-sub-${selectedMenu.id}`]?._imageFile}
                         onChange={(file) =>
                           setFormData((p) => ({
@@ -711,16 +711,16 @@ export function MenuTab({ restaurantId, token }) {
                           }))
                         }
                         onError={showToast}
-                        className="mt-1"
+                        className="mt-0.5"
                         maxBytes={MAX_MENU_IMAGE_BYTES}
                         accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                        dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
+                        dropHint="Drop or click (max 2MB)"
                       />
                       <button
                         type="submit"
-                        className="touch-manipulation min-h-[44px] w-full rounded-xl bg-owner-action px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                        className="touch-manipulation h-8 w-full rounded-md bg-owner-action px-3 text-xs font-medium text-white hover:opacity-90"
                       >
-                        Add sub-category
+                        Save Sub-category
                       </button>
                     </form>
                   )}
@@ -1203,25 +1203,25 @@ function CategorySection({
         <div
           draggable
           onDragStart={handleCategoryDragStart}
-          className="flex min-h-[44px] cursor-grab items-center justify-between gap-2 px-3 py-2 active:cursor-grabbing"
+          className="flex min-h-[40px] cursor-grab items-center justify-between gap-2 px-3 py-1.5 active:cursor-grabbing hover:bg-owner-paper/50"
         >
           <button
             type="button"
             onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
-            className="touch-manipulation flex min-w-0 flex-1 items-center gap-3 text-left text-sm font-medium text-zinc-100 dark:text-zinc-200"
+            className="touch-manipulation flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium text-owner-charcoal"
           >
-            <span className="text-xs text-zinc-300">{isExpanded ? "▼" : "▶"}</span>
+            <span className="text-[10px] text-owner-muted">{isExpanded ? "▼" : "▶"}</span>
             {category.image_url && (
-              <img src={imageUrl(category.image_url)} alt={category.name} className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+              <img src={imageUrl(category.image_url)} alt={category.name} className="h-6 w-6 shrink-0 rounded-md object-cover" />
             )}
             <span className="min-w-0 truncate">{category.name}</span>
           </button>
-          <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 gap-1 opacity-80 hover:opacity-100">
             <button
               type="button"
               disabled={!canMoveCategoryUp}
               onClick={() => moveCategory(-1)}
-              className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="touch-manipulation h-7 w-7 rounded-md text-xs font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal disabled:cursor-not-allowed disabled:opacity-30"
               title="Move up"
             >
               ↑
@@ -1230,7 +1230,7 @@ function CategorySection({
               type="button"
               disabled={!canMoveCategoryDown}
               onClick={() => moveCategory(1)}
-              className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="touch-manipulation h-7 w-7 rounded-md text-xs font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal disabled:cursor-not-allowed disabled:opacity-30"
               title="Move down"
             >
               ↓
@@ -1238,7 +1238,7 @@ function CategorySection({
             <button
               type="button"
               onClick={() => setEditing(`cat-${category.id}`)}
-              className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-zinc-300 hover:text-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="touch-manipulation h-7 px-2 rounded-md text-[11px] font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal"
             >
               Edit
             </button>
@@ -1246,7 +1246,7 @@ function CategorySection({
               <button
                 type="button"
                 onClick={() => onDeleteCategory(category.id)}
-                className="touch-manipulation min-h-[36px] min-w-[36px] rounded-lg px-2 py-1 text-xs font-medium text-red-500 hover:text-red-600 dark:text-red-400"
+                className="touch-manipulation h-7 px-2 rounded-md text-[11px] font-medium text-red-500 hover:bg-red-50 hover:text-red-700"
               >
                 Delete
               </button>
@@ -1272,7 +1272,7 @@ function CategorySection({
                     draggable={editing !== `item-${item.id}`}
                     onDragStart={editing !== `item-${item.id}` ? (e) => handleItemDragStart(e, item) : undefined}
                     onDragEnd={editing !== `item-${item.id}` ? handleItemDragEnd : undefined}
-                    className={`rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900 ${
+                    className={`rounded-lg border border-owner-border bg-owner-paper/40 p-3 ${
                       editing !== `item-${item.id}` ? "cursor-grab active:cursor-grabbing" : ""
                     } ${draggingItemId === item.id ? "opacity-50" : ""}`}
                   >
@@ -1287,9 +1287,9 @@ function CategorySection({
                                   : imageUrl(item.image_url)
                               }
                               alt={item.name}
-                              className="h-16 w-16 rounded-lg object-cover"
+                              className="h-12 w-12 rounded-lg object-cover"
                             />
-                            <span className="text-sm text-zinc-500">
+                            <span className="text-xs text-owner-muted">
                               {editData._imageFile ? "New image (preview)" : "Current image"}
                             </span>
                           </div>
@@ -1305,7 +1305,7 @@ function CategorySection({
                               }))
                             }
                             placeholder="Name"
-                            className="rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                            className="rounded-md border border-owner-border px-2.5 py-1.5 text-sm bg-owner-card text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                           />
                           <input
                             type="number"
@@ -1317,8 +1317,8 @@ function CategorySection({
                                 [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), price: e.target.value },
                               }))
                             }
-                            placeholder="Base price (optional if variants)"
-                            className="rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                            placeholder="Base price"
+                            className="rounded-md border border-owner-border px-2.5 py-1.5 text-sm bg-owner-card text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                           />
                         </div>
                         <textarea
@@ -1330,12 +1330,12 @@ function CategorySection({
                             }))
                           }
                           placeholder="Description"
-                          rows={3}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm md:text-xs leading-relaxed dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                          rows={2}
+                          className="w-full rounded-md border border-owner-border px-2.5 py-1.5 text-xs bg-owner-card text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                         />
-                        <div className="rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+                        <div className="rounded-md border border-owner-border p-2.5 bg-owner-card">
                           <div className="mb-2 flex items-center justify-between gap-2">
-                            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Variants (optional)</p>
+                            <p className="text-[10px] font-medium text-owner-muted uppercase tracking-wide">Variants</p>
                             <button
                               type="button"
                               onClick={() =>
@@ -1352,7 +1352,7 @@ function CategorySection({
                                   };
                                 })
                               }
-                              className="touch-manipulation rounded-lg border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+                              className="touch-manipulation rounded border border-owner-border px-1.5 py-0.5 text-[10px] font-medium text-owner-charcoal hover:bg-owner-paper"
                             >
                               + Add variant
                             </button>
@@ -1360,10 +1360,10 @@ function CategorySection({
                           {Array.isArray(editData.variants) && editData.variants.length > 0 ? (
                             <div className="space-y-2">
                               {editData.variants.map((variant, variantIdx) => (
-                                <div key={`edit-variant-${item.id}-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto_auto]">
+                                <div key={`edit-variant-${item.id}-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_100px_auto_auto]">
                                   <input
                                     type="text"
-                                    placeholder="Type name (e.g. Beef)"
+                                    placeholder="Type (e.g. Beef)"
                                     value={variant?.type_name ?? ""}
                                     onChange={(e) =>
                                       setFormData((p) => {
@@ -1379,7 +1379,7 @@ function CategorySection({
                                         };
                                       })
                                     }
-                                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                                    className="rounded border border-owner-border px-2 py-1 text-xs bg-owner-paper text-owner-charcoal"
                                   />
                                   <input
                                     type="number"
@@ -1401,9 +1401,9 @@ function CategorySection({
                                         };
                                       })
                                     }
-                                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                                    className="rounded border border-owner-border px-2 py-1 text-xs bg-owner-paper text-owner-charcoal"
                                   />
-                                  <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+                                  <label className="flex items-center gap-1.5 text-[10px] text-owner-charcoal">
                                     <input
                                       type="checkbox"
                                       checked={variant?.is_available !== false}
@@ -1421,7 +1421,7 @@ function CategorySection({
                                           };
                                         })
                                       }
-                                      className="rounded border-zinc-300"
+                                      className="rounded border-owner-border"
                                     />
                                     Available
                                   </label>
@@ -1441,7 +1441,7 @@ function CategorySection({
                                         };
                                       })
                                     }
-                                    className="touch-manipulation rounded-lg px-2 py-1 text-xs font-medium text-red-500"
+                                    className="touch-manipulation rounded px-1.5 py-1 text-[10px] font-medium text-red-500 hover:bg-red-50"
                                   >
                                     Remove
                                   </button>
@@ -1449,8 +1449,8 @@ function CategorySection({
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                              Add variants to offer multiple type + price options under one item.
+                            <p className="text-[10px] text-owner-muted">
+                              Add variants to offer multiple options.
                             </p>
                           )}
                         </div>
@@ -1468,10 +1468,10 @@ function CategorySection({
                           className="mt-1"
                           maxBytes={MAX_MENU_IMAGE_BYTES}
                           accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                          dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
+                          dropHint="Drop image or click (max 2 MB)."
                         />
-                        <div className="flex flex-wrap gap-2">
-                          <label className="flex items-center gap-2">
+                        <div className="flex flex-wrap gap-3 py-1">
+                          <label className="flex items-center gap-1.5">
                             <input
                               type="checkbox"
                               checked={editData.is_gluten_free === true}
@@ -1481,11 +1481,11 @@ function CategorySection({
                                   [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_gluten_free: e.target.checked },
                                 }))
                               }
-                              className="rounded border-zinc-300"
+                              className="rounded border-owner-border"
                             />
-                            <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Gluten-free</span>
+                            <span className="text-xs text-owner-charcoal">Gluten-free</span>
                           </label>
-                          <label className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5">
                             <input
                               type="checkbox"
                               checked={editData.is_vegan === true}
@@ -1495,11 +1495,11 @@ function CategorySection({
                                   [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_vegan: e.target.checked },
                                 }))
                               }
-                              className="rounded border-zinc-300"
+                              className="rounded border-owner-border"
                             />
-                            <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegan</span>
+                            <span className="text-xs text-owner-charcoal">Vegan</span>
                           </label>
-                          <label className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5">
                             <input
                               type="checkbox"
                               checked={editData.is_vegetarian === true}
@@ -1509,11 +1509,11 @@ function CategorySection({
                                   [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_vegetarian: e.target.checked },
                                 }))
                               }
-                              className="rounded border-zinc-300"
+                              className="rounded border-owner-border"
                             />
-                            <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegetarian</span>
+                            <span className="text-xs text-owner-charcoal">Vegetarian</span>
                           </label>
-                          <label className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5">
                             <input
                               type="checkbox"
                               checked={editData.is_spicy === true}
@@ -1523,12 +1523,12 @@ function CategorySection({
                                   [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_spicy: e.target.checked },
                                 }))
                               }
-                              className="rounded border-zinc-300"
+                              className="rounded border-owner-border"
                             />
-                            <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Spicy</span>
+                            <span className="text-xs text-owner-charcoal">Spicy</span>
                           </label>
                         </div>
-                        <label className="flex items-center gap-2">
+                        <label className="flex items-center gap-1.5 border-t border-owner-border pt-2">
                           <input
                             type="checkbox"
                             checked={editData.is_available !== false}
@@ -1538,28 +1538,28 @@ function CategorySection({
                                 [`edit-item-${item.id}`]: { ...(p[`edit-item-${item.id}`] ?? item), is_available: e.target.checked },
                               }))
                             }
-                            className="rounded border-zinc-300"
+                            className="rounded border-owner-border"
                           />
-                          <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Available</span>
+                          <span className="text-xs font-medium text-owner-charcoal">Available</span>
                         </label>
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => onUpdateItem(item)}
-                            className="touch-manipulation min-h-[48px] rounded-xl bg-emerald-600 px-4 py-3 text-base md:text-sm font-medium text-white"
+                            className="touch-manipulation h-8 rounded-md bg-owner-action px-4 text-xs font-medium text-white hover:opacity-90"
                           >
                             Save
                           </button>
-                          <button type="button" onClick={() => setEditing(null)} className="touch-manipulation min-h-[48px] rounded-xl px-4 py-3 text-base md:text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                          <button type="button" onClick={() => setEditing(null)} className="touch-manipulation h-8 rounded-md px-3 text-xs font-medium text-owner-muted hover:bg-owner-paper hover:text-owner-charcoal">
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         {/* Left: image + text */}
                         <div className="flex min-w-0 flex-1 items-start gap-3">
-                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-owner-paper flex items-center justify-center">
                             {item.image_url ? (
                               <img
                                 src={imageUrl(item.image_url)}
@@ -1567,71 +1567,61 @@ function CategorySection({
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-200">
+                              <span className="text-xs font-semibold text-owner-muted">
                                 {item.name?.charAt(0)?.toUpperCase() || "I"}
                               </span>
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-zinc-100 dark:text-zinc-100 truncate">
+                            <p className="text-sm font-semibold text-owner-charcoal truncate">
                               {item.name}
                             </p>
                             {item.description && (
-                              <p className="mt-0.5 text-sm text-zinc-300 dark:text-zinc-400 line-clamp-2">
+                              <p className="mt-0.5 text-xs text-owner-muted line-clamp-2">
                                 {item.description}
                               </p>
                             )}
                             {Array.isArray(item.variants) && item.variants.length > 0 && (
-                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              <div className="mt-1 flex flex-wrap gap-1">
                                 {[...item.variants].sort(sortByOrder).map((variant, idx) => (
-                                  <span key={`item-${item.id}-variant-${variant?.id ?? idx}`} className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
+                                  <span key={`item-${item.id}-variant-${variant?.id ?? idx}`} className="rounded border border-owner-border bg-owner-paper px-1 py-0.5 text-[10px] text-owner-charcoal">
                                     {variant?.type_name || "Variant"}{" "}
                                     {Number.isFinite(parseFloat(variant?.price)) ? parseFloat(variant.price).toFixed(2) : variant?.price}
                                   </span>
                                 ))}
                               </div>
                             )}
-                            <div className="mt-1 flex flex-wrap gap-1.5">
+                            <div className="mt-1 flex flex-wrap gap-1">
                               {item.is_gluten_free && (
-                                <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
-                                  Gluten-free
-                                </span>
+                                <span className="rounded bg-owner-paper px-1 py-0.5 text-[10px] text-owner-muted">GF</span>
                               )}
                               {item.is_vegan && (
-                                <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
-                                  Vegan
-                                </span>
+                                <span className="rounded bg-owner-paper px-1 py-0.5 text-[10px] text-owner-muted">V</span>
                               )}
                               {item.is_vegetarian && (
-                                <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
-                                  Vegetarian
-                                </span>
+                                <span className="rounded bg-owner-paper px-1 py-0.5 text-[10px] text-owner-muted">Veg</span>
                               )}
                               {item.is_spicy && (
-                                <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-600">
-                                  Spicy
-                                </span>
+                                <span className="rounded bg-owner-paper px-1 py-0.5 text-[10px] text-owner-muted">Spicy</span>
                               )}
                               {item.is_available === false && (
-                                <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                                  Unavailable
-                                </span>
+                                <span className="rounded bg-red-100 px-1 py-0.5 text-[10px] text-red-700">Unavailable</span>
                               )}
                             </div>
                           </div>
                         </div>
 
                         {/* Right: price + actions */}
-                        <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
-                          <p className="text-base md:text-sm font-semibold text-zinc-100 dark:text-zinc-100">
+                        <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5 shrink-0">
+                          <p className="text-sm font-semibold text-owner-charcoal">
                             {getItemPriceLabel(item)}
                           </p>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <button
                               type="button"
                               disabled={itemIndex === 0}
                               onClick={() => moveItem(item.id, itemIndex, -1)}
-                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400"
+                              className="touch-manipulation h-7 w-7 rounded-md text-xs font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal disabled:cursor-not-allowed disabled:opacity-30"
                               title="Move up"
                             >
                               ↑
@@ -1640,7 +1630,7 @@ function CategorySection({
                               type="button"
                               disabled={itemIndex === items.length - 1}
                               onClick={() => moveItem(item.id, itemIndex, 1)}
-                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400"
+                              className="touch-manipulation h-7 w-7 rounded-md text-xs font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal disabled:cursor-not-allowed disabled:opacity-30"
                               title="Move down"
                             >
                               ↓
@@ -1665,14 +1655,14 @@ function CategorySection({
                                 }));
                                 setEditing(`item-${item.id}`);
                               }}
-                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100 dark:text-zinc-400"
+                              className="touch-manipulation h-7 px-2 rounded-md text-[11px] font-medium text-owner-muted hover:bg-owner-border hover:text-owner-charcoal"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
                               onClick={() => onDeleteItem(item.id)}
-                              className="touch-manipulation min-h-[40px] rounded-lg px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400"
+                              className="touch-manipulation h-7 px-2 rounded-md text-[11px] font-medium text-red-500 hover:bg-red-50 hover:text-red-700"
                             >
                               Delete
                             </button>
@@ -1713,13 +1703,13 @@ function CategorySection({
                     [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), name: e.target.value },
                   }))
                 }
-                className="min-w-[140px] flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-base md:text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                className="min-w-[140px] flex-1 rounded-md border border-owner-border px-2.5 py-1.5 text-sm bg-owner-paper text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
               />
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="Base price (optional if variants)"
+                placeholder="Base price"
                 value={formData[`item-${category.id}`]?.price ?? ""}
                 onChange={(e) =>
                   setFormData((p) => ({
@@ -1727,12 +1717,12 @@ function CategorySection({
                     [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), price: e.target.value },
                   }))
                 }
-                className="w-24 rounded-lg border border-zinc-300 px-3 py-2 text-base md:text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                className="w-24 rounded-md border border-owner-border px-2.5 py-1.5 text-sm bg-owner-paper text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
               />
             </div>
-            <div className="rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+            <div className="rounded-md border border-owner-border p-2.5 bg-owner-paper/50">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Variants (optional)</p>
+                <p className="text-[10px] font-medium text-owner-muted uppercase tracking-wide">Variants (optional)</p>
                 <button
                   type="button"
                   onClick={() =>
@@ -1749,7 +1739,7 @@ function CategorySection({
                       };
                     })
                   }
-                  className="touch-manipulation rounded-lg border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+                  className="touch-manipulation rounded border border-owner-border px-1.5 py-0.5 text-[10px] font-medium text-owner-charcoal hover:bg-owner-card"
                 >
                   + Add variant
                 </button>
@@ -1757,10 +1747,10 @@ function CategorySection({
               {Array.isArray(formData[`item-${category.id}`]?.variants) && formData[`item-${category.id}`]?.variants?.length > 0 ? (
                 <div className="space-y-2">
                   {formData[`item-${category.id}`].variants.map((variant, variantIdx) => (
-                    <div key={`new-variant-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto_auto]">
+                    <div key={`new-variant-${variantIdx}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_100px_auto_auto]">
                       <input
                         type="text"
-                        placeholder="Type name (e.g. Beef)"
+                        placeholder="Type (e.g. Beef)"
                         value={variant?.type_name ?? ""}
                         onChange={(e) =>
                           setFormData((p) => {
@@ -1776,7 +1766,7 @@ function CategorySection({
                             };
                           })
                         }
-                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="rounded border border-owner-border px-2 py-1 text-xs bg-owner-card text-owner-charcoal"
                       />
                       <input
                         type="number"
@@ -1798,9 +1788,9 @@ function CategorySection({
                             };
                           })
                         }
-                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="rounded border border-owner-border px-2 py-1 text-xs bg-owner-card text-owner-charcoal"
                       />
-                      <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+                      <label className="flex items-center gap-1.5 text-[10px] text-owner-charcoal">
                         <input
                           type="checkbox"
                           checked={variant?.is_available !== false}
@@ -1818,7 +1808,7 @@ function CategorySection({
                               };
                             })
                           }
-                          className="rounded border-zinc-300"
+                          className="rounded border-owner-border"
                         />
                         Available
                       </label>
@@ -1838,7 +1828,7 @@ function CategorySection({
                             };
                           })
                         }
-                        className="touch-manipulation rounded-lg px-2 py-1 text-xs font-medium text-red-500"
+                        className="touch-manipulation rounded px-1.5 py-1 text-[10px] font-medium text-red-500 hover:bg-red-50"
                       >
                         Remove
                       </button>
@@ -1846,8 +1836,8 @@ function CategorySection({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Add variants to offer multiple type + price options under one item.
+                <p className="text-[10px] text-owner-muted">
+                  Add variants to offer multiple options.
                 </p>
               )}
             </div>
@@ -1860,8 +1850,8 @@ function CategorySection({
                   [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), description: e.target.value },
                 }))
               }
-              rows={3}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm md:text-xs leading-relaxed dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+              rows={2}
+              className="w-full rounded-md border border-owner-border px-2.5 py-1.5 text-xs bg-owner-paper text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
             />
             <ImageUploadDropzone
               id={`item-img-${category.id}`}
@@ -1874,13 +1864,13 @@ function CategorySection({
                 }))
               }
               onError={onImageError}
-              className="mt-1"
+              className="mt-0.5"
               maxBytes={MAX_MENU_IMAGE_BYTES}
               accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-              dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
+              dropHint="Drop image or click (max 2 MB)."
             />
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-3 py-1">
+              <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={formData[`item-${category.id}`]?.is_gluten_free === true}
@@ -1890,11 +1880,11 @@ function CategorySection({
                       [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), is_gluten_free: e.target.checked },
                     }))
                   }
-                  className="rounded border-zinc-300"
+                  className="rounded border-owner-border"
                 />
-                <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Gluten-free</span>
+                <span className="text-xs text-owner-charcoal">Gluten-free</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={formData[`item-${category.id}`]?.is_vegan === true}
@@ -1904,11 +1894,11 @@ function CategorySection({
                       [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), is_vegan: e.target.checked },
                     }))
                   }
-                  className="rounded border-zinc-300"
+                  className="rounded border-owner-border"
                 />
-                <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegan</span>
+                <span className="text-xs text-owner-charcoal">Vegan</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={formData[`item-${category.id}`]?.is_vegetarian === true}
@@ -1918,11 +1908,11 @@ function CategorySection({
                       [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), is_vegetarian: e.target.checked },
                     }))
                   }
-                  className="rounded border-zinc-300"
+                  className="rounded border-owner-border"
                 />
-                <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Vegetarian</span>
+                <span className="text-xs text-owner-charcoal">Vegetarian</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={formData[`item-${category.id}`]?.is_spicy === true}
@@ -1932,12 +1922,12 @@ function CategorySection({
                       [`item-${category.id}`]: { ...(p[`item-${category.id}`] || {}), is_spicy: e.target.checked },
                     }))
                   }
-                  className="rounded border-zinc-300"
+                  className="rounded border-owner-border"
                 />
-                <span className="text-sm md:text-xs text-zinc-700 dark:text-zinc-300">Spicy</span>
+                <span className="text-xs text-owner-charcoal">Spicy</span>
               </label>
             </div>
-            <button type="submit" className="touch-manipulation min-h-[48px] w-full rounded-xl bg-zinc-600 px-4 py-3 text-base md:text-sm font-medium text-white dark:bg-zinc-500 sm:w-auto">
+            <button type="submit" className="touch-manipulation h-8 w-full rounded-md bg-owner-action px-4 text-xs font-medium text-white hover:opacity-90 sm:w-auto self-start">
               Add Item
             </button>
           </form>

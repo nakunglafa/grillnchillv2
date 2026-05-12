@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English" },
@@ -63,6 +64,8 @@ function persistSelectedLanguage(lang) {
 }
 
 export default function LanguageSwitcher() {
+  const pathname = usePathname();
+  const isOwnerDashboard = pathname?.startsWith("/owner");
   const [selectedLanguage, setSelectedLanguage] = useState(DEFAULT_LANGUAGE);
 
   const includedLanguages = useMemo(
@@ -77,7 +80,7 @@ export default function LanguageSwitcher() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || isOwnerDashboard) return;
     if (window.google?.translate) return;
 
     window.googleTranslateElementInit = () => {
@@ -114,21 +117,23 @@ export default function LanguageSwitcher() {
   return (
     <>
       <div id="google_translate_element" className="hidden" aria-hidden />
-      <div className="language-switcher">
-        <select
-          id="site-language"
-          value={selectedLanguage}
-          onChange={handleChange}
-          className="language-switcher__select"
-          aria-label="Select language"
-        >
-          {SUPPORTED_LANGUAGES.map((language) => (
-            <option key={language.code} value={language.code}>
-              {language.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!isOwnerDashboard && (
+        <div className="language-switcher">
+          <select
+            id="site-language"
+            value={selectedLanguage}
+            onChange={handleChange}
+            className="language-switcher__select"
+            aria-label="Select language"
+          >
+            {SUPPORTED_LANGUAGES.map((language) => (
+              <option key={language.code} value={language.code}>
+                {language.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </>
   );
 }

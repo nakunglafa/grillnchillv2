@@ -6,7 +6,7 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { getRestaurant, createReservation, getAvailability } from "@/lib/api";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
+const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "5";
 
 /** Left column visual — match homepage hero; override with NEXT_PUBLIC_BOOK_PAGE_IMAGE */
 const BOOK_PAGE_IMAGE =
@@ -136,7 +136,7 @@ function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
   }, [normalizedSrc]);
 
   return (
-    <div className="relative aspect-[5/3] max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-[2/1] sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
+    <div className="relative aspect-5/3 max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-2/1 sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
       {!imageLoaded || imageFailed || !hasImageSrc ? (
         <div className="absolute inset-0 animate-pulse bg-white/10" aria-hidden />
       ) : null}
@@ -167,7 +167,7 @@ function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
         />
       ) : null}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/90 via-[#0a0908]/15 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-[#0a0908]/65"
+        className="pointer-events-none absolute inset-0 bg-linear-to-t from-[#0a0908]/90 via-[#0a0908]/15 to-transparent lg:bg-linear-to-r lg:from-transparent lg:via-transparent lg:to-[#0a0908]/65"
         aria-hidden
       />
     </div>
@@ -179,6 +179,7 @@ export default function BookPage() {
   const [restaurant, setRestaurant] = useState(null);
   const [openingSlots, setOpeningSlots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -237,6 +238,7 @@ export default function BookPage() {
       .catch(() => {
         setRestaurant(null);
         setOpeningSlots([]);
+        setLoadError(true);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -306,8 +308,10 @@ export default function BookPage() {
 
   function validateGuestContact() {
     const nameOk = (customer_name || "").trim().length > 0;
-    const hasPhone = (confirmation_phone || "").trim().length > 0;
-    const hasEmail = (customer_email || "").trim().length > 0;
+    const phoneVal = (confirmation_phone || "").trim();
+    const emailVal = (customer_email || "").trim();
+    const hasPhone = phoneVal.length > 0;
+    const hasEmail = emailVal.length > 0;
     if (!nameOk) {
       setError("Please enter your name.");
       return false;
@@ -315,6 +319,22 @@ export default function BookPage() {
     if (!isAuthenticated && !hasPhone && !hasEmail) {
       setError("As a guest, please provide at least your phone number or email.");
       return false;
+    }
+    if (hasEmail) {
+      // Simple but effective email shape check; server still does the real validation.
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRe.test(emailVal)) {
+        setError("Please enter a valid email address.");
+        return false;
+      }
+    }
+    if (hasPhone) {
+      // Allow +, digits, spaces, dashes, parentheses; require at least 7 digits.
+      const digitCount = phoneVal.replace(/\D/g, "").length;
+      if (digitCount < 7 || !/^[+\d][\d\s().-]*$/.test(phoneVal)) {
+        setError("Please enter a valid phone number.");
+        return false;
+      }
     }
     return true;
   }
@@ -365,8 +385,11 @@ export default function BookPage() {
 
   // Always show all time slots for the day (both lunch and dinner etc.); use API to mark which are bookable
   const timeSlotsToShow = timeSlotsForDay;
+  // null  -> API hasn't returned yet (don't mark anything unavailable)
+  // Set() -> API returned no slots (mark everything unavailable)
+  // Set(x)-> API returned specific bookable slots
   const availableSlotsSet = useMemo(() => {
-    if (!availabilitySlots || availabilitySlots.length === 0) return null;
+    if (availabilitySlots === null) return null;
     return new Set(
       availabilitySlots.map((t) => {
         const s = typeof t === "string" ? t.replace(/\.\d+Z?$/i, "").trim() : "";
@@ -376,22 +399,26 @@ export default function BookPage() {
     );
   }, [availabilitySlots]);
 
-  const isToday = reservation_date && (() => {
+  const isToday = useMemo(() => {
+    if (!reservation_date) return false;
     const t = new Date();
     const y = t.getFullYear();
     const m = String(t.getMonth() + 1).padStart(2, "0");
     const d = String(t.getDate()).padStart(2, "0");
     return reservation_date === `${y}-${m}-${d}`;
-  })();
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  }, [reservation_date]);
+  const currentMinutes = useMemo(() => {
+    if (!isToday) return 0;
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  }, [isToday]);
   const isTimeSlotPast = (slot) => {
     if (!isToday) return false;
     const [h, m] = slot.split(":").map(Number);
     return h * 60 + m <= currentMinutes;
   };
   const isSlotUnavailable = (slot) =>
-    party_size >= 10 && availableSlotsSet !== null && !availableSlotsSet.has(slot);
+    availableSlotsSet !== null && !availableSlotsSet.has(slot);
 
   // Keep selected time on a bookable slot when date, slots, or party size change
   useEffect(() => {
@@ -451,6 +478,42 @@ export default function BookPage() {
     setBookStep(2);
   }
 
+  if (loadError && !restaurant) {
+    return (
+      <div className="relative min-h-screen bg-[#0a0908] text-white">
+        <Header variant="marketing" />
+        <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
+          <div className="mx-auto flex max-w-[640px] flex-col items-start gap-3 border border-red-500/30 bg-red-500/5 p-5 ring-1 ring-red-500/15">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-red-300">Error</p>
+            <h1 className="font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">
+              We couldn&apos;t load the restaurant
+            </h1>
+            <p className="text-xs leading-relaxed text-white/70 sm:text-sm">
+              The booking service is temporarily unreachable. Please check your connection and try again.
+            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") window.location.reload();
+                }}
+                className="touch-manipulation inline-flex h-10 items-center justify-center rounded-sm bg-accent px-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover sm:text-[11px]"
+              >
+                Retry
+              </button>
+              <Link
+                href="/"
+                className="touch-manipulation inline-flex h-10 items-center justify-center border border-white/20 bg-white/6 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 transition-colors hover:border-accent/40 hover:bg-white/10 sm:text-[11px]"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (loading || !restaurant) {
     return (
       <div className="relative min-h-screen bg-[#0a0908] text-white">
@@ -462,7 +525,7 @@ export default function BookPage() {
         <main className="relative z-10 w-full px-4 py-6 pb-12 sm:px-6 md:py-8 lg:px-8 xl:px-12">
           <div className="mx-auto grid max-w-[1280px] content-start items-start gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-10">
             <BookPageImageColumn alt="Restaurant" />
-            <div className="w-full border border-white/10 bg-white/[0.03] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-5">
+            <div className="w-full border border-white/10 bg-white/3 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-5">
               <div className="h-3 w-24 animate-pulse bg-white/15" />
               <div className="mt-3 h-7 w-44 animate-pulse bg-white/12 sm:h-8 sm:w-56" />
               <div className="mt-4 space-y-2">
@@ -495,7 +558,7 @@ export default function BookPage() {
               alt={restaurant?.name ? `Book a table · ${restaurant.name}` : "Restaurant"}
               src={bookingParallaxImage}
             />
-            <div className="w-full border border-white/10 bg-white/[0.03] p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
+            <div className="w-full border border-white/10 bg-white/3 p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
             <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Confirmed</p>
             <h1 className="font-display mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">
               Booking request received
@@ -527,7 +590,7 @@ export default function BookPage() {
               ) : null}
               <Link
                 href="/"
-                className="touch-manipulation inline-flex h-10 w-full items-center justify-center border border-white/20 bg-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 transition-colors hover:border-accent/40 hover:bg-white/[0.1] sm:h-11 sm:w-auto sm:min-w-[160px] sm:text-[11px]"
+                className="touch-manipulation inline-flex h-10 w-full items-center justify-center border border-white/20 bg-white/6 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 transition-colors hover:border-accent/40 hover:bg-white/10 sm:h-11 sm:w-auto sm:min-w-[160px] sm:text-[11px]"
               >
                 Back to home
               </Link>
@@ -573,7 +636,7 @@ export default function BookPage() {
         </div>
 
         {!isAuthenticated && bookStep === 2 && (
-          <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-left text-xs leading-snug text-amber-100/95 ring-1 ring-amber-500/20">
+          <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-left text-xs leading-snug text-amber-100/95 ring-1 ring-amber-500/20">
             Booking as guest: enter your name and at least one of phone or email.{" "}
             <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
               Log in
@@ -584,10 +647,10 @@ export default function BookPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="flex w-full max-w-none flex-col gap-4 border border-white/10 bg-white/[0.03] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-5"
+          className="flex w-full max-w-none flex-col gap-4 border border-white/10 bg-white/3 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-5"
         >
           {bookStep === 1 && reservationConfigMissing && (
-            <div className="border border-amber-500/40 bg-amber-500/[0.08] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100 ring-1 ring-amber-500/25 sm:text-xs">
+            <div className="border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 text-[11px] leading-relaxed text-amber-100 ring-1 ring-amber-500/25 sm:text-xs">
               <p className="font-medium text-amber-50">Reservations not available yet</p>
               <p className="mt-1 text-amber-100/90">
                 This restaurant has not set up reservation settings. The owner needs to add reservation configuration and opening hours in the dashboard. Please contact the restaurant or try again later.
@@ -595,7 +658,11 @@ export default function BookPage() {
             </div>
           )}
           {error && (
-            <p className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200 ring-1 ring-red-500/20">
+            <p
+              role="alert"
+              aria-live="polite"
+              className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200 ring-1 ring-red-500/20"
+            >
               {error}
             </p>
           )}
@@ -722,7 +789,7 @@ export default function BookPage() {
                 setError("");
                 setBookStep(1);
               }}
-              className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-accent transition-colors hover:text-accent/90 hover:underline"
+              className="mt-2 text-[11px] font-semibold uppercase tracking-widest text-accent transition-colors hover:text-accent/90 hover:underline"
             >
               Edit date & time
             </button>
@@ -787,14 +854,14 @@ export default function BookPage() {
                 setError("");
                 setBookStep(1);
               }}
-              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/[0.06] text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/[0.1] sm:h-12 sm:min-w-[140px] sm:flex-1"
+              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/6 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/10 sm:h-12 sm:min-w-[140px] sm:flex-1"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={submitting || reservationConfigMissing}
-              className="touch-manipulation h-11 w-full flex-[2] rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-xs"
+              className="touch-manipulation h-11 w-full flex-2 rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-xs"
             >
               {submitting ? "Confirming…" : reservationConfigMissing ? "Booking unavailable" : "Confirm booking"}
             </button>

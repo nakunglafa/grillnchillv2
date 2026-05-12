@@ -195,7 +195,7 @@ export function SpecialMenusTab({ restaurantId, token }) {
   }
 
   return (
-    <div className="space-y-6 max-w-full min-w-0 relative">
+    <div className="space-y-4 max-w-full min-w-0 relative">
       <Toast
         message={toastMessage}
         type={toastType}

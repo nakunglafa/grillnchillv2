@@ -138,7 +138,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   }
 
   return (
-    <div className="space-y-6 relative max-w-full min-w-0">
+    <div className="space-y-4 relative max-w-full min-w-0">
       <Toast
         message={toastMessage}
         type="error"
@@ -176,18 +176,18 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
             return (
               <li
                 key={order.id}
-                className="owner-card rounded-xl border border-owner-border overflow-hidden"
+                className="owner-card rounded-lg border border-owner-border overflow-hidden"
               >
                 {/* Header: Order #, date, status dropdown */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-owner-border bg-owner-paper/50 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-owner-border bg-owner-paper/40 px-3 py-2">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-lg font-semibold text-owner-charcoal">Order #{order.id}</span>
-                    <span className="text-sm text-owner-muted">{formatOrderDateTime(order)}</span>
+                    <span className="text-base font-semibold text-owner-charcoal">Order #{order.id}</span>
+                    <span className="text-xs text-owner-muted">{formatOrderDateTime(order)}</span>
                   </div>
                   <select
                     value={order.status ?? order.order_status ?? ""}
                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                    className="touch-manipulation min-h-[44px] min-w-[140px] rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-sm font-medium text-owner-charcoal"
+                    className="touch-manipulation h-8 min-w-[130px] rounded-md border border-owner-border bg-owner-card px-2 py-0.5 text-xs font-medium text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                   >
                     {getOptionsForOrder(order).map((s) => (
                       <option key={s.value} value={s.value}>
@@ -197,18 +197,18 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                   </select>
                 </div>
 
-                <div className="p-4 space-y-4">
+                <div className="p-3 space-y-3">
                   {/* Contact: name, phone (call), email (mail) */}
-                  <div className="rounded-lg bg-owner-paper/50 border border-owner-border p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-owner-muted mb-2">Customer / Contact</p>
-                    <p className="font-medium text-owner-charcoal">{customerName}</p>
-                    <div className="mt-2 flex flex-wrap gap-3">
+                  <div className="rounded-md bg-owner-paper/40 border border-owner-border p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted mb-1.5">Customer / Contact</p>
+                    <p className="text-sm font-medium text-owner-charcoal">{customerName}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                       {customerPhone ? (
                         <a
                           href={`tel:${customerPhone.replace(/\s/g, "")}`}
-                          className="inline-flex items-center gap-1.5 text-sm text-owner-charcoal hover:text-owner-action font-medium"
+                          className="inline-flex items-center gap-1.5 text-xs text-owner-charcoal hover:text-owner-action font-medium"
                         >
-                          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
                           {customerPhone}
@@ -217,22 +217,22 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                       {customerEmail ? (
                         <a
                           href={`mailto:${customerEmail}`}
-                          className="inline-flex items-center gap-1.5 text-sm text-owner-charcoal hover:text-owner-action font-medium break-all"
+                          className="inline-flex items-center gap-1.5 text-xs text-owner-charcoal hover:text-owner-action font-medium break-all"
                         >
-                          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
                           {customerEmail}
                         </a>
                       ) : null}
                       {!customerPhone && !customerEmail ? (
-                        <span className="text-sm text-owner-muted">No phone or email</span>
+                        <span className="text-xs text-owner-muted">No phone or email</span>
                       ) : null}
                     </div>
                   </div>
 
                   {/* Order type & delivery address */}
-                  <div className="flex flex-col gap-1 text-sm">
+                  <div className="flex flex-col gap-0.5 text-xs">
                     <p className="text-owner-muted">
                       <span className="font-medium text-owner-charcoal">Type:</span>{" "}
                       {orderType === "delivery" ? "Delivery" : orderType === "pickup" ? "Pickup" : orderType || "—"}
@@ -252,11 +252,11 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
 
                   {/* Items */}
                   {itemsList.length > 0 && (
-                    <div className="rounded-lg border border-owner-border overflow-hidden">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-owner-muted px-3 py-2 bg-owner-paper/50 border-b border-owner-border">Items</p>
+                    <div className="rounded-md border border-owner-border overflow-hidden">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted px-2.5 py-1.5 bg-owner-paper/40 border-b border-owner-border">Items</p>
                       <ul className="divide-y divide-owner-border">
                         {itemsList.map((line, idx) => (
-                          <li key={line.id ?? idx} className="flex justify-between gap-2 px-3 py-2 text-sm">
+                          <li key={line.id ?? idx} className="flex justify-between gap-2 px-2.5 py-1.5 text-xs">
                             <span className="text-owner-charcoal min-w-0">
                               {(line.item_name ?? line.name ?? "Item")} × {Number(line.quantity) || 1}
                             </span>
@@ -271,8 +271,8 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
 
                   {/* Total */}
                   <div className="flex justify-between items-center pt-2 border-t border-owner-border">
-                    <span className="font-semibold text-owner-charcoal">Total</span>
-                    <span className="font-semibold text-owner-charcoal">{formatPrice(order.total_amount ?? order.total)}</span>
+                    <span className="text-sm font-semibold text-owner-charcoal">Total</span>
+                    <span className="text-sm font-semibold text-owner-charcoal">{formatPrice(order.total_amount ?? order.total)}</span>
                   </div>
                 </div>
               </li>

@@ -379,11 +379,19 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
     }
   };
 
-  const inputClass = "w-full rounded-xl border border-owner-border bg-owner-card px-4 py-3 text-sm text-owner-charcoal placeholder:text-owner-muted sm:rounded-lg";
-  const labelClass = "mb-1 block text-sm font-medium text-owner-charcoal";
-  const sectionClass = "owner-card rounded-xl p-6 border border-owner-border";
-  const btnPrimaryClass = "touch-manipulation min-h-[48px] w-full rounded-xl bg-owner-action px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:w-auto sm:rounded-lg";
-  const timeInputClass = "touch-manipulation min-h-[44px] rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-base md:text-sm text-owner-charcoal";
+  // Unified design tokens (match MenuTab / ReservationsTab styling)
+  const inputClass =
+    "w-full h-10 rounded-md border border-owner-border bg-owner-paper px-3 text-sm text-owner-charcoal placeholder:text-owner-muted outline-none focus:ring-1 focus:ring-owner-action";
+  const labelClass = "mb-1 block text-xs font-semibold text-owner-charcoal";
+  const sectionClass = "owner-card rounded-lg p-4 border border-owner-border";
+  const sectionTitleClass = "mb-3 text-base font-semibold text-owner-charcoal";
+  const sectionDescClass = "mb-3 text-xs text-owner-muted";
+  const btnPrimaryClass =
+    "touch-manipulation inline-flex h-10 items-center justify-center rounded-md bg-owner-action px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
+  const btnSecondaryClass =
+    "touch-manipulation inline-flex h-9 items-center justify-center rounded-md border border-owner-border bg-owner-card px-3 text-sm font-medium text-owner-charcoal hover:bg-owner-paper";
+  const timeInputClass =
+    "touch-manipulation h-9 rounded-md border border-owner-border bg-owner-paper px-2 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action";
 
   const navItems = [
     { id: "restaurant-details", label: "Restaurant details" },
@@ -394,22 +402,21 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
     { id: "device", label: "Device" },
   ];
 
-  if (loading) return <p className="text-owner-charcoal">Loading settings...</p>;
+  if (loading) return <p className="text-sm text-owner-muted">Loading settings...</p>;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:gap-8 max-w-full min-w-0">
-      {/* Mobile: sticky top horizontal scroll nav – slick, always at top for easy access */}
+    <div className="flex flex-col lg:flex-row lg:gap-6 max-w-full min-w-0">
+      {/* Mobile: sticky horizontal pill nav */}
       <nav
         aria-label="Settings navigation"
-        className="lg:hidden sticky top-0 z-20 -mx-4 mb-4 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 py-3 bg-owner-paper/98 backdrop-blur-md border-b border-owner-border shadow-sm scrollbar-hide snap-x snap-mandatory"
-        style={{ WebkitOverflowScrolling: "touch" }}
+        className="lg:hidden -mx-1 mb-2 overflow-x-auto px-1 pb-1"
       >
-        <div className="flex gap-2 min-w-max pb-0.5">
+        <div className="flex gap-1.5 min-w-max">
           {navItems.map((item) => (
             <a
               key={item.id}
               href={`#${item.id}`}
-              className="shrink-0 snap-start rounded-lg border border-owner-border bg-owner-card px-4 py-2.5 text-sm md:text-xs font-medium text-owner-charcoal transition-all active:scale-[0.98] hover:bg-owner-paper"
+              className="touch-manipulation inline-flex shrink-0 h-8 items-center rounded-full border border-owner-border bg-owner-card px-3 text-xs font-medium text-owner-charcoal hover:bg-owner-paper active:scale-[0.98]"
             >
               {item.label}
             </a>
@@ -417,13 +424,13 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </div>
       </nav>
 
-      {/* Fixed left nav - desktop only */}
+      {/* Desktop side nav */}
       <nav
         aria-label="Settings navigation"
-        className="hidden lg:block lg:w-52 lg:flex-shrink-0 lg:sticky lg:top-36 lg:self-start"
+        className="hidden lg:block lg:w-48 lg:shrink-0 lg:sticky lg:top-20 lg:self-start"
       >
-        <div className="owner-card rounded-xl p-3 border border-owner-border">
-          <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-owner-muted">
+        <div className={sectionClass}>
+          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-owner-muted">
             Settings
           </p>
           <ul className="space-y-0.5">
@@ -431,7 +438,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               <li key={item.id}>
                 <a
                   href={`#${item.id}`}
-                  className="block rounded-lg px-3 py-2 text-sm md:text-xs font-medium text-owner-charcoal transition-colors hover:bg-owner-paper"
+                  className="block rounded-md px-3 py-2 text-xs font-medium text-owner-charcoal hover:bg-owner-paper transition-colors"
                 >
                   {item.label}
                 </a>
@@ -441,22 +448,22 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </div>
       </nav>
 
-      {/* Toast notifications – same position as live notification stack (bottom-right / bottom on mobile) */}
+      {/* Toast notifications */}
       {(success || error) && (
         <div
-          className="fixed bottom-6 right-6 left-auto z-50 flex max-w-sm flex-col gap-2 max-sm:left-4 max-sm:right-4 max-sm:bottom-6 max-sm:pb-[env(safe-area-inset-bottom)]"
+          className="fixed bottom-4 right-4 left-auto z-50 flex max-w-sm flex-col gap-2 max-sm:left-4 max-sm:right-4 max-sm:bottom-4 max-sm:pb-[env(safe-area-inset-bottom)]"
           aria-live="polite"
         >
           {error && (
             <div
-              className="rounded-xl border border-red-200 bg-white p-4 shadow-lg dark:border-red-800 dark:bg-red-950/95"
+              className="rounded-lg border border-red-200 bg-white p-3 shadow-lg dark:border-red-800 dark:bg-red-950/95"
               role="alert"
             >
               <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
               <button
                 type="button"
                 onClick={() => setError("")}
-                className="mt-2 text-xs font-medium text-red-500 underline hover:no-underline dark:text-red-400"
+                className="mt-1 text-xs font-medium text-red-500 underline hover:no-underline dark:text-red-400"
               >
                 Dismiss
               </button>
@@ -464,7 +471,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
           )}
           {success && (
             <div
-              className="rounded-xl border border-owner-success/40 bg-white p-4 shadow-lg dark:bg-owner-success/10"
+              className="rounded-lg border border-owner-success/40 bg-white p-3 shadow-lg dark:bg-owner-success/10"
               role="status"
             >
               <p className="text-sm font-medium text-owner-success">{success}</p>
@@ -473,14 +480,12 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </div>
       )}
 
-      {/* Main content - scrollable */}
-      <div className="min-w-0 flex-1 space-y-8 scroll-smooth">
+      {/* Main content */}
+      <div className="min-w-0 flex-1 space-y-4 scroll-smooth">
       <section id="restaurant-details" className={sectionClass}>
-        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
-          Restaurant details
-        </h3>
-        <form onSubmit={handleSaveRestaurant} className="flex flex-col gap-4 max-w-md">
-          <label>
+        <h3 className={sectionTitleClass}>Restaurant details</h3>
+        <form onSubmit={handleSaveRestaurant} className="grid gap-3 md:grid-cols-2">
+          <label className="block">
             <span className={labelClass}>Name</span>
             <input
               type="text"
@@ -489,35 +494,35 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               className={inputClass}
             />
           </label>
-          <label>
-            <span className={labelClass}>Address</span>
-            <input
-              type="text"
-              value={editRestaurant.address}
-              onChange={(e) => setEditRestaurant((p) => ({ ...p, address: e.target.value }))}
-              className={`touch-manipulation min-h-[48px] ${inputClass}`}
-            />
-          </label>
-          <label>
+          <label className="block">
             <span className={labelClass}>Phone</span>
             <input
               type="text"
               value={editRestaurant.phone}
               onChange={(e) => setEditRestaurant((p) => ({ ...p, phone: e.target.value }))}
-              className={`touch-manipulation min-h-[48px] ${inputClass}`}
+              className={inputClass}
             />
           </label>
-          <label>
+          <label className="block md:col-span-2">
+            <span className={labelClass}>Address</span>
+            <input
+              type="text"
+              value={editRestaurant.address}
+              onChange={(e) => setEditRestaurant((p) => ({ ...p, address: e.target.value }))}
+              className={inputClass}
+            />
+          </label>
+          <label className="block md:col-span-2">
             <span className={labelClass}>Google Business URL</span>
             <input
               type="url"
               value={editRestaurant.google_business_url}
               onChange={(e) => setEditRestaurant((p) => ({ ...p, google_business_url: e.target.value }))}
               placeholder="https://..."
-              className={`touch-manipulation min-h-[48px] ${inputClass}`}
+              className={inputClass}
             />
           </label>
-          <div>
+          <div className="md:col-span-2">
             <span className={labelClass}>Restaurant logo</span>
             {(editRestaurant.logo_url || logoFile) && (
               <div className="mb-2 flex items-center gap-3">
@@ -530,10 +535,10 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                         : ""
                   }
                   alt="Logo preview"
-                  className="h-16 w-16 rounded-lg object-cover border border-owner-border"
+                  className="h-14 w-14 rounded-md object-cover border border-owner-border"
                 />
                 {logoFile && (
-                  <span className="text-sm text-owner-muted">New image selected</span>
+                  <span className="text-xs text-owner-muted">New image selected</span>
                 )}
               </div>
             )}
@@ -547,21 +552,23 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               dropHint="Drop logo or click to choose (max 500 KB)"
               className="mt-1"
             />
-            <span className="mt-1 block text-xs text-owner-muted">JPEG, PNG or JPG, max 500 KB</span>
+            <span className="mt-1 block text-[11px] text-owner-muted">JPEG, PNG or JPG, max 500 KB</span>
           </div>
-          <button type="submit" disabled={saving} className={btnPrimaryClass}>
-            {saving ? "Saving..." : "Save restaurant"}
-          </button>
+          <div className="md:col-span-2 flex justify-end pt-1">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save restaurant"}
+            </button>
+          </div>
         </form>
       </section>
 
       <section id="social-links" className={sectionClass}>
-        <h3 className="mb-2 text-xl font-semibold text-owner-charcoal">Social links</h3>
-        <p className="mb-4 text-sm text-owner-muted">
+        <h3 className={sectionTitleClass}>Social links</h3>
+        <p className={sectionDescClass}>
           Public profile URLs shown on your website (X, Facebook, Instagram, TikTok, Google Maps, Tripadvisor).
         </p>
-        <form onSubmit={handleSaveSocialLinks} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={handleSaveSocialLinks} className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <label>
               <span className={labelClass}>X URL</span>
               <input
@@ -624,7 +631,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
             </label>
           </div>
 
-          <div className="sticky bottom-3 z-10 flex items-center justify-end border border-owner-border bg-owner-paper/95 px-3 py-3 backdrop-blur-sm">
+          <div className="flex items-center justify-end pt-1">
             <button type="submit" disabled={saving} className={btnPrimaryClass}>
               {saving ? "Saving..." : "Save social links"}
             </button>
@@ -633,11 +640,9 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
       </section>
 
       <section id="reservation-rules" className={sectionClass}>
-        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
-          Reservation rules
-        </h3>
-        <form onSubmit={handleSaveConfig} className="flex flex-col gap-4 max-w-md">
-          <label>
+        <h3 className={sectionTitleClass}>Reservation rules</h3>
+        <form onSubmit={handleSaveConfig} className="grid gap-3 md:grid-cols-2">
+          <label className="block">
             <span className={labelClass}>Default duration (minutes)</span>
             <input
               type="number"
@@ -645,10 +650,10 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               max={240}
               value={editConfig.default_reservation_duration}
               onChange={(e) => setEditConfig((p) => ({ ...p, default_reservation_duration: Number(e.target.value) }))}
-              className={`touch-manipulation min-h-[48px] ${inputClass}`}
+              className={inputClass}
             />
           </label>
-          <label>
+          <label className="block">
             <span className={labelClass}>Max party size</span>
             <input
               type="number"
@@ -656,20 +661,20 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               max={50}
               value={editConfig.max_party_size}
               onChange={(e) => setEditConfig((p) => ({ ...p, max_party_size: Number(e.target.value) }))}
-              className={`touch-manipulation min-h-[48px] ${inputClass}`}
+              className={inputClass}
             />
           </label>
-          <button type="submit" disabled={saving} className={btnPrimaryClass}>
-            {saving ? "Saving..." : "Save config"}
-          </button>
+          <div className="md:col-span-2 flex justify-end pt-1">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save config"}
+            </button>
+          </div>
         </form>
       </section>
 
       <section id="payment-gateways" className={sectionClass}>
-        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
-          Payment gateways
-        </h3>
-        <form onSubmit={handleSavePayment} className="flex flex-col gap-4 max-w-md">
+        <h3 className={sectionTitleClass}>Payment gateways</h3>
+        <form onSubmit={handleSavePayment} className="space-y-3">
           <label className="flex cursor-pointer items-center gap-3">
             <input
               type="checkbox"
@@ -677,7 +682,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               onChange={(e) => setPaymentConfig((p) => ({ ...p, stripe_enabled: e.target.checked }))}
               className="h-4 w-4 rounded border-owner-action"
             />
-            <span className="text-owner-charcoal">Enable Stripe (card payments)</span>
+            <span className="text-sm text-owner-charcoal">Enable Stripe (card payments)</span>
           </label>
           <label className="flex cursor-pointer items-center gap-3">
             <input
@@ -686,24 +691,24 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               onChange={(e) => setPaymentConfig((p) => ({ ...p, pickup_enabled: e.target.checked }))}
               className="h-4 w-4 rounded border-owner-action"
             />
-            <span className="text-owner-charcoal">Enable Pay on Pickup</span>
+            <span className="text-sm text-owner-charcoal">Enable Pay on Pickup</span>
           </label>
-          <button type="submit" disabled={saving} className={btnPrimaryClass}>
-            {saving ? "Saving..." : "Save payment gateways"}
-          </button>
+          <div className="flex justify-end pt-1">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save payment gateways"}
+            </button>
+          </div>
         </form>
       </section>
 
       <section id="opening-hours" className={sectionClass}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-xl font-semibold text-owner-charcoal">
-            Opening hours
-          </h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className={`${sectionTitleClass} mb-0`}>Opening hours</h3>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-owner-muted">Copy from:</span>
+            <span className="text-xs text-owner-muted">Copy from:</span>
             <select
               id="copy-from-day"
-              className="rounded-lg border border-owner-border bg-owner-card px-2 py-1.5 text-sm text-owner-charcoal"
+              className="h-9 rounded-md border border-owner-border bg-owner-paper px-2 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
               defaultValue="monday"
             >
               {DAYS.map((d) => (
@@ -716,21 +721,21 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                 const fromDay = document.getElementById("copy-from-day")?.value || "monday";
                 copyDayToAll(fromDay);
               }}
-              className="rounded-lg bg-owner-action px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              className={btnSecondaryClass}
             >
               Copy to all days
             </button>
           </div>
         </div>
-        <p className="mb-4 text-sm text-owner-muted">
+        <p className={sectionDescClass}>
           Set open and close times per day. Add multiple slots for split hours (e.g. lunch and dinner).
         </p>
-        <form onSubmit={handleSaveSlots} className="space-y-4">
-          <div className="space-y-4">
+        <form onSubmit={handleSaveSlots} className="space-y-3">
+          <div className="space-y-2">
             {DAYS.map((day) => (
-              <div key={day} className="rounded-lg border border-owner-border owner-card p-3">
+              <div key={day} className="rounded-md border border-owner-border bg-owner-paper p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-medium capitalize text-owner-charcoal">{day}</span>
+                  <span className="text-sm font-semibold capitalize text-owner-charcoal">{day}</span>
                   <button
                     type="button"
                     onClick={() =>
@@ -739,7 +744,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                         [day]: [...(s[day] || []), { open_time: "09:00:00", close_time: "17:00:00" }],
                       }))
                     }
-                    className="text-sm text-owner-muted hover:text-owner-charcoal"
+                    className="text-xs font-medium text-owner-muted hover:text-owner-charcoal"
                   >
                     + Add slot
                   </button>
@@ -761,13 +766,13 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                                 ),
                               }))
                             }
-                            className={`rounded-lg border border-owner-border bg-owner-card px-2 py-1.5 text-sm text-owner-charcoal ${timeInputClass}`}
+                            className={timeInputClass}
                           >
                             {generateTimeOptions().map((t) => (
                               <option key={t} value={t}>{t.slice(0, 5)}</option>
                             ))}
                           </select>
-                          <span className="text-owner-muted">–</span>
+                          <span className="text-xs text-owner-muted">–</span>
                           <select
                             value={closeVal}
                             onChange={(e) =>
@@ -778,7 +783,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                                 ),
                               }))
                             }
-                            className={`rounded-lg border border-owner-border bg-owner-card px-2 py-1.5 text-sm text-owner-charcoal ${timeInputClass}`}
+                            className={timeInputClass}
                           >
                             {generateTimeOptions().map((t) => (
                               <option key={t} value={t}>{t.slice(0, 5)}</option>
@@ -792,7 +797,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                                 [day]: (s[day] || []).filter((_, i) => i !== idx),
                               }))
                             }
-                            className="text-sm text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
+                            className="text-xs font-medium text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
                           >
                             Remove
                           </button>
@@ -801,22 +806,22 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-owner-muted">Closed</p>
+                  <p className="text-xs text-owner-muted">Closed</p>
                 )}
               </div>
             ))}
           </div>
-          <button type="submit" disabled={saving} className={btnPrimaryClass}>
-            {saving ? "Saving..." : "Save opening hours"}
-          </button>
+          <div className="flex justify-end pt-1">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save opening hours"}
+            </button>
+          </div>
         </form>
       </section>
 
       <section id="device" className={sectionClass}>
-        <h3 className="mb-4 text-xl font-semibold text-owner-charcoal">
-          Device
-        </h3>
-        <p className="mb-4 text-sm text-owner-muted">
+        <h3 className={sectionTitleClass}>Device</h3>
+        <p className={sectionDescClass}>
           When using the dashboard on a phone or tablet, you can keep the screen on so it does not dim or lock while the dashboard is open. Supported in Chrome and other modern mobile browsers.
         </p>
         {typeof onKeepScreenOnChange === "function" && (
@@ -829,7 +834,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
                 setKeepScreenOnPreference(enabled);
                 onKeepScreenOnChange(enabled);
               }}
-              className="h-5 w-5 rounded border-owner-border text-owner-action focus:ring-owner-action"
+              className="h-4 w-4 rounded border-owner-border text-owner-action focus:ring-owner-action"
             />
             <span className="text-sm font-medium text-owner-charcoal">
               Keep screen on when dashboard is open

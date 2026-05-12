@@ -128,10 +128,16 @@ body {
   box-shadow: var(--owner-card-shadow);
   border: 1px solid var(--owner-border);
 }
-/* Ensure text on cards stays Deep Charcoal (no pure black) */
-.owner-theme .owner-card,
-.owner-theme .owner-card * {
+/* Default text on cards is Deep Charcoal, but :where() keeps the rule at
+   zero specificity so any explicit Tailwind utility (text-white, text-red-500…) overrides it. */
+:where(.owner-theme .owner-card),
+:where(.owner-theme .owner-card *) {
   color: var(--owner-charcoal);
+}
+/* Primary action buttons inside cards always keep white text for contrast */
+.owner-theme .owner-card .bg-owner-action,
+.owner-theme .owner-card .bg-owner-action * {
+  color: #ffffff;
 }
 .owner-theme .owner-card .owner-muted {
   color: var(--owner-muted);
@@ -274,13 +280,28 @@ body {
   top: 0 !important;
 }
 
-.goog-te-banner-frame.skiptranslate {
+iframe.skiptranslate {
   display: none !important;
+  visibility: hidden !important;
+}
+
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 .goog-te-gadget,
 .goog-logo-link,
 #goog-gt-tt,
 .goog-te-balloon-frame {
+  display: none !important;
+}
+
+/* Hide new Google Translate popups */
+.VIpgJd-ZVi9od-ORHb-OEVmcd {
+  display: none !important;
+}
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
   display: none !important;
 }
