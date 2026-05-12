@@ -207,7 +207,7 @@ export function Header({ variant = "default" }) {
               className={`h-5 w-24 animate-pulse rounded-md ${siteChrome ? "bg-white/20" : "bg-wood-400/50"}`}
             />
           ) : (
-            restaurantName
+            <span className="notranslate" translate="no">{restaurantName}</span>
           )}
         </Link>
 
@@ -263,7 +263,12 @@ export function Header({ variant = "default" }) {
                     onClick={() => setAccountMenuOpen((prev) => !prev)}
                     className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-700 hover:bg-white/10 hover:text-accent transition-colors"
                   >
-                    {user?.name || "Account"}
+                    <span
+                      className={user?.name ? "notranslate" : undefined}
+                      translate={user?.name ? "no" : undefined}
+                    >
+                      {user?.name || "Account"}
+                    </span>
                     <svg
                       className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? "rotate-180" : ""}`}
                       viewBox="0 0 20 20"
@@ -353,7 +358,12 @@ export function Header({ variant = "default" }) {
                 href="/profile"
                 className="hidden rounded-sm px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/90 hover:text-accent xl:inline"
               >
-                {user?.name ? user.name.split(" ")[0] : "Account"}
+                <span
+                  className={user?.name ? "notranslate" : undefined}
+                  translate={user?.name ? "no" : undefined}
+                >
+                  {user?.name ? user.name.split(" ")[0] : "Account"}
+                </span>
               </Link>
             </>
           )}
@@ -455,7 +465,12 @@ export function Header({ variant = "default" }) {
                     className="text-base font-medium text-white/90"
                     onClick={closeMenu}
                   >
-                    {user?.name ? user.name.split(" ")[0] : "Account"}
+                    <span
+                      className={user?.name ? "notranslate" : undefined}
+                      translate={user?.name ? "no" : undefined}
+                    >
+                      {user?.name ? user.name.split(" ")[0] : "Account"}
+                    </span>
                   </Link>
                 </>
               ) : (
@@ -484,7 +499,12 @@ export function Header({ variant = "default" }) {
                     className="text-base font-medium text-wood-600"
                     onClick={closeMenu}
                   >
-                    {user?.name || "Profile"}
+                    <span
+                      className={user?.name ? "notranslate" : undefined}
+                      translate={user?.name ? "no" : undefined}
+                    >
+                      {user?.name || "Profile"}
+                    </span>
                   </Link>
                   <button
                     type="button"

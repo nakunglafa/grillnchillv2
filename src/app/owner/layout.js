@@ -59,7 +59,7 @@ function OwnerLayoutInner({ children }) {
 
   if (loading) {
     return (
-      <div className="owner-theme flex min-h-screen items-center justify-center">
+      <div className="owner-theme notranslate flex min-h-screen items-center justify-center" translate="no">
         <p className="text-owner-charcoal">Loading...</p>
       </div>
     );
@@ -71,7 +71,12 @@ function OwnerLayoutInner({ children }) {
 
   return (
     <OwnerRefreshProvider>
-      <div className="owner-theme min-h-screen">
+      {/* `notranslate` keeps Google Translate from rewriting any dashboard
+          content. Even though we don't init Google Translate on /owner/*
+          routes, a tab arriving here from a translated customer page can
+          still have the widget active. This ensures the dashboard always
+          stays in English. */}
+      <div className="owner-theme notranslate min-h-screen" translate="no">
         <header className="sticky top-0 z-40 h-[60px] border-b border-owner-walnut/20 bg-owner-walnut">
           <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
             <Link

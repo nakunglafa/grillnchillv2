@@ -4,7 +4,32 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Footer } from "@/components/Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { getRestaurant } from "@/lib/api";
+
+// Max time we wait for the backend before declaring it unreachable and showing
+// the "site unavailable" page. Long enough to absorb a slow cold start, short
+// enough that a fully-down server doesn't make the user stare at a blank tab.
+const SERVER_PROBE_TIMEOUT_MS = 6000;
+
+/**
+ * Returns true when the error from getRestaurant() indicates the backend is
+ * genuinely unreachable (network failure, timeout, or a 5xx response), as
+ * opposed to a known 4xx (e.g. 404 restaurant not found, which is a config
+ * issue we still want to render the site through).
+ */
+function isServerUnreachable(err) {
+  if (!err) return false;
+  // apiFetch attaches `status` on HTTP errors. Network failures throw before
+  // we ever get a Response, so `status` is undefined for those.
+  const status = err?.status;
+  if (typeof status === "number") {
+    return status >= 500;
+  }
+  // No status → fetch itself failed. This covers ECONNREFUSED, DNS errors,
+  // TLS errors, and AbortError from our timeout below.
+  return true;
+}
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://restaurant.digitallisbon.pt").replace(/\/$/, "");
@@ -87,8 +112,20 @@ export default async function RootLayout({ children }) {
   let restaurantMeta;
   /** @type {{ x?: string | null; facebook?: string | null; instagram?: string | null; tripadvisor?: string | null } | undefined} */
   let socialLinks;
+  let serverDown = false;
   try {
-    const data = await getRestaurant(RESTAURANT_ID);
+    // Race the API call against a hard timeout so a hung/dead backend can't
+    // make every request block until Next.js' own timeout fires.
+    const data = await Promise.race([
+      getRestaurant(RESTAURANT_ID),
+      new Promise((_, reject) =>
+        setTimeout(() => {
+          const e = new Error("Backend probe timed out");
+          e.name = "AbortError";
+          reject(e);
+        }, SERVER_PROBE_TIMEOUT_MS)
+      ),
+    ]);
     const rest = data?.restaurant ?? data?.data ?? data;
     if (rest?.name) restaurantName = rest.name;
     restaurantMeta = {
@@ -100,8 +137,27 @@ export default async function RootLayout({ children }) {
     if (rest?.social_links && typeof rest.social_links === "object") {
       socialLinks = rest.social_links;
     }
-  } catch (_) {
-    // Fallback to env or "Restaurant" if fetch fails
+  } catch (err) {
+    if (isServerUnreachable(err)) {
+      serverDown = true;
+    }
+    // Otherwise fall back silently to env / "Restaurant" defaults below.
+  }
+
+  // Short-circuit: render only the "service unavailable" page when the API
+  // can't be reached at all. We still emit <html>/<body> because Next.js
+  // requires it from the root layout, but we skip the full site shell
+  // (Providers, header/footer, scripts that hit the API, etc.).
+  if (serverDown) {
+    return (
+      <html lang="en">
+        <body
+          className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
+        >
+          <ServiceUnavailable />
+        </body>
+      </html>
+    );
   }
 
   return (

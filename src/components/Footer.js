@@ -7,7 +7,6 @@ export function Footer({ restaurantName = "Restaurant", socialLinks }) {
 
   const items = [
     { label: "Facebook", href: socialLinks?.facebook?.trim() || null },
-    { label: "Twitter", href: socialLinks?.x?.trim() || null },
     { label: "Instagram", href: socialLinks?.instagram?.trim() || null },
     { label: "Trip advisor", href: socialLinks?.tripadvisor?.trim() || null },
   ];
@@ -15,7 +14,10 @@ export function Footer({ restaurantName = "Restaurant", socialLinks }) {
   return (
     <footer className="mt-auto bg-[#0a0908] py-16 text-center md:py-20">
       <div className="mx-auto max-w-4xl px-4 sm:px-6">
-        <p className="font-sans text-4xl font-bold uppercase tracking-[0.12em] text-white md:text-5xl md:tracking-[0.16em]">
+        <p
+          className="notranslate font-sans text-4xl font-bold uppercase tracking-[0.12em] text-white md:text-5xl md:tracking-[0.16em]"
+          translate="no"
+        >
           {brand}
         </p>
 
@@ -46,7 +48,7 @@ export function Footer({ restaurantName = "Restaurant", socialLinks }) {
         </nav>
 
         <p className="mt-12 text-[12px] leading-relaxed text-white/40 md:text-[13px]">
-          © {year} {restaurantName}. All rights reserved.
+          © {year} <span className="notranslate" translate="no">{restaurantName}</span>. All rights reserved.
         </p>
       </div>
     </footer>

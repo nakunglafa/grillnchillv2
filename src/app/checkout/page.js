@@ -316,7 +316,7 @@ export default function CheckoutPage() {
             {items.map(({ item, quantity }) => (
               <li key={item.id} className="flex justify-between text-sm">
                 <span className="text-zinc-700 dark:text-zinc-300">
-                  {item.name} × {quantity}
+                  <span className="notranslate" translate="no">{item.name}</span> × {quantity}
                 </span>
                 <span>{formatPrice((parseFloat(item.price) || 0) * quantity)}</span>
               </li>

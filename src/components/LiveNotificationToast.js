@@ -376,7 +376,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
             <ul className="space-y-1">
               <li><strong className="text-wood-100">Date:</strong> {getReservationDateTimeText(detail)}</li>
               <li><strong className="text-wood-100">Party:</strong> {detail.party_size != null ? `${detail.party_size} guest${Number(detail.party_size) === 1 ? "" : "s"}` : "—"}</li>
-              <li><strong className="text-wood-100">Customer:</strong> {detail.customer_name || detail.user?.name}</li>
+              <li><strong className="text-wood-100">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name}</span></li>
               {detail.special_requests && <li className="truncate"><strong>Notes:</strong> {detail.special_requests}</li>}
             </ul>
           )}
@@ -385,9 +385,9 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
               <li><strong className="text-wood-100">Date:</strong> {getOrderDateTimeText(detail)}</li>
               <li><strong className="text-wood-100">Total:</strong> ${detail.total_amount ?? "—"}</li>
               <li><strong className="text-wood-100">Type:</strong> {detail.order_type ?? (detail.delivery_address?.toLowerCase?.().includes("pickup") ? "Pickup" : "Delivery") ?? "—"}</li>
-              <li><strong className="text-wood-100">Customer:</strong> {detail.customer_name || detail.user?.name || "—"}</li>
+              <li><strong className="text-wood-100">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name || "—"}</span></li>
               {detail.items?.length > 0 && (
-                <li><strong className="text-wood-100">Items:</strong> {detail.items.map((i) => i.item_name ?? i.name).filter(Boolean).join(", ")}</li>
+                <li><strong className="text-wood-100">Items:</strong> <span className="notranslate" translate="no">{detail.items.map((i) => i.item_name ?? i.name).filter(Boolean).join(", ")}</span></li>
               )}
               {(detail.delivery_instructions || detail.notes) && <li className="truncate"><strong>Notes:</strong> {detail.delivery_instructions || detail.notes}</li>}
             </ul>

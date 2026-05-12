@@ -1074,7 +1074,10 @@ export default function Home() {
                         return (
                           <li key={String(itemKey)} className="pb-3">
                             <div className="flex items-baseline gap-2">
-                              <h3 className="text-[1.25rem] font-semibold leading-tight text-white">
+                              <h3
+                                className="notranslate text-[1.25rem] font-semibold leading-tight text-white"
+                                translate="no"
+                              >
                                 {item.name}
                               </h3>
                               <span className="mb-1 h-px flex-1 border-b border-dotted border-accent/45" />

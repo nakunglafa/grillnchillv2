@@ -70,7 +70,12 @@ function MenuItemCard({ item, addItem }) {
       )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-1.5">
-          <span className="text-[15px] font-sans font-bold leading-tight tracking-[0.01em] text-white">{item.name}</span>
+          <span
+            className="notranslate text-[15px] font-sans font-bold leading-tight tracking-[0.01em] text-white"
+            translate="no"
+          >
+            {item.name}
+          </span>
           {availableVariants.length > 0 ? (
             <span className="text-sm font-semibold text-accent">
               {Number.isFinite(minVariantPrice)
@@ -146,7 +151,10 @@ function SpecialMenuItemCard({ item, addItem }) {
     <li className="bg-white/[0.04] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.28)] transition-all hover:bg-white/[0.06]">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-sans text-lg font-extrabold leading-tight tracking-[0.02em] text-white md:text-xl">
+          <h3
+            className="notranslate font-sans text-lg font-extrabold leading-tight tracking-[0.02em] text-white md:text-xl"
+            translate="no"
+          >
             {item.name}
           </h3>
           {priceLabel ? (
@@ -272,7 +280,9 @@ function CategorySection({ category, addItem, isNested = false, searchTerm }) {
           )}
           <div>
             {category.name && (
-              <HeadingTag className={headingClass}>{sentenceCase(category.name)}</HeadingTag>
+              <HeadingTag className={`notranslate ${headingClass}`} translate="no">
+                {sentenceCase(category.name)}
+              </HeadingTag>
             )}
             {category.description && (
               <p className="mt-1 font-sans text-[11px] italic leading-snug text-white/60 md:text-xs">{category.description}</p>
@@ -330,7 +340,10 @@ function SpecialMenuSection({ specialMenu, addItem, searchTerm }) {
     <section className="overflow-hidden bg-white/[0.03] shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
       <div className="divide-y divide-white/10">
         <div className="px-4 py-4 md:px-5 md:py-5">
-          <h2 className="text-center font-sans text-2xl font-extrabold uppercase tracking-[0.05em] text-white md:text-3xl">
+          <h2
+            className="notranslate text-center font-sans text-2xl font-extrabold uppercase tracking-[0.05em] text-white md:text-3xl"
+            translate="no"
+          >
             {specialMenu?.name || "Special"}
           </h2>
           <p className="mt-1 text-center font-sans text-[11px] font-medium uppercase tracking-[0.12em] text-white/60 md:text-xs">

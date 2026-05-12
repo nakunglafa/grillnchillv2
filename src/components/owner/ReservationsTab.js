@@ -199,6 +199,7 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
   /** "all" or a YYYY-MM-DD date key */
   const [selectedDate, setSelectedDate] = useState("all");
   const [historyPage, setHistoryPage] = useState(1);
+  const [cancelledPage, setCancelledPage] = useState(1);
 
   // Use parent's reservations when provided (enables real-time refresh from OwnerRefreshContext)
   const displayReservations = reservationsProp != null && Array.isArray(reservationsProp)
@@ -293,10 +294,17 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
     t.setHours(0, 0, 0, 0);
     return t.getTime();
   })();
-  const { upcoming, history } = (() => {
+  const { upcoming, history, cancelled } = (() => {
     const up = [];
     const hist = [];
+    const canc = [];
     displayReservations.forEach((r) => {
+      // Cancelled reservations get their own bucket regardless of date so
+      // they don't clutter the Upcoming list or get buried in History.
+      if (r.status === "cancelled") {
+        canc.push(r);
+        return;
+      }
       const d = getReservationDate(r);
       if (!d) {
         up.push(r);
@@ -315,7 +323,8 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
     });
     up.sort((a, b) => (getReservationDate(a)?.getTime() ?? 0) - (getReservationDate(b)?.getTime() ?? 0));
     hist.sort((a, b) => (getReservationDate(b)?.getTime() ?? 0) - (getReservationDate(a)?.getTime() ?? 0));
-    return { upcoming: up, history: hist };
+    canc.sort((a, b) => (getReservationDate(b)?.getTime() ?? 0) - (getReservationDate(a)?.getTime() ?? 0));
+    return { upcoming: up, history: hist, cancelled: canc };
   })();
 
   // Group upcoming reservations by date (YYYY-MM-DD)
@@ -357,7 +366,20 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
     historyPage * HISTORY_PAGE_SIZE
   );
 
-  const displayList = mainTab === "upcoming" ? upcomingFiltered : historyPaginated;
+  // Cancelled list keeps the same paging behaviour as History but has no
+  // 7-day time filter — owners may want to look much further back.
+  const cancelledTotalPages = Math.max(1, Math.ceil(cancelled.length / HISTORY_PAGE_SIZE));
+  const cancelledPaginated = cancelled.slice(
+    (cancelledPage - 1) * HISTORY_PAGE_SIZE,
+    cancelledPage * HISTORY_PAGE_SIZE
+  );
+
+  const displayList =
+    mainTab === "upcoming"
+      ? upcomingFiltered
+      : mainTab === "cancelled"
+      ? cancelledPaginated
+      : historyPaginated;
 
   /** Render a single reservation card (used in both grouped and flat views) */
   function renderReservationCard(r) {
@@ -460,7 +482,7 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
   return (
     <>
     <div className="space-y-4 max-w-full min-w-0">
-      {/* Main tabs: Upcoming | History */}
+      {/* Main tabs: Upcoming | Cancelled | History */}
       <div className="flex gap-1 rounded-lg bg-owner-paper p-1 border border-owner-border">
         <button
           type="button"
@@ -475,6 +497,22 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
           {(upcoming.length > 0) && (
             <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${mainTab === "upcoming" ? "bg-white/20 text-white" : "bg-owner-border text-owner-charcoal"}`}>
               {upcoming.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMainTab("cancelled"); setCancelledPage(1); }}
+          className={`touch-manipulation min-h-[36px] flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors active:scale-[0.98] ${
+            mainTab === "cancelled"
+              ? "bg-owner-action text-white shadow"
+              : "text-owner-charcoal hover:bg-owner-paper"
+          }`}
+        >
+          Cancelled
+          {(cancelled.length > 0) && (
+            <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${mainTab === "cancelled" ? "bg-white/20 text-white" : "bg-owner-border text-owner-charcoal"}`}>
+              {cancelled.length}
             </span>
           )}
         </button>
@@ -582,10 +620,42 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
         </div>
       )}
 
+      {/* Cancelled: subtitle + Pagination */}
+      {mainTab === "cancelled" && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-owner-muted">All cancelled reservations</p>
+          {(cancelled.length > HISTORY_PAGE_SIZE) && (
+            <div className="flex items-center gap-2 text-xs text-owner-muted">
+              <button
+                type="button"
+                onClick={() => setCancelledPage((p) => Math.max(1, p - 1))}
+                disabled={cancelledPage <= 1}
+                className="touch-manipulation h-8 min-w-[72px] rounded-lg border border-owner-border px-2.5 font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="font-medium">
+                {cancelledPage} / {cancelledTotalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCancelledPage((p) => Math.min(cancelledTotalPages, p + 1))}
+                disabled={cancelledPage >= cancelledTotalPages}
+                className="touch-manipulation h-8 min-w-[72px] rounded-lg border border-owner-border px-2.5 font-medium text-owner-charcoal hover:bg-owner-paper disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {displayList.length === 0 ? (
         <p className="py-6 text-sm text-owner-muted">
           {mainTab === "history"
             ? "No past reservations."
+            : mainTab === "cancelled"
+            ? "No cancelled reservations."
             : effectiveSelectedDate !== "all"
             ? `No reservations on ${formatChipLabel(effectiveSelectedDate)}.`
             : "No upcoming reservations."}

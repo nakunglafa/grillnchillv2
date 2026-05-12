@@ -98,7 +98,7 @@ export function CartDrawer({ open, onClose }) {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-wood-900">{item.name}</p>
+                    <p className="notranslate font-medium text-wood-900" translate="no">{item.name}</p>
                     <p className="text-sm text-wood-600">
                       {formatPrice(item.price)} × {quantity}
                     </p>
