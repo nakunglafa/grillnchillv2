@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { getRestaurant } from "@/lib/api";
@@ -13,6 +13,106 @@ const HERO_COLLAGE_MAIN =
 const HERO_COLLAGE_SIDE =
   process.env.NEXT_PUBLIC_HERO_COLLAGE_SIDE ||
   "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80";
+
+/** Crossfade at loop boundary so encoder black / hard cuts are not visible */
+const HERO_LOOP_FADE_MS = 900;
+const HERO_LOOP_FADE_SEC = HERO_LOOP_FADE_MS / 1000;
+
+function HeroVideoBackdrop() {
+  const v0 = useRef(null);
+  const v1 = useRef(null);
+  const leadRef = useRef(0);
+  const crossfadingRef = useRef(false);
+  const timeoutRef = useRef(null);
+  const [opacities, setOpacities] = useState(() => [1, 0]);
+
+  useEffect(() => {
+    v0.current?.play().catch(() => {});
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const armCrossfade = useCallback((fromIdx) => {
+    if (crossfadingRef.current) return;
+    const from = fromIdx === 0 ? v0.current : v1.current;
+    const to = fromIdx === 0 ? v1.current : v0.current;
+    if (!from || !to || !Number.isFinite(from.duration) || from.duration <= 0) return;
+
+    const fadeWindow = Math.min(HERO_LOOP_FADE_SEC, from.duration * 0.35);
+    if (from.duration - from.currentTime > fadeWindow) return;
+
+    crossfadingRef.current = true;
+    to.currentTime = 0;
+    to.play().catch(() => {});
+    setOpacities(fromIdx === 0 ? [0, 1] : [1, 0]);
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      from.pause();
+      from.currentTime = 0;
+      leadRef.current = 1 - fromIdx;
+      crossfadingRef.current = false;
+      timeoutRef.current = null;
+    }, HERO_LOOP_FADE_MS);
+  }, []);
+
+  const onTime0 = useCallback(() => {
+    if (leadRef.current !== 0 || crossfadingRef.current) return;
+    const el = v0.current;
+    if (!el || el.currentTime < 0.05) return;
+    armCrossfade(0);
+  }, [armCrossfade]);
+
+  const onTime1 = useCallback(() => {
+    if (leadRef.current !== 1 || crossfadingRef.current) return;
+    const el = v1.current;
+    if (!el || el.currentTime < 0.05) return;
+    armCrossfade(1);
+  }, [armCrossfade]);
+
+  const fadeClass = "transition-opacity ease-in-out";
+  const fadeMs = { transitionDuration: `${HERO_LOOP_FADE_MS}ms` };
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+      <div
+        className={`absolute inset-0 ${fadeClass}`}
+        style={{ ...fadeMs, opacity: opacities[0] }}
+      >
+        <video
+          ref={v0}
+          className="h-full min-h-full w-full object-cover object-center"
+          muted
+          playsInline
+          preload="auto"
+          onTimeUpdate={onTime0}
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+      </div>
+      <div
+        className={`absolute inset-0 ${fadeClass}`}
+        style={{ ...fadeMs, opacity: opacities[1] }}
+      >
+        <video
+          ref={v1}
+          className="h-full min-h-full w-full object-cover object-center"
+          muted
+          playsInline
+          preload="auto"
+          onTimeUpdate={onTime1}
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+      </div>
+      <div className="absolute inset-0 bg-linear-to-b from-black/55 via-black/35 to-black/50" />
+    </div>
+  );
+}
 
 /** Full-width parallax band (optional override — rustic plate / steak overhead works well) */
 const PARALLAX_QUALITY_BG =
@@ -757,23 +857,17 @@ export default function Home() {
       <div className="min-h-screen bg-wood-100">
         <Header variant="overlay" />
         <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
+          <HeroVideoBackdrop />
           <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center px-4 pb-10 pt-[5.5rem] sm:px-6 sm:pb-14 sm:pt-24 lg:px-10 lg:pb-16 lg:pt-28">
-            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-12">
-              <div className="animate-pulse lg:col-span-5 xl:col-span-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-                  Loading website...
-                </p>
-                <div className="mt-6 h-5 w-40 rounded bg-white/15" />
-                <div className="mt-3 h-12 w-full max-w-md rounded bg-white/20" />
-                <div className="mt-3 h-12 w-5/6 max-w-sm rounded bg-white/20" />
-                <div className="mt-3 h-12 w-2/3 max-w-xs rounded bg-white/20" />
-                <div className="mt-10 h-11 w-36 rounded bg-accent/50" />
-              </div>
-              <div className="lg:col-span-7 xl:col-span-7">
-                <div className="relative mx-auto aspect-[4/3] w-full min-h-[min(52vh,520px)] overflow-hidden rounded-md bg-white/10 ring-1 ring-white/15 sm:aspect-[5/4] sm:min-h-[min(56vh,600px)] lg:aspect-auto lg:min-h-[min(62vh,720px)] lg:h-[min(62vh,720px)]">
-                  <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/10 via-white/20 to-white/10" />
-                </div>
-              </div>
+            <div className="max-w-3xl animate-pulse">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
+                Loading website...
+              </p>
+              <div className="mt-6 h-5 w-40 rounded bg-white/15" />
+              <div className="mt-3 h-12 w-full max-w-md rounded bg-white/20" />
+              <div className="mt-3 h-12 w-5/6 max-w-sm rounded bg-white/20" />
+              <div className="mt-3 h-12 w-2/3 max-w-xs rounded bg-white/20" />
+              <div className="mt-10 h-11 w-36 rounded bg-accent/50" />
             </div>
           </div>
         </section>
@@ -793,65 +887,53 @@ export default function Home() {
     <div className="min-h-screen bg-wood-100">
       <Header variant="overlay" />
       <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
+        <HeroVideoBackdrop />
         <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_70%_20%,rgba(201,162,39,0.07),transparent_55%)]"
+          className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_90%_60%_at_70%_20%,rgba(201,162,39,0.07),transparent_55%)]"
           aria-hidden
         />
-        <div className="pointer-events-none absolute -left-20 top-0 h-40 w-40 rounded-full bg-emerald-900/20 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -right-10 top-8 h-32 w-32 rounded-full bg-amber-900/15 blur-2xl" aria-hidden />
+        <div
+          className="pointer-events-none absolute -left-20 top-0 z-[1] h-40 w-40 rounded-full bg-emerald-900/20 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -right-10 top-8 z-[1] h-32 w-32 rounded-full bg-amber-900/15 blur-2xl"
+          aria-hidden
+        />
 
         {/* Full-viewport fold: vertically centered content, no short max-height cap */}
         <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center px-4 pb-10 pt-[5.5rem] sm:px-6 sm:pb-14 sm:pt-24 lg:px-10 lg:pb-16 lg:pt-28">
-          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-12">
-            <div className="lg:col-span-5 xl:col-span-5">
-              <h1 className="font-sans text-[clamp(2.5rem,5.5vw,5rem)] font-bold leading-[1.02] tracking-tight text-white">
-                <span className="block">We Only Serve</span>
-                <span className="block">
-                  A <span className="text-accent">Delicious</span>
-                </span>
-                <span className="block">Dishes</span>
-              </h1>
-              <div className="mt-8 flex flex-col gap-8 sm:mt-10 sm:flex-row sm:items-center sm:gap-10 lg:gap-12">
-                <Link
-                  href="/book"
-                  className="inline-flex w-max items-center justify-center rounded-sm bg-accent px-10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-14 sm:py-4"
+          <div className="max-w-3xl">
+            <h1 className="font-sans text-[clamp(2.5rem,5.5vw,5rem)] font-bold leading-[1.02] tracking-tight text-white">
+              <span className="block">We Only Serve</span>
+              <span className="block">
+                A <span className="text-accent">Delicious</span>
+              </span>
+              <span className="block">Dishes</span>
+            </h1>
+            <div className="mt-8 flex flex-col gap-8 sm:mt-10 sm:flex-row sm:items-center sm:gap-10 lg:gap-12">
+              <Link
+                href="/book"
+                className="inline-flex w-max items-center justify-center rounded-sm bg-accent px-10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-14 sm:py-4"
+              >
+                Reserve now
+              </Link>
+              {promoVideoUrl ? (
+                <a
+                  href={promoVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-4 text-white"
                 >
-                  Reserve now
-                </Link>
-                {promoVideoUrl ? (
-                  <a
-                    href={promoVideoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-4 text-white"
-                  >
-                    {PlayCircle}
-                    <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
-                  </a>
-                ) : null}
-              </div>
+                  {PlayCircle}
+                  <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
+                </a>
+              ) : null}
             </div>
-
-            <div className="relative mx-auto w-full lg:col-span-7 xl:col-span-7">
-              <div className="relative aspect-[4/3] w-full min-h-[min(52vh,520px)] sm:aspect-[5/4] sm:min-h-[min(56vh,600px)] lg:aspect-auto lg:min-h-[min(62vh,720px)] lg:h-[min(62vh,720px)]">
-                <img
-                  src={heroMainImage}
-                  alt="Restaurant interior"
-                  className="absolute inset-x-0 bottom-0 left-0 h-[88%] w-[94%] rounded-md object-cover shadow-2xl ring-1 ring-white/15"
-                  sizes="(max-width: 1024px) 100vw, 58vw"
-                />
-                <img
-                  src={heroSideImage}
-                  alt="Chef preparing food"
-                  className="absolute right-0 top-0 z-[1] h-[42%] w-[min(46%,380px)] rounded-md object-cover shadow-2xl ring-1 ring-white/15 sm:h-[38%] sm:w-[min(42%,360px)] lg:h-[40%] lg:w-[min(38%,400px)]"
-                  sizes="(max-width: 1024px) 45vw, 400px"
-                />
-                <p className="font-display absolute bottom-[2%] left-[2%] right-[8%] z-[2] max-w-xl text-left text-[12px] italic leading-relaxed text-white/95 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:bottom-[5%] sm:text-[14px] lg:bottom-[6%] lg:max-w-lg lg:text-[15px]">
-                  The only thing we&apos;re serious about is food. We will wait for your seat in our
-                  restaurant and satisfy you with quality food.
-                </p>
-              </div>
-            </div>
+            <p className="font-display mt-10 max-w-xl text-[13px] italic leading-relaxed text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:mt-12 sm:text-[15px] lg:text-[16px]">
+              The only thing we&apos;re serious about is food. We will wait for your seat in our
+              restaurant and satisfy you with quality food.
+            </p>
           </div>
         </div>
       </section>
