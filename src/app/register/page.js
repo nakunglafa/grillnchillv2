@@ -6,6 +6,10 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
+import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
+import { submitGdprConsent } from "@/lib/api";
+
+const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "5";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,6 +19,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [phone, setPhone] = useState("");
+  const [gdprConsent, setGdprConsent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,8 +30,29 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
+    if (!gdprConsent) {
+      setError("Please accept the privacy notice to continue.");
+      return;
+    }
     setLoading(true);
     try {
+      // Record the GDPR consent first (anonymous — no token yet, the user
+      // doesn't exist), scoped to this restaurant. If the consent endpoint
+      // fails we surface the error and don't create the account.
+      const consentPayload = await buildGdprConsentPayload();
+      try {
+        await submitGdprConsent(RESTAURANT_ID, consentPayload);
+      } catch (consentErr) {
+        const msg =
+          consentErr?.data?.message ||
+          (consentErr?.data?.errors
+            ? Object.values(consentErr.data.errors).flat().join(" ")
+            : null) ||
+          "Could not record your consent. Please try again.";
+        setError(msg);
+        setLoading(false);
+        return;
+      }
       await registerUser({
         name,
         email,
@@ -100,7 +126,13 @@ export default function RegisterPage() {
             <span className="text-sm font-medium text-wood-700">Confirm password</span>
             <input type="password" value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} required className="rounded-lg border border-wood-500/40 bg-white/10 px-4 py-2 text-wood-900 outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
           </label>
-          <button type="submit" disabled={loading} className="rounded-full bg-accent py-3 font-medium text-wood-950 hover:bg-accent-hover disabled:opacity-50 transition-colors">
+          <GdprConsent
+            id="register-gdpr-consent"
+            variant="light"
+            checked={gdprConsent}
+            onChange={setGdprConsent}
+          />
+          <button type="submit" disabled={loading || !gdprConsent} className="rounded-full bg-accent py-3 font-medium text-wood-950 hover:bg-accent-hover disabled:opacity-50 transition-colors">
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>

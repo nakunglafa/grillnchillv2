@@ -1,10 +1,13 @@
 import { Montserrat, Playfair_Display } from "next/font/google";
 import Script from "next/script";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Footer } from "@/components/Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { CookieConsentGate } from "@/components/CookieConsentGate";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
 
 // Max time we wait for the backend before declaring it unreachable and showing
@@ -113,6 +116,13 @@ export default async function RootLayout({ children }) {
   /** @type {{ x?: string | null; facebook?: string | null; instagram?: string | null; tripadvisor?: string | null } | undefined} */
   let socialLinks;
   let serverDown = false;
+
+  // Read the consent cookie on the server so the modal (and any GA scripts)
+  // appear in the initial HTML — no flash of unconsented site, no double render.
+  const cookieStore = await cookies();
+  const rawConsent = cookieStore.get("cookie_consent")?.value ?? null;
+  const initialConsent =
+    rawConsent === "all" || rawConsent === "essential" ? rawConsent : null;
   try {
     // Race the API call against a hard timeout so a hung/dead backend can't
     // make every request block until Next.js' own timeout fires.
@@ -165,22 +175,7 @@ export default async function RootLayout({ children }) {
       <body
         className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
       >
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-6VH93MEK2E"
-          strategy="afterInteractive"
-        />
-        <Script
-          id="ga-gtag"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-6VH93MEK2E');
-            `,
-          }}
-        />
+        <GoogleAnalytics initialConsent={initialConsent} />
         <Script
           id="restaurant-schema"
           type="application/ld+json"
@@ -226,6 +221,7 @@ export default async function RootLayout({ children }) {
           <LanguageSwitcher />
           <Footer restaurantName={restaurantName} socialLinks={socialLinks} />
         </div>
+        <CookieConsentGate initialConsent={initialConsent} />
       </body>
     </html>
   );

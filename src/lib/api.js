@@ -147,6 +147,27 @@ export async function createReservation(token, body) {
 }
 
 /**
+ * Record a GDPR consent event for a specific restaurant. Auth is optional —
+ * guests submitting reservations or orders also need their consent recorded.
+ *
+ * Backend route: POST /api/restaurants/{restaurantId}/gdpr-consent
+ *
+ * The backend validates that `gdpr_consent === true` (accepted), and stores
+ * the timestamp plus any device / IP context we provide as an audit trail.
+ *
+ * @param {string|number} restaurantId
+ * @param {object} body - shape produced by buildGdprConsentPayload()
+ * @param {string} [token] - Optional bearer token if the user is logged in.
+ */
+export async function submitGdprConsent(restaurantId, body, token) {
+  return apiFetch(`/restaurants/${restaurantId}/gdpr-consent`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    token,
+  });
+}
+
+/**
  * Get payment config for owner.
  * GET /owner/restaurants/{id}/payment-config
  */

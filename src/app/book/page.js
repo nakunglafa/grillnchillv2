@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
-import { getRestaurant, createReservation, getAvailability } from "@/lib/api";
+import { getRestaurant, createReservation, getAvailability, submitGdprConsent } from "@/lib/api";
+import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "5";
 
@@ -56,31 +57,56 @@ function parseTimeToMinutes(str) {
   return Number.isNaN(h) ? 0 : h * 60 + m;
 }
 
+/** Slot granularity in minutes. Backend availability returns 15-min slots, so
+ * we match here to avoid hiding e.g. 12:45 / 13:15 from the picker. */
+const SLOT_INTERVAL_MIN = 15;
+
+/** Get all open-close ranges (in minutes) for the given date, derived from
+ * the restaurant's opening hours. Supports multiple rows per day (lunch +
+ * dinner) and alternate field names. */
+function getOpeningRangesForDay(openingSlots, dateStr) {
+  if (!openingSlots || openingSlots.length === 0) return null;
+  const day = getDayOfWeekForDate(dateStr);
+  const daySlots = openingSlots.filter(
+    (s) => (s.day_of_week || s.day || "").toString().toLowerCase() === day
+  );
+  if (daySlots.length === 0) return [];
+  const ranges = [];
+  const pushRange = (openStr, closeStr) => {
+    if (!openStr || !closeStr) return;
+    const o = parseTimeToMinutes(openStr);
+    const c = parseTimeToMinutes(closeStr);
+    if (c > o) ranges.push([o, c]);
+  };
+  daySlots.forEach((s) => {
+    pushRange(s.open_time || s.open || s.from, s.close_time || s.close || s.to);
+    pushRange(s.open_time_2 || s.open_2 || s.second_open, s.close_time_2 || s.close_2 || s.second_close);
+    if (Array.isArray(s.shifts)) {
+      s.shifts.forEach((sh) => pushRange(sh.open_time || sh.open || sh.from, sh.close_time || sh.close || sh.to));
+    }
+    if (Array.isArray(s.slots)) {
+      s.slots.forEach((sh) => pushRange(sh.open_time || sh.open || sh.from, sh.close_time || sh.close || sh.to));
+    }
+  });
+  return ranges;
+}
+
 /** Get time slots for the day from opening hours — supports multiple slots per day (e.g. lunch + dinner) and alternate fields (open_time_2, close_time_2) */
 function getTimeSlotsForDay(openingSlots, dateStr) {
   if (!openingSlots || openingSlots.length === 0) return FULL_DAY_TIME_SLOTS;
-  const day = getDayOfWeekForDate(dateStr);
-  const daySlots = openingSlots.filter((s) => (s.day_of_week || "").toLowerCase() === day);
-  if (daySlots.length === 0) return [];
+  const ranges = getOpeningRangesForDay(openingSlots, dateStr);
+  if (ranges === null) return FULL_DAY_TIME_SLOTS;
+  if (ranges.length === 0) return [];
   const minuteSet = new Set();
-  daySlots.forEach((s) => {
-    const ranges = [];
-    if (s.open_time && s.close_time) ranges.push([s.open_time, s.close_time]);
-    if (s.open_time_2 && s.close_time_2) ranges.push([s.open_time_2, s.close_time_2]);
-    if (s.second_open && s.second_close) ranges.push([s.second_open, s.second_close]);
-    ranges.forEach(([openStr, closeStr]) => {
-      const openMinutes = parseTimeToMinutes(openStr);
-      const closeMinutes = parseTimeToMinutes(closeStr);
-      const startMinutes = Math.ceil(openMinutes / 30) * 30;
-      for (let m = startMinutes; m < closeMinutes; m += 30) {
-        if (m >= 0 && m < 24 * 60) minuteSet.add(m);
-      }
-    });
+  ranges.forEach(([openMinutes, closeMinutes]) => {
+    const startMinutes = Math.ceil(openMinutes / SLOT_INTERVAL_MIN) * SLOT_INTERVAL_MIN;
+    for (let m = startMinutes; m < closeMinutes; m += SLOT_INTERVAL_MIN) {
+      if (m >= 0 && m < 24 * 60) minuteSet.add(m);
+    }
   });
-  const fromSlots = Array.from(minuteSet)
+  return Array.from(minuteSet)
     .sort((a, b) => a - b)
     .map((m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
-  return fromSlots.length > 0 ? fromSlots : [];
 }
 
 /** Next 7 days, filtered to open days only */
@@ -193,6 +219,7 @@ export default function BookPage() {
   const [confirmation_phone, setConfirmation_phone] = useState("");
   const [customer_email, setCustomer_email] = useState("");
   const [notes, setNotes] = useState("");
+  const [gdprConsent, setGdprConsent] = useState(false);
   const [reservationResult, setReservationResult] = useState(null);
   /** 1 = date/time/guests, 2 = contact & confirm */
   const [bookStep, setBookStep] = useState(1);
@@ -344,8 +371,29 @@ export default function BookPage() {
     if (bookStep !== 2) return;
     setError("");
     if (!validateGuestContact()) return;
+    if (!gdprConsent) {
+      setError("Please accept the privacy notice to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
+      // 1. Record the GDPR consent first so we always have an audit row,
+      //    even if the reservation step then fails for some other reason.
+      const consentPayload = await buildGdprConsentPayload();
+      try {
+        await submitGdprConsent(RESTAURANT_ID, consentPayload, token || undefined);
+      } catch (consentErr) {
+        const msg =
+          consentErr?.data?.message ||
+          (consentErr?.data?.errors
+            ? Object.values(consentErr.data.errors).flat().join(" ")
+            : null) ||
+          "Could not record your consent. Please try again.";
+        setError(msg);
+        setSubmitting(false);
+        return;
+      }
+      // 2. Create the reservation with personal data only.
       const body = {
         restaurant_id: Number(RESTAURANT_ID),
         reservation_date,
@@ -417,8 +465,40 @@ export default function BookPage() {
     const [h, m] = slot.split(":").map(Number);
     return h * 60 + m <= currentMinutes;
   };
-  const isSlotUnavailable = (slot) =>
-    availableSlotsSet !== null && !availableSlotsSet.has(slot);
+
+  // Opening-hour shifts for the selected date, expressed as [openMin, closeMin]
+  // pairs. Used below to detect which shifts the availability API actually
+  // evaluated, so that a backend bug skipping later shifts (e.g. dinner) does
+  // not turn every evening slot into "unavailable".
+  const todayShifts = useMemo(() => {
+    if (!reservation_date) return [];
+    const ranges = getOpeningRangesForDay(openingSlots, reservation_date);
+    return ranges ?? [];
+  }, [openingSlots, reservation_date]);
+
+  // A shift is "covered" if availableSlotsSet has at least one slot inside it.
+  // We only enforce the availability filter inside covered shifts; outside of
+  // them we trust opening hours and let the user pick a time (the backend
+  // still validates on submit).
+  const coveredShifts = useMemo(() => {
+    if (!availableSlotsSet || todayShifts.length === 0) return [];
+    return todayShifts.filter(([open, close]) => {
+      for (const slot of availableSlotsSet) {
+        const m = parseTimeToMinutes(slot);
+        if (m >= open && m < close) return true;
+      }
+      return false;
+    });
+  }, [availableSlotsSet, todayShifts]);
+
+  const isSlotUnavailable = (slot) => {
+    if (availableSlotsSet === null) return false; // availability not loaded yet
+    if (availableSlotsSet.has(slot)) return false;
+    // Outside of any shift the API actually evaluated → trust opening hours.
+    const m = parseTimeToMinutes(slot);
+    const inCoveredShift = coveredShifts.some(([open, close]) => m >= open && m < close);
+    return inCoveredShift;
+  };
 
   // Keep selected time on a bookable slot when date, slots, or party size change
   useEffect(() => {
@@ -718,33 +798,43 @@ export default function BookPage() {
                 <label htmlFor="book-time" className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                   Time
                 </label>
-                {availabilityLoading ? (
-                  <p className="py-2 text-xs text-white/45">Loading availability…</p>
-                ) : isSelectedDateClosed ? (
-                  <p className="py-2 text-xs text-amber-300">Restaurant is closed on this date.</p>
-                ) : timeSlotsToShow.length === 0 ? (
-                  <p className="py-2 text-xs text-white/45">No times for this day.</p>
-                ) : (
-                  <select
-                    id="book-time"
-                    value={reservation_time}
-                    onChange={(e) => setReservation_time(e.target.value)}
-                    className="book-form-select touch-manipulation h-11 w-full rounded-sm text-sm outline-none"
-                  >
-                    {timeSlotsToShow.map((slot) => {
-                      const disabled = isTimeSlotPast(slot) || isSlotUnavailable(slot);
-                      let suffix = "";
-                      if (isTimeSlotPast(slot)) suffix = " — past";
-                      else if (isSlotUnavailable(slot)) suffix = " — unavailable";
-                      return (
-                        <option key={slot} value={slot} disabled={disabled}>
+                {(() => {
+                  // Only show slots the user can actually book: drop both
+                  // past-of-day slots and anything the backend flagged as
+                  // unavailable. Showing them disabled was just clutter.
+                  const selectableSlots = timeSlotsToShow.filter(
+                    (slot) => !isTimeSlotPast(slot) && !isSlotUnavailable(slot)
+                  );
+                  if (availabilityLoading) {
+                    return (
+                      <p className="py-2 text-xs text-white/45">Loading availability…</p>
+                    );
+                  }
+                  if (isSelectedDateClosed) {
+                    return (
+                      <p className="py-2 text-xs text-amber-300">Restaurant is closed on this date.</p>
+                    );
+                  }
+                  if (selectableSlots.length === 0) {
+                    return (
+                      <p className="py-2 text-xs text-white/45">No times available for this day.</p>
+                    );
+                  }
+                  return (
+                    <select
+                      id="book-time"
+                      value={reservation_time}
+                      onChange={(e) => setReservation_time(e.target.value)}
+                      className="book-form-select touch-manipulation h-11 w-full rounded-sm text-sm outline-none"
+                    >
+                      {selectableSlots.map((slot) => (
+                        <option key={slot} value={slot}>
                           {slot}
-                          {suffix}
                         </option>
-                      );
-                    })}
-                  </select>
-                )}
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
 
               <div className="border-t border-white/8 pt-3">
@@ -847,6 +937,13 @@ export default function BookPage() {
             />
           </label>
 
+          <GdprConsent
+            id="book-gdpr-consent"
+            variant="dark"
+            checked={gdprConsent}
+            onChange={setGdprConsent}
+          />
+
           <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:gap-3">
             <button
               type="button"
@@ -860,7 +957,7 @@ export default function BookPage() {
             </button>
             <button
               type="submit"
-              disabled={submitting || reservationConfigMissing}
+              disabled={submitting || reservationConfigMissing || !gdprConsent}
               className="touch-manipulation h-11 w-full flex-2 rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-xs"
             >
               {submitting ? "Confirming…" : reservationConfigMissing ? "Booking unavailable" : "Confirm booking"}

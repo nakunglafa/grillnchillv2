@@ -9,9 +9,11 @@ import {
   getRestaurantPaymentOptions,
   createOrder,
   createPaymentIntent,
+  submitGdprConsent,
 } from "@/lib/api";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
@@ -89,6 +91,7 @@ export default function CheckoutPage() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [gdprConsent, setGdprConsent] = useState(false);
 
   useEffect(() => {
     hydrate();
@@ -204,6 +207,10 @@ export default function CheckoutPage() {
       setError("As a guest, please provide at least your email or phone number.");
       return false;
     }
+    if (!gdprConsent) {
+      setError("Please accept the privacy notice to continue.");
+      return false;
+    }
     return true;
   }
 
@@ -214,6 +221,25 @@ export default function CheckoutPage() {
     setSubmitting(true);
     try {
       const authToken = token || undefined;
+
+      // Record the GDPR consent first, before any other server interaction.
+      // This way the audit row exists regardless of whether the user later
+      // completes payment (online) or successfully creates the order (cash).
+      const consentPayload = await buildGdprConsentPayload();
+      try {
+        await submitGdprConsent(RESTAURANT_ID, consentPayload, authToken);
+      } catch (consentErr) {
+        const msg =
+          consentErr?.data?.message ||
+          (consentErr?.data?.errors
+            ? Object.values(consentErr.data.errors).flat().join(" ")
+            : null) ||
+          "Could not record your consent. Please try again.";
+        setError(msg);
+        setSubmitting(false);
+        return;
+      }
+
       if (paymentMethod === "online_payment") {
         const piRes = await createPaymentIntent(authToken, {
           restaurant_id: Number(RESTAURANT_ID),
@@ -265,6 +291,9 @@ export default function CheckoutPage() {
       customer_email: (customerEmail || "").trim() || undefined,
       customer_phone: (customerPhone || "").trim() || undefined,
       delivery_instructions: (notes || "").trim() || undefined,
+      // GDPR consent has already been recorded against this restaurant via
+      // POST /restaurants/{id}/gdpr-consent at submit time, so we do NOT
+      // re-send the gdpr_consent_* fields with the order itself.
     };
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -408,9 +437,16 @@ export default function CheckoutPage() {
             />
           </div>
 
+          <GdprConsent
+            id="checkout-gdpr-consent"
+            variant="light"
+            checked={gdprConsent}
+            onChange={setGdprConsent}
+          />
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !gdprConsent}
             className="w-full rounded-xl bg-zinc-900 py-4 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {submitting ? "Placing order…" : `Place order · ${formatPrice(totalAmount)}`}

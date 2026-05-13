@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { FooterCookiePrefsButton } from "@/components/FooterCookiePrefsButton";
+
 /**
  * Minimal centered footer — brand, social row, copyright.
  */
@@ -47,7 +50,17 @@ export function Footer({ restaurantName = "Restaurant", socialLinks }) {
           )}
         </nav>
 
-        <p className="mt-12 text-[12px] leading-relaxed text-white/40 md:text-[13px]">
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
+          <Link
+            href="/privacy"
+            className="transition-colors hover:text-white/80"
+          >
+            Privacy
+          </Link>
+          <FooterCookiePrefsButton />
+        </div>
+
+        <p className="mt-6 text-[12px] leading-relaxed text-white/40 md:text-[13px]">
           © {year} <span className="notranslate" translate="no">{restaurantName}</span>. All rights reserved.
         </p>
       </div>
