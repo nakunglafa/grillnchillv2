@@ -172,14 +172,12 @@ body {
 /* Light surfaces (cards, modals) – ensure contrast */
 .bg-white, .bg-wood-800, .bg-wood-900, .bg-wood-950,
 [class*="bg-wood-900"], [class*="bg-wood-800"], [class*="bg-wood-950"],
-.dark\:bg-wood-900,
-[class*="bg-zinc-900"]:not([class*="bg-zinc-900/"]) {
+.dark\:bg-wood-900 {
   color: var(--wood-100);
 }
 .bg-white *, .bg-wood-800 *, .bg-wood-900 *, .bg-wood-950 *,
 [class*="bg-wood-900"] *, [class*="bg-wood-800"] *, [class*="bg-wood-950"] *,
-.dark\:bg-wood-900 *,
-[class*="bg-zinc-900"] *:not(button):not(a):not([class*="text-white"]):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-amber"]) {
+.dark\:bg-wood-900 * {
   color: inherit;
 }
 

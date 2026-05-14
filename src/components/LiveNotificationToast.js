@@ -485,7 +485,7 @@ function LiveToastItem({ id, type, title, message, onDismiss }) {
   return (
     <div
       role="alert"
-      className="flex max-w-sm gap-3 rounded-xl border border-emerald-200 bg-white p-4 shadow-xl dark:border-emerald-800 dark:bg-zinc-900"
+      className="flex max-w-sm gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-zinc-900 shadow-xl dark:border-emerald-700 dark:bg-zinc-900 dark:text-zinc-50"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
         <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -493,14 +493,14 @@ function LiveToastItem({ id, type, title, message, onDismiss }) {
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-100">{title}</p>
-        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="font-semibold text-zinc-900 dark:text-zinc-50">{title}</p>
+        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">
           {message}
         </p>
         <button
           type="button"
           onClick={onDismiss}
-          className="mt-2 text-xs font-medium text-emerald-600 underline hover:no-underline dark:text-emerald-400"
+          className="mt-2 text-xs font-medium text-emerald-700 underline hover:no-underline dark:text-emerald-300"
         >
           Dismiss
         </button>

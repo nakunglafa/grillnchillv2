@@ -22,7 +22,7 @@ function hasPendingOrders(orders) {
   });
 }
 
-// Active = in progress; History = delivered, cancelled, rejected
+// Active = in progress. Finished (separate filter) = delivered, cancelled, rejected.
 const ACTIVE_STATUSES = ["pending", "pending_confirmation", "new", "confirmed", "preparing", "ready_for_pickup", "out_for_delivery"];
 
 function isActiveOrder(order) {
@@ -34,17 +34,25 @@ function normalizeStatus(s) {
   return (s ?? "").toLowerCase().replace(/\s+/g, "_");
 }
 
-// Status filter shortcuts
-const FILTER_SHORTCUTS = [
-  { value: "", label: "All" },
-  { value: "pending_confirmation", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "preparing", label: "Preparing" },
-  { value: "ready_for_pickup", label: "Ready for pickup" },
-  { value: "out_for_delivery", label: "Out for delivery" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
-];
+/** Delivered, cancelled, rejected — "done" orders for the Finished filter */
+function isFinishedOrder(order) {
+  const s = normalizeStatus(order?.status ?? order?.order_status);
+  if (!s) return false;
+  return (
+    s === "delivered" ||
+    s === "cancelled" ||
+    s === "rejected" ||
+    s.includes("delivered") ||
+    s.includes("cancelled") ||
+    s.includes("rejected")
+  );
+}
+
+const ORDER_VIEW = {
+  ACTIVE: "active",
+  FINISHED: "finished",
+  ALL: "all",
+};
 
 function getStatusBadgeClass(status) {
   const s = (status ?? "").toLowerCase();
@@ -62,8 +70,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notificationDismissed, setNotificationDismissed] = useState(false);
-  const [mainTab, setMainTab] = useState("active"); // "active" | "history"
-  const [statusFilter, setStatusFilter] = useState("");
+  const [orderView, setOrderView] = useState(ORDER_VIEW.ACTIVE);
   const pollIntervalRef = useRef(null);
 
   const load = useCallback((showLoading = true) => {
@@ -107,18 +114,15 @@ export default function OrdersPage() {
     };
   }, [token, isAuthenticated]);
 
-  // Filter orders: Active vs History, then by status
+  // Filter: Active (in progress) | Finished (delivered / cancelled / rejected) | All
   const filteredOrders = orders.filter((o) => {
-    const status = normalizeStatus(o?.status ?? o?.order_status);
-    const active = isActiveOrder(o);
-    if (mainTab === "active" && !active) return false;
-    if (mainTab === "history" && active) return false;
-    if (statusFilter && status !== statusFilter) return false;
+    if (orderView === ORDER_VIEW.ACTIVE) return isActiveOrder(o);
+    if (orderView === ORDER_VIEW.FINISHED) return isFinishedOrder(o);
     return true;
   });
 
   const activeCount = orders.filter(isActiveOrder).length;
-  const historyCount = orders.filter((o) => !isActiveOrder(o)).length;
+  const finishedCount = orders.filter(isFinishedOrder).length;
 
   if (authLoading) {
     return (
@@ -186,67 +190,77 @@ export default function OrdersPage() {
         )}
 
         {!loading && !error && orders.length > 0 && (
-          <div className="space-y-6">
-            {/* Active / History tabs */}
-            <div className="flex gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur-sm">
+          <div className="min-w-0 space-y-6">
+            {/* Single row: Active | Finished | All */}
+            <div
+              className="flex gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur-sm"
+              role="tablist"
+              aria-label="Order list"
+            >
               <button
                 type="button"
-                onClick={() => setMainTab("active")}
-                className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-4 py-3 text-base font-medium transition-colors active:scale-[0.98] ${
-                  mainTab === "active"
+                role="tab"
+                aria-selected={orderView === ORDER_VIEW.ACTIVE}
+                onClick={() => setOrderView(ORDER_VIEW.ACTIVE)}
+                className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-2 py-3 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 sm:text-base ${
+                  orderView === ORDER_VIEW.ACTIVE
                     ? "bg-accent text-wood-950 shadow"
                     : "text-white/65 hover:text-white"
                 }`}
               >
                 Active
                 {activeCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-xs font-medium text-current">
+                  <span className="ml-1 rounded-full bg-black/20 px-1.5 py-0.5 text-xs font-medium text-current tabular-nums sm:ml-1.5">
                     {activeCount}
                   </span>
                 )}
               </button>
               <button
                 type="button"
-                onClick={() => setMainTab("history")}
-                className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-4 py-3 text-base font-medium transition-colors active:scale-[0.98] ${
-                  mainTab === "history"
+                role="tab"
+                aria-selected={orderView === ORDER_VIEW.FINISHED}
+                onClick={() => setOrderView(ORDER_VIEW.FINISHED)}
+                className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-2 py-3 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 sm:text-base ${
+                  orderView === ORDER_VIEW.FINISHED
                     ? "bg-accent text-wood-950 shadow"
                     : "text-white/65 hover:text-white"
                 }`}
               >
-                History
-                {historyCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-xs text-current">
-                    {historyCount}
+                Finished
+                {finishedCount > 0 && (
+                  <span className="ml-1 rounded-full bg-black/20 px-1.5 py-0.5 text-xs text-current tabular-nums sm:ml-1.5">
+                    {finishedCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={orderView === ORDER_VIEW.ALL}
+                onClick={() => setOrderView(ORDER_VIEW.ALL)}
+                className={`touch-manipulation min-h-[48px] flex-1 rounded-lg px-2 py-3 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 sm:text-base ${
+                  orderView === ORDER_VIEW.ALL
+                    ? "bg-accent text-wood-950 shadow"
+                    : "text-white/65 hover:text-white"
+                }`}
+              >
+                All
+                {orders.length > 0 && (
+                  <span className="ml-1 rounded-full bg-black/20 px-1.5 py-0.5 text-xs text-current tabular-nums sm:ml-1.5">
+                    {orders.length}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* Status filter shortcuts */}
-            <div className="flex flex-wrap gap-2">
-              {FILTER_SHORTCUTS.map((s) => (
-                <button
-                  key={s.value || "all"}
-                  type="button"
-                  onClick={() => setStatusFilter(s.value)}
-                  className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    statusFilter === s.value
-                      ? "bg-accent text-wood-950"
-                      : "border border-white/10 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
             {filteredOrders.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm">
                 <p className="text-white/70">
-                  {mainTab === "active" ? "No active orders." : "No orders in history."}
+                  {orderView === ORDER_VIEW.ACTIVE && "No active orders."}
+                  {orderView === ORDER_VIEW.FINISHED && "No finished orders yet."}
+                  {orderView === ORDER_VIEW.ALL && "No orders to show."}
                 </p>
-                <p className="mt-1 text-sm text-white/45">Try changing the filter or tab.</p>
+                <p className="mt-1 text-sm text-white/45">Try another tab above.</p>
               </div>
             ) : (
               <ul className="space-y-4">

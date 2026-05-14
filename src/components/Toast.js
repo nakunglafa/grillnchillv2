@@ -16,15 +16,15 @@ export function Toast({ message, type = "error", onClose, duration = 6000 }) {
   if (!message) return null;
 
   const styles = {
-    error: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/90",
-    success: "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/90",
-    info: "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900",
+    error: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/95 dark:text-red-50",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/95 dark:text-emerald-50",
+    info: "border-zinc-200 bg-white text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50",
   };
 
   const iconStyles = {
-    error: "text-red-600 dark:text-red-400",
-    success: "text-emerald-600 dark:text-emerald-400",
-    info: "text-zinc-600 dark:text-zinc-400",
+    error: "text-red-600 dark:text-red-300",
+    success: "text-emerald-600 dark:text-emerald-300",
+    info: "text-zinc-600 dark:text-zinc-300",
   };
 
   return (
@@ -46,13 +46,13 @@ export function Toast({ message, type = "error", onClose, duration = 6000 }) {
           )}
         </svg>
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-medium ${type === "error" ? "text-red-800 dark:text-red-200" : type === "success" ? "text-emerald-800 dark:text-emerald-200" : "text-zinc-800 dark:text-zinc-200"}`}>
+          <p className={`text-sm font-medium ${type === "error" ? "text-red-800 dark:text-red-100" : type === "success" ? "text-emerald-800 dark:text-emerald-100" : "text-zinc-800 dark:text-zinc-100"}`}>
             {message}
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="mt-2 text-xs font-medium underline hover:no-underline"
+            className={`mt-2 text-xs font-medium underline hover:no-underline ${type === "error" ? "text-red-700 dark:text-red-200" : type === "success" ? "text-emerald-700 dark:text-emerald-200" : "text-zinc-600 dark:text-zinc-300"}`}
           >
             Dismiss
           </button>

@@ -77,7 +77,7 @@ export function OrderNotificationModal({ orders, onDismiss, visible }) {
         aria-hidden="true"
       />
       <div
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-200 bg-white p-6 shadow-xl dark:border-amber-800 dark:bg-zinc-900"
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-200 bg-white p-6 text-zinc-900 shadow-xl dark:border-amber-700 dark:bg-zinc-900 dark:text-zinc-50"
         role="alertdialog"
         aria-labelledby="order-notification-title"
         aria-describedby="order-notification-desc"
@@ -101,13 +101,13 @@ export function OrderNotificationModal({ orders, onDismiss, visible }) {
           <div className="min-w-0 flex-1">
             <h2
               id="order-notification-title"
-              className="text-lg font-semibold text-zinc-900 dark:text-zinc-100"
+              className="text-lg font-semibold text-zinc-900 dark:text-zinc-50"
             >
               Order waiting for confirmation
             </h2>
             <p
               id="order-notification-desc"
-              className="mt-1 text-sm text-zinc-600 dark:text-zinc-400"
+              className="mt-1 text-sm text-zinc-600 dark:text-zinc-300"
             >
               {pendingCount === 1
                 ? "Your order is pending. The restaurant will confirm it shortly. You'll hear a sound until it's accepted."

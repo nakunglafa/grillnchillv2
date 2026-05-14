@@ -19,22 +19,14 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-// Terminal / finished orders — hidden from the default "Active" filter
+// Terminal / finished orders (dashboard "Finished" tab)
 const FINISHED_STATUSES = new Set(["delivered", "cancelled", "rejected"]);
 
-// Popular shortcut filters for quick access (first = default: in-progress only)
-const FILTER_SHORTCUTS = [
-  { value: "active", label: "Active" },
-  { value: "pending_confirmation", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "preparing", label: "Preparing" },
-  { value: "ready_for_pickup", label: "Ready for pickup" },
-  { value: "out_for_delivery", label: "Out for delivery" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "rejected", label: "Rejected" },
-  { value: "all", label: "All" },
-];
+const ORDER_VIEW = {
+  ACTIVE: "active",
+  FINISHED: "finished",
+  ALL: "all",
+};
 
 function orderStatusValue(o) {
   return String(o.status ?? o.order_status ?? "").toLowerCase();
@@ -98,7 +90,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [orderView, setOrderView] = useState(ORDER_VIEW.ACTIVE);
 
   const loadOrders = useCallback((silent = false, cacheBust = false) => {
     if (!token || !restaurantId) return;
@@ -125,12 +117,16 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   const rawOrders = ordersProp != null && Array.isArray(ordersProp)
     ? ordersProp.map((o) => ({ ...o, status: o.status ?? o.order_status ?? "" }))
     : orders;
+
+  const activeCount = rawOrders.filter((o) => !FINISHED_STATUSES.has(orderStatusValue(o))).length;
+  const finishedCount = rawOrders.filter((o) => FINISHED_STATUSES.has(orderStatusValue(o))).length;
+
   const displayOrders =
-    statusFilter === "active"
+    orderView === ORDER_VIEW.ACTIVE
       ? rawOrders.filter((o) => !FINISHED_STATUSES.has(orderStatusValue(o)))
-      : statusFilter === "all"
-        ? rawOrders
-        : rawOrders.filter((o) => orderStatusValue(o) === statusFilter);
+      : orderView === ORDER_VIEW.FINISHED
+        ? rawOrders.filter((o) => FINISHED_STATUSES.has(orderStatusValue(o)))
+        : rawOrders;
 
   useEffect(() => {
     if (ordersProp != null && Array.isArray(ordersProp)) {
@@ -190,28 +186,84 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
         type="error"
         onClose={() => setToastMessage(null)}
       />
-      {/* Shortcut filter pills */}
-      <div className="flex flex-wrap gap-2">
-        {FILTER_SHORTCUTS.map((s) => (
-          <button
-            key={s.value}
-            type="button"
-            onClick={() => setStatusFilter(s.value)}
-            className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              statusFilter === s.value
-                ? "bg-owner-action text-white"
-                : "bg-owner-paper text-owner-charcoal hover:bg-owner-border border border-owner-border"
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
+      {/* Active | Finished | All — one row (owner dashboard) */}
+      <div
+        className="flex gap-2 rounded-lg border border-owner-border bg-owner-paper p-1.5"
+        role="tablist"
+        aria-label="Orders"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={orderView === ORDER_VIEW.ACTIVE}
+          onClick={() => setOrderView(ORDER_VIEW.ACTIVE)}
+          className={`touch-manipulation min-h-[40px] flex-1 rounded-md px-2 py-2 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 ${
+            orderView === ORDER_VIEW.ACTIVE
+              ? "bg-owner-action text-white shadow"
+              : "text-owner-charcoal hover:bg-owner-card"
+          }`}
+        >
+          Active
+          {activeCount > 0 && (
+            <span
+              className={`ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full px-1 py-0.5 text-[11px] tabular-nums sm:ml-1.5 ${
+                orderView === ORDER_VIEW.ACTIVE ? "bg-white/20 text-white" : "bg-owner-border text-owner-charcoal"
+              }`}
+            >
+              {activeCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={orderView === ORDER_VIEW.FINISHED}
+          onClick={() => setOrderView(ORDER_VIEW.FINISHED)}
+          className={`touch-manipulation min-h-[40px] flex-1 rounded-md px-2 py-2 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 ${
+            orderView === ORDER_VIEW.FINISHED
+              ? "bg-owner-action text-white shadow"
+              : "text-owner-charcoal hover:bg-owner-card"
+          }`}
+        >
+          Finished
+          {finishedCount > 0 && (
+            <span
+              className={`ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full px-1 py-0.5 text-[11px] tabular-nums sm:ml-1.5 ${
+                orderView === ORDER_VIEW.FINISHED ? "bg-white/20 text-white" : "bg-owner-border text-owner-charcoal"
+              }`}
+            >
+              {finishedCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={orderView === ORDER_VIEW.ALL}
+          onClick={() => setOrderView(ORDER_VIEW.ALL)}
+          className={`touch-manipulation min-h-[40px] flex-1 rounded-md px-2 py-2 text-sm font-semibold transition-colors active:scale-[0.98] sm:px-3 ${
+            orderView === ORDER_VIEW.ALL
+              ? "bg-owner-action text-white shadow"
+              : "text-owner-charcoal hover:bg-owner-card"
+          }`}
+        >
+          All
+          {rawOrders.length > 0 && (
+            <span
+              className={`ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full px-1 py-0.5 text-[11px] tabular-nums sm:ml-1.5 ${
+                orderView === ORDER_VIEW.ALL ? "bg-white/20 text-white" : "bg-owner-border text-owner-charcoal"
+              }`}
+            >
+              {rawOrders.length}
+            </span>
+          )}
+        </button>
       </div>
       {displayOrders.length === 0 ? (
         <p className="py-8 text-owner-muted">
-          {statusFilter === "active"
-            ? "No active orders. Choose All, Delivered, or another filter to see completed orders."
-            : "No orders found."}
+          {orderView === ORDER_VIEW.ACTIVE && "No active orders. Open Finished or All to see completed orders."}
+          {orderView === ORDER_VIEW.FINISHED && "No finished orders (delivered, cancelled, or rejected)."}
+          {orderView === ORDER_VIEW.ALL && "No orders found."}
         </p>
       ) : (
         <ul className="list-none p-0 m-0 columns-1 gap-x-4 md:columns-2 lg:columns-3 [column-fill:balance]">

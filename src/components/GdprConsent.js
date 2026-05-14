@@ -30,11 +30,11 @@ export function GdprConsent({
   const isDark = variant === "dark";
   const wrap = isDark
     ? "flex items-start gap-2.5 rounded-sm border border-white/12 bg-white/4 p-3 text-[12px] leading-snug text-white/80"
-    : "flex items-start gap-2.5 rounded-lg border border-zinc-300 bg-zinc-50 p-3 text-sm leading-snug text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300";
+    : "flex items-start gap-2.5 rounded-lg border border-zinc-300 bg-zinc-50 p-3 text-sm leading-snug text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100";
 
   const linkCls = isDark
     ? "underline-offset-2 font-medium text-accent hover:underline"
-    : "underline-offset-2 font-medium text-zinc-900 hover:underline dark:text-zinc-100";
+    : "underline-offset-2 font-medium text-zinc-900 hover:underline dark:text-zinc-50";
 
   return (
     <label htmlFor={id} className={`${wrap} ${className}`}>

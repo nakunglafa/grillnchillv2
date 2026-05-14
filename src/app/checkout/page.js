@@ -138,10 +138,10 @@ export default function CheckoutPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
         <main className="mx-auto max-w-2xl px-4 py-12">
-          <p className="text-center text-zinc-500">Loading…</p>
+          <p className="text-center text-zinc-600 dark:text-zinc-300">Loading…</p>
         </main>
       </div>
     );
@@ -151,11 +151,11 @@ export default function CheckoutPage() {
 
   if (items.length === 0 && !success) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
         <main className="mx-auto max-w-2xl px-4 py-12">
-          <p className="text-center text-zinc-600 dark:text-zinc-400">
-            Your cart is empty. <Link href="/menu" className="text-amber-600 hover:underline">Browse menu</Link>
+          <p className="text-center text-zinc-600 dark:text-zinc-300">
+            Your cart is empty. <Link href="/menu" className="font-medium text-amber-700 underline hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300">Browse menu</Link>
           </p>
         </main>
       </div>
@@ -164,18 +164,18 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
         <main className="mx-auto max-w-2xl px-4 py-12">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-800 dark:bg-emerald-950/30">
-            <h2 className="text-xl font-semibold text-emerald-800 dark:text-emerald-200">Order placed!</h2>
-            <p className="mt-2 text-emerald-700 dark:text-emerald-300">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-50">
+            <h2 className="text-xl font-semibold text-emerald-900 dark:text-emerald-100">Order placed!</h2>
+            <p className="mt-2 text-emerald-800 dark:text-emerald-200">
               {paymentMethod === "cash_on_delivery"
                 ? "Pay when you pick up your order."
                 : "Your payment has been processed."}
             </p>
             {!isAuthenticated && (
-              <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
+              <p className="mt-3 text-sm text-emerald-800/90 dark:text-emerald-200/90">
                 To track this order later, <Link href="/login" className="font-medium underline hover:no-underline">log in</Link> with the same email.
               </p>
             )}
@@ -305,12 +305,13 @@ export default function CheckoutPage() {
       // re-send the gdpr_consent_* fields with the order itself.
     };
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
         <main className="mx-auto max-w-2xl px-4 py-12">
-          <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Complete Payment</h1>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="mb-4 text-zinc-600 dark:text-zinc-400">Total: {formatPrice(totalAmount)}</p>
+          <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">Complete Payment</h1>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
+            <p className="mb-4 text-zinc-700 dark:text-zinc-200">Total: {formatPrice(totalAmount)}</p>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-zinc-900 dark:border-zinc-600 dark:bg-white dark:text-zinc-900">
             <Elements stripe={stripePromise} options={options}>
               <StripePaymentForm
                 clientSecret={clientSecret}
@@ -335,7 +336,8 @@ export default function CheckoutPage() {
                 onError={setError}
               />
             </Elements>
-            {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+            </div>
+            {error && <p className="mt-4 text-sm font-medium text-red-600 dark:text-red-300">{error}</p>}
           </div>
         </main>
       </div>
@@ -343,32 +345,32 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <Header />
-      <main className="mx-auto max-w-2xl px-4 py-8 md:py-12">
-        <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Checkout</h1>
+      <main className="mx-auto max-w-2xl px-4 py-8 text-zinc-900 dark:text-zinc-100 md:py-12">
+        <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">Checkout</h1>
 
-        <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Order summary</h2>
+        <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Order summary</h2>
           <ul className="space-y-2">
             {items.map(({ item, quantity }) => (
-              <li key={item.id} className="flex justify-between text-sm">
-                <span className="text-zinc-700 dark:text-zinc-300">
+              <li key={item.id} className="flex justify-between gap-3 text-sm">
+                <span className="min-w-0 text-zinc-800 dark:text-zinc-200">
                   <span className="notranslate" translate="no">{item.name}</span> × {quantity}
                 </span>
-                <span>{formatPrice((parseFloat(item.price) || 0) * quantity)}</span>
+                <span className="shrink-0 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{formatPrice((parseFloat(item.price) || 0) * quantity)}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-4 border-t border-zinc-200 pt-4 text-lg font-semibold dark:border-zinc-700 dark:text-zinc-100">
+          <p className="mt-4 border-t border-zinc-200 pt-4 text-lg font-semibold text-zinc-900 dark:border-zinc-600 dark:text-zinc-50">
             Total: {formatPrice(totalAmount)}
           </p>
         </div>
 
-        <form onSubmit={handlePlaceOrder} className="space-y-6">
+        <form onSubmit={handlePlaceOrder} className="space-y-6 text-zinc-900 dark:text-zinc-100">
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
-              <p className="text-red-600 dark:text-red-400">{error}</p>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-950/90 dark:text-red-100">
+              <p className="font-medium">{error}</p>
             </div>
           )}
 
@@ -381,7 +383,7 @@ export default function CheckoutPage() {
             </p>
             <div className="flex flex-col gap-2">
               {availableMethods.map((m) => (
-                <label key={m.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors">
+                <label key={m.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 text-zinc-900 transition-colors hover:border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-50 dark:hover:border-zinc-500">
                   <input
                     type="radio"
                     name="payment"
@@ -390,17 +392,17 @@ export default function CheckoutPage() {
                     onChange={() => setPaymentMethod(m.id)}
                     className="h-4 w-4"
                   />
-                  <span className="text-zinc-900 dark:text-zinc-100">{m.label}</span>
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{m.label}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {!isAuthenticated && (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-50">
               Checking out as guest: please enter your name and at least one of email or phone.
               {" "}
-              <span className="text-amber-700 dark:text-amber-300">To track your order later, <Link href="/login" className="font-medium underline hover:no-underline">log in</Link> before or after placing it.</span>
+              <span className="text-amber-900/90 dark:text-amber-100/95">To track your order later, <Link href="/login" className="font-semibold underline hover:no-underline">log in</Link> before or after placing it.</span>
             </p>
           )}
           <div>
