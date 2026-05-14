@@ -352,64 +352,68 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
   return (
     <div
       role="alert"
-      className="relative w-full overflow-hidden rounded-2xl bg-wood-900 p-4 text-left shadow-xl border border-wood-300 dark:border-wood-600 text-wood-100"
+      className="relative w-full overflow-hidden rounded-2xl border border-owner-border bg-owner-card p-4 text-left text-owner-charcoal shadow-xl ring-1 ring-black/5"
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+            isReservation ? "bg-emerald-100" : "bg-amber-100"
+          }`}
+        >
           {isReservation ? (
-            <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           ) : (
-            <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-amber-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-wood-100">{title}</h3>
-          <p className="text-sm text-wood-200 truncate">{message}</p>
+          <h3 className="font-bold text-owner-charcoal">{title}</h3>
+          <p className="truncate text-sm text-owner-muted">{message}</p>
         </div>
       </div>
 
       {detail && (
-        <div className="mt-3 rounded-xl bg-wood-800 p-3 dark:bg-wood-800/50 text-sm text-wood-100 max-h-32 overflow-y-auto">
+        <div className="mt-3 max-h-32 overflow-y-auto rounded-xl border border-owner-border bg-owner-paper p-3 text-sm text-owner-charcoal">
           {type === "reservation" && (
             <ul className="space-y-1">
-              <li><strong className="text-wood-100">Date:</strong> {getReservationDateTimeText(detail)}</li>
-              <li><strong className="text-wood-100">Party:</strong> {detail.party_size != null ? `${detail.party_size} guest${Number(detail.party_size) === 1 ? "" : "s"}` : "—"}</li>
-              <li><strong className="text-wood-100">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name}</span></li>
-              {detail.special_requests && <li className="truncate"><strong>Notes:</strong> {detail.special_requests}</li>}
+              <li><strong className="text-owner-charcoal">Date:</strong> {getReservationDateTimeText(detail)}</li>
+              <li><strong className="text-owner-charcoal">Party:</strong> {detail.party_size != null ? `${detail.party_size} guest${Number(detail.party_size) === 1 ? "" : "s"}` : "—"}</li>
+              <li><strong className="text-owner-charcoal">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name}</span></li>
+              {detail.special_requests && <li className="truncate"><strong className="text-owner-charcoal">Notes:</strong> {detail.special_requests}</li>}
             </ul>
           )}
           {type === "order" && (
             <ul className="space-y-1">
-              <li><strong className="text-wood-100">Date:</strong> {getOrderDateTimeText(detail)}</li>
-              <li><strong className="text-wood-100">Total:</strong> {formatCurrencyEUROrDash(detail.total_amount)}</li>
-              <li><strong className="text-wood-100">Type:</strong> {detail.order_type ?? (detail.delivery_address?.toLowerCase?.().includes("pickup") ? "Pickup" : "Delivery") ?? "—"}</li>
-              <li><strong className="text-wood-100">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name || "—"}</span></li>
+              <li><strong className="text-owner-charcoal">Date:</strong> {getOrderDateTimeText(detail)}</li>
+              <li><strong className="text-owner-charcoal">Total:</strong> {formatCurrencyEUROrDash(detail.total_amount)}</li>
+              <li><strong className="text-owner-charcoal">Type:</strong> {detail.order_type ?? (detail.delivery_address?.toLowerCase?.().includes("pickup") ? "Pickup" : "Delivery") ?? "—"}</li>
+              <li><strong className="text-owner-charcoal">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name || "—"}</span></li>
               {(() => {
                 const lines = getOrderLineItems(detail);
                 if (lines.length === 0) return null;
                 return (
                   <li>
-                    <strong className="text-wood-100">Items:</strong>{" "}
+                    <strong className="text-owner-charcoal">Items:</strong>{" "}
                     <span className="notranslate" translate="no">
                       {lines.map((i) => getLineItemDisplayName(i)).filter(Boolean).join(", ")}
                     </span>
                   </li>
                 );
               })()}
-              {(detail.delivery_instructions || detail.notes) && <li className="truncate"><strong>Notes:</strong> {detail.delivery_instructions || detail.notes}</li>}
+              {(detail.delivery_instructions || detail.notes) && <li className="truncate"><strong className="text-owner-charcoal">Notes:</strong> {detail.delivery_instructions || detail.notes}</li>}
             </ul>
           )}
         </div>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-500 font-medium">{error}</p>}
-      {success && <p className="mt-2 text-sm text-emerald-500 font-medium">Status updated!</p>}
+      {error && <p className="mt-2 text-sm font-medium text-red-700">{error}</p>}
+      {success && <p className="mt-2 text-sm font-medium text-emerald-700">Status updated!</p>}
       {resolved && !success && (
-        <p className="mt-2 text-sm text-amber-300 font-medium">
+        <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-sm font-medium text-amber-900 ring-1 ring-amber-200/80">
           {detail?.handled_by
             ? `Handled by ${detail.handled_by} at ${detail?.handled_at ? formatReadableDateTime(detail.handled_at) || detail.handled_at : "another device"}.`
             : "Already handled from another tab/device."}
@@ -421,14 +425,14 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
           <button
             onClick={() => handleAction("confirmed")}
             disabled={loading}
-            className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:opacity-50 transition-colors"
+            className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
           >
             {loading ? "..." : "Accept"}
           </button>
           <button
             onClick={() => (isReservation ? openRejectDialog() : handleAction("rejected"))}
             disabled={loading}
-            className="flex-1 rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:outline-none disabled:opacity-50 transition-colors"
+            className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
           >
             {loading ? "..." : "Reject"}
           </button>
@@ -436,21 +440,21 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       )}
 
       {showRejectDialog && (
-        <div className="mt-3 rounded-xl border border-red-300 bg-red-950/30 p-3">
-          <p className="text-sm font-medium text-red-200">Cancellation reason</p>
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 ring-1 ring-red-200/60">
+          <p className="text-sm font-semibold text-red-900">Cancellation reason</p>
           <textarea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
             placeholder="Enter reason for cancellation..."
-            className="mt-2 w-full rounded-lg border border-red-300/40 bg-wood-900 px-3 py-2 text-sm text-wood-100 outline-none focus:border-red-300"
+            className="mt-2 w-full rounded-lg border border-red-200/80 bg-white px-3 py-2 text-sm text-owner-charcoal outline-none ring-0 placeholder:text-owner-muted focus:border-red-400 focus:ring-2 focus:ring-red-300/50"
           />
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={closeRejectDialog}
               disabled={loading}
-              className="flex-1 rounded-lg border border-wood-500 px-3 py-2 text-sm font-medium text-wood-100 hover:bg-wood-700 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-owner-border bg-owner-paper px-3 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-card disabled:opacity-50"
             >
               Close
             </button>
@@ -471,7 +475,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
           <button
             type="button"
             onClick={onDismiss}
-            className="w-full rounded-xl bg-wood-700 px-3 py-2 text-sm font-medium text-wood-100 hover:bg-wood-600 transition-colors"
+            className="w-full rounded-xl border border-owner-border bg-owner-paper px-3 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-card transition-colors"
           >
             Dismiss
           </button>
@@ -485,22 +489,20 @@ function LiveToastItem({ id, type, title, message, onDismiss }) {
   return (
     <div
       role="alert"
-      className="flex max-w-sm gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-zinc-900 shadow-xl dark:border-emerald-700 dark:bg-zinc-900 dark:text-zinc-50"
+      className="flex max-w-sm gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-zinc-900 shadow-xl ring-1 ring-black/5"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
-        <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+        <svg className="h-5 w-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50">{title}</p>
-        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">
-          {message}
-        </p>
+        <p className="font-semibold text-zinc-900">{title}</p>
+        <p className="mt-0.5 text-sm text-zinc-600">{message}</p>
         <button
           type="button"
           onClick={onDismiss}
-          className="mt-2 text-xs font-medium text-emerald-700 underline hover:no-underline dark:text-emerald-300"
+          className="mt-2 text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950 hover:no-underline"
         >
           Dismiss
         </button>

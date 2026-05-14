@@ -15,21 +15,37 @@ export function Toast({ message, type = "error", onClose, duration = 6000 }) {
 
   if (!message) return null;
 
+  /* No `dark:*` classes: owner layout uses `.owner-theme [class*="dark:bg-"] { inherit }` which
+   * breaks any utility containing the substring "dark:bg" even when OS theme is light. */
   const styles = {
-    error: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/95 dark:text-red-50",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/95 dark:text-emerald-50",
-    info: "border-zinc-200 bg-white text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50",
+    error:
+      "border border-red-300 bg-red-50 text-red-950 shadow-lg ring-1 ring-red-200/80",
+    success:
+      "border border-emerald-300 bg-emerald-50 text-emerald-950 shadow-lg ring-1 ring-emerald-200/80",
+    info: "border border-zinc-300 bg-white text-zinc-950 shadow-lg ring-1 ring-zinc-200/80",
   };
 
   const iconStyles = {
-    error: "text-red-600 dark:text-red-300",
-    success: "text-emerald-600 dark:text-emerald-300",
-    info: "text-zinc-600 dark:text-zinc-300",
+    error: "text-red-600",
+    success: "text-emerald-600",
+    info: "text-zinc-600",
+  };
+
+  const messageStyles = {
+    error: "text-red-900",
+    success: "text-emerald-900",
+    info: "text-zinc-900",
+  };
+
+  const dismissStyles = {
+    error: "text-red-800 hover:text-red-950",
+    success: "text-emerald-800 hover:text-emerald-950",
+    info: "text-zinc-700 hover:text-zinc-900",
   };
 
   return (
     <div
-      className={`fixed z-50 max-w-sm rounded-xl border p-4 shadow-lg bottom-6 right-6 left-auto max-sm:left-4 max-sm:right-4 max-sm:bottom-6 max-sm:pb-[env(safe-area-inset-bottom)] ${styles[type]}`}
+      className={`fixed z-[110] max-w-sm rounded-xl p-4 bottom-6 right-6 left-auto max-sm:left-4 max-sm:right-4 max-sm:bottom-6 max-sm:pb-[env(safe-area-inset-bottom)] ${styles[type]}`}
       role="alert"
     >
       <div className="flex items-start gap-3">
@@ -46,13 +62,11 @@ export function Toast({ message, type = "error", onClose, duration = 6000 }) {
           )}
         </svg>
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-medium ${type === "error" ? "text-red-800 dark:text-red-100" : type === "success" ? "text-emerald-800 dark:text-emerald-100" : "text-zinc-800 dark:text-zinc-100"}`}>
-            {message}
-          </p>
+          <p className={`text-sm font-medium ${messageStyles[type]}`}>{message}</p>
           <button
             type="button"
             onClick={onClose}
-            className={`mt-2 text-xs font-medium underline hover:no-underline ${type === "error" ? "text-red-700 dark:text-red-200" : type === "success" ? "text-emerald-700 dark:text-emerald-200" : "text-zinc-600 dark:text-zinc-300"}`}
+            className={`mt-2 text-xs font-medium underline underline-offset-2 hover:no-underline ${dismissStyles[type]}`}
           >
             Dismiss
           </button>
