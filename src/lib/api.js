@@ -266,8 +266,8 @@ export async function getRestaurantOrders(token, restaurantId, status, cacheBust
 export async function updateOrderStatus(token, restaurantId, orderId, newStatus, cancellationReason) {
   const body = {
     status: newStatus,
-    ...(newStatus === "cancelled" && cancellationReason
-      ? { cancellation_reason: cancellationReason }
+    ...(newStatus === "cancelled"
+      ? { cancellation_reason: String(cancellationReason ?? "").trim() || "Cancelled" }
       : {}),
   };
   return apiFetch(

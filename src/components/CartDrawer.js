@@ -3,15 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 const DRAWER_TRANSITION_MS = 300;
-
-function formatPrice(value) {
-  if (value == null || value === "") return "$0.00";
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
 
 export function CartDrawer({ open, onClose }) {
   const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate } = useCart();

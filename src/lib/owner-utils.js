@@ -44,3 +44,87 @@ export function toArray(raw) {
   if (Array.isArray(orders?.data)) return orders.data;
   return [];
 }
+
+function coerceLineItemsArray(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string" && val.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (val && typeof val === "object") {
+    const vals = Object.values(val);
+    if (vals.length && vals.every((v) => v != null && typeof v === "object")) return vals;
+  }
+  return [];
+}
+
+/**
+ * Line items for an order (Laravel / REST often use `order_items` instead of `items`).
+ * @param {Record<string, unknown>} order
+ * @returns {unknown[]}
+ */
+export function getOrderLineItems(order) {
+  if (!order || typeof order !== "object") return [];
+  const keys = [
+    "items",
+    "order_items",
+    "orderItems",
+    "lines",
+    "line_items",
+    "order_lines",
+    "products",
+    "cart_items",
+  ];
+  for (const k of keys) {
+    const arr = coerceLineItemsArray(order[k]);
+    if (arr.length) return arr;
+  }
+  const nested = order.data;
+  if (nested && typeof nested === "object") {
+    for (const k of keys) {
+      const arr = coerceLineItemsArray(nested[k]);
+      if (arr.length) return arr;
+    }
+  }
+  return [];
+}
+
+/** Display name for one order line (varies by API). */
+export function getLineItemDisplayName(line) {
+  if (!line || typeof line !== "object") return "Item";
+  return (
+    line.item_name ??
+    line.name ??
+    line.menu_item_name ??
+    line.product_name ??
+    line.title ??
+    line.dish_name ??
+    line.menu_item?.name ??
+    line.product?.name ??
+    "Item"
+  );
+}
+
+/** Best-effort line total for display (API may send total_price, or unit × qty). */
+export function getLineItemRowTotal(line) {
+  if (!line || typeof line !== "object") return null;
+  const direct =
+    line.total_price ?? line.line_total ?? line.subtotal ?? line.total ?? line.amount;
+  if (direct != null && direct !== "") {
+    const n = typeof direct === "number" ? direct : parseFloat(String(direct).replace(/[^0-9.-]/g, ""));
+    if (Number.isFinite(n)) return n;
+  }
+  const unit = parseFloat(
+    String(line.item_price ?? line.unit_price ?? line.price ?? line.menu_item?.price ?? "").replace(
+      /[^0-9.-]/g,
+      ""
+    )
+  );
+  const qty = Number(line.quantity) || 1;
+  if (Number.isFinite(unit)) return unit * qty;
+  return null;
+}

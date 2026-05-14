@@ -21,7 +21,7 @@ export const EVENTS = {
  * Provider that starts real-time notification listeners when an owner is logged in.
  * Subscribes to:
  * - private-App.Models.User.{userId} — NewReservationNotification, OrderCreated
- * - private-restaurant.{id} — ReservationCreated, ReservationUpdated, OrderCreated (per restaurant)
+ * - private-restaurant.{id} — ReservationCreated, ReservationUpdated, .new.order, OrderStatusUpdated (per restaurant; Laravel Echo: echo.private('restaurant.{id}'))
  *
  * Per API docs: auth endpoint is {API_URL}/broadcasting/auth (e.g. /api/broadcasting/auth).
  */

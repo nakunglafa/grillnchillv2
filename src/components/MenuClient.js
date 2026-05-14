@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/Header";
+import { isItemSpicy, SpicyIndicator } from "@/components/SpicyIndicator";
 import { toArray } from "@/lib/owner-utils";
+import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
 import { useCart } from "@/context/CartContext";
 
 function sortBySortOrder(a, b) {
@@ -10,19 +12,6 @@ function sortBySortOrder(a, b) {
   const bo = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER;
   if (ao !== bo) return ao - bo;
   return Number(a?.id || 0) - Number(b?.id || 0);
-}
-
-function formatPrice(value) {
-  if (value == null || value === "") return "";
-  const n =
-    typeof value === "number"
-      ? value
-      : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-  }).format(n);
 }
 
 function getAvailableVariants(item) {
@@ -71,10 +60,11 @@ function MenuItemCard({ item, addItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-1.5">
           <span
-            className="notranslate text-[15px] font-sans font-bold leading-tight tracking-[0.01em] text-white"
+            className="notranslate flex min-w-0 items-center gap-1 text-[15px] font-sans font-bold leading-tight tracking-[0.01em] text-white"
             translate="no"
           >
-            {item.name}
+            <span className="min-w-0">{item.name}</span>
+            {isItemSpicy(item) ? <SpicyIndicator sizeClass="text-[15px]" /> : null}
           </span>
           {availableVariants.length > 0 ? (
             <span className="text-sm font-semibold text-accent">
@@ -152,10 +142,11 @@ function SpecialMenuItemCard({ item, addItem }) {
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h3
-            className="notranslate font-sans text-lg font-extrabold leading-tight tracking-[0.02em] text-white md:text-xl"
+            className="notranslate flex min-w-0 flex-wrap items-center gap-1.5 font-sans text-lg font-extrabold leading-tight tracking-[0.02em] text-white md:text-xl"
             translate="no"
           >
-            {item.name}
+            <span className="min-w-0">{item.name}</span>
+            {isItemSpicy(item) ? <SpicyIndicator sizeClass="text-lg md:text-xl" /> : null}
           </h3>
           {priceLabel ? (
             <p className="mt-1 font-sans text-sm font-semibold tracking-[0.01em] text-accent">{priceLabel}</p>

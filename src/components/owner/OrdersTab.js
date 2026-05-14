@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getRestaurantOrders, updateOrderStatus } from "@/lib/api";
 import { Toast } from "@/components/Toast";
-import { toArray } from "@/lib/owner-utils";
+import { toArray, getOrderLineItems, getLineItemDisplayName, getLineItemRowTotal } from "@/lib/owner-utils";
+import { formatCurrencyEUROrDash as formatPrice } from "@/lib/format-currency";
 
 // API-supported status values (confirmed = accept, rejected = reject)
 const STATUS_OPTIONS = [
@@ -18,16 +19,26 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-// Popular shortcut filters for quick access
+// Terminal / finished orders — hidden from the default "Active" filter
+const FINISHED_STATUSES = new Set(["delivered", "cancelled", "rejected"]);
+
+// Popular shortcut filters for quick access (first = default: in-progress only)
 const FILTER_SHORTCUTS = [
-  { value: "", label: "All" },
+  { value: "active", label: "Active" },
   { value: "pending_confirmation", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "preparing", label: "Preparing" },
   { value: "ready_for_pickup", label: "Ready for pickup" },
   { value: "out_for_delivery", label: "Out for delivery" },
   { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All" },
 ];
+
+function orderStatusValue(o) {
+  return String(o.status ?? o.order_status ?? "").toLowerCase();
+}
 
 function getOptionsForOrder(order) {
   const current = order?.status;
@@ -40,15 +51,36 @@ function getOptionsForOrder(order) {
   ];
 }
 
-function getStatusLabel(value) {
-  return STATUS_OPTIONS.find((s) => s.value === value)?.label ?? (value || "").replace(/_/g, " ");
+/** Solid banner behind total + status (white text); select uses light surface for contrast */
+function getStatusBannerClasses(status) {
+  const s = (status || "").toLowerCase();
+  switch (s) {
+    case "pending_confirmation":
+      return "bg-amber-500 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "confirmed":
+      return "bg-blue-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "rejected":
+      return "bg-red-800 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "preparing":
+      return "bg-orange-500 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "ready_for_pickup":
+      return "bg-teal-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "out_for_delivery":
+      return "bg-violet-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "delivered":
+      return "bg-emerald-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    case "cancelled":
+      return "bg-red-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+    default:
+      return "bg-slate-600 text-white shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.08)]";
+  }
 }
 
-function formatPrice(value) {
-  if (value == null || value === "") return "—";
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+function getStatusDisplayLabel(status) {
+  const raw = status || "";
+  const fromList = STATUS_OPTIONS.find((o) => o.value === raw)?.label;
+  if (fromList) return fromList;
+  return raw ? raw.replace(/_/g, " ") : "Unknown";
 }
 
 function formatOrderDateTime(order) {
@@ -66,7 +98,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   const loadOrders = useCallback((silent = false, cacheBust = false) => {
     if (!token || !restaurantId) return;
@@ -74,7 +106,8 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
       setLoading(true);
       setError("");
     }
-    getRestaurantOrders(token, restaurantId, statusFilter || undefined, cacheBust)
+    // Always load full list so "Active" vs "All" and switching filters stay correct
+    getRestaurantOrders(token, restaurantId, undefined, cacheBust)
       .then((res) => {
         const arr = toArray(res);
         setOrders(arr.map((o) => ({ ...o, status: o.status ?? o.order_status ?? "" })));
@@ -86,15 +119,18 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
         }
       })
       .finally(() => { if (!silent) setLoading(false); });
-  }, [token, restaurantId, statusFilter]);
+  }, [token, restaurantId]);
 
   // Use parent's orders when provided (enables real-time refresh from OwnerRefreshContext)
   const rawOrders = ordersProp != null && Array.isArray(ordersProp)
     ? ordersProp.map((o) => ({ ...o, status: o.status ?? o.order_status ?? "" }))
     : orders;
-  const displayOrders = statusFilter
-    ? rawOrders.filter((o) => (o.status ?? o.order_status ?? "") === statusFilter)
-    : rawOrders;
+  const displayOrders =
+    statusFilter === "active"
+      ? rawOrders.filter((o) => !FINISHED_STATUSES.has(orderStatusValue(o)))
+      : statusFilter === "all"
+        ? rawOrders
+        : rawOrders.filter((o) => orderStatusValue(o) === statusFilter);
 
   useEffect(() => {
     if (ordersProp != null && Array.isArray(ordersProp)) {
@@ -106,11 +142,21 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
 
   async function handleStatusChange(orderId, newStatus) {
     if (!token || !restaurantId) return;
+    let cancellationReason;
+    if (newStatus === "cancelled") {
+      const entered = typeof window !== "undefined" ? window.prompt("Cancellation reason (required):") : null;
+      if (entered == null) return;
+      cancellationReason = String(entered).trim();
+      if (!cancellationReason) {
+        setToastMessage("Cancellation reason is required.");
+        return;
+      }
+    }
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
     try {
-      await updateOrderStatus(token, restaurantId, orderId, newStatus);
+      await updateOrderStatus(token, restaurantId, orderId, newStatus, cancellationReason);
       if (onRefresh) onRefresh();
       else loadOrders(true, true);
     } catch (err) {
@@ -148,7 +194,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
       <div className="flex flex-wrap gap-2">
         {FILTER_SHORTCUTS.map((s) => (
           <button
-            key={s.value || "all"}
+            key={s.value}
             type="button"
             onClick={() => setStatusFilter(s.value)}
             className={`touch-manipulation min-h-[40px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
@@ -162,117 +208,155 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
         ))}
       </div>
       {displayOrders.length === 0 ? (
-        <p className="py-8 text-owner-muted">No orders found.</p>
+        <p className="py-8 text-owner-muted">
+          {statusFilter === "active"
+            ? "No active orders. Choose All, Delivered, or another filter to see completed orders."
+            : "No orders found."}
+        </p>
       ) : (
-        <ul className="space-y-4">
+        <ul className="list-none p-0 m-0 columns-1 gap-x-4 md:columns-2 lg:columns-3 [column-fill:balance]">
           {displayOrders.map((order) => {
             const customerName = order.customer_name ?? order.user?.name ?? "Guest";
             const customerEmail = order.customer_email ?? order.user?.email ?? "";
             const customerPhone = order.customer_phone ?? order.user?.phone ?? "";
             const orderType = (order.order_type || "").toLowerCase();
             const isDelivery = orderType === "delivery";
-            const itemsList = Array.isArray(order.items) ? order.items : [];
+            const itemsList = getOrderLineItems(order);
             const notes = order.delivery_instructions ?? order.notes ?? "";
+            const typeLabel =
+              orderType === "delivery" ? "Delivery" : orderType === "pickup" ? "Pickup" : orderType || "—";
+            const statusValue = order.status ?? order.order_status ?? "";
+            const bannerClass = getStatusBannerClasses(statusValue);
+
             return (
               <li
                 key={order.id}
-                className="owner-card rounded-lg border border-owner-border overflow-hidden"
+                className="mb-4 w-full break-inside-avoid overflow-hidden rounded-xl border border-owner-border bg-owner-card shadow-sm transition-shadow hover:shadow-md"
               >
-                {/* Header: Order #, date, status dropdown */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-owner-border bg-owner-paper/40 px-3 py-2">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-base font-semibold text-owner-charcoal">Order #{order.id}</span>
-                    <span className="text-xs text-owner-muted">{formatOrderDateTime(order)}</span>
+                {/* Status-colored top: total + status (no table layout) */}
+                <div className={`px-4 py-3 sm:px-5 sm:py-4 ${bannerClass}`}>
+                  <div className="flex flex-col gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-white/85">
+                        Order #{order.id}
+                      </p>
+                      <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
+                        {formatPrice(order.total_amount ?? order.total)}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-white/80">{getStatusDisplayLabel(statusValue)}</p>
+                    </div>
+                    <div className="min-w-0 w-full">
+                      <label className="sr-only" htmlFor={`order-status-${order.id}`}>
+                        Update status
+                      </label>
+                      <select
+                        id={`order-status-${order.id}`}
+                        value={statusValue}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className="touch-manipulation h-11 w-full rounded-lg border-0 bg-white/95 px-3 text-sm font-semibold text-slate-900 shadow-md outline-none ring-2 ring-white/30 focus:ring-4 focus:ring-white/50"
+                      >
+                        {getOptionsForOrder(order).map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <select
-                    value={order.status ?? order.order_status ?? ""}
-                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                    className="touch-manipulation h-8 min-w-[130px] rounded-md border border-owner-border bg-owner-card px-2 py-0.5 text-xs font-medium text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
-                  >
-                    {getOptionsForOrder(order).map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
-                <div className="p-3 space-y-3">
-                  {/* Contact: name, phone (call), email (mail) */}
-                  <div className="rounded-md bg-owner-paper/40 border border-owner-border p-2.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted mb-1.5">Customer / Contact</p>
-                    <p className="text-sm font-medium text-owner-charcoal">{customerName}</p>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                      {customerPhone ? (
-                        <a
-                          href={`tel:${customerPhone.replace(/\s/g, "")}`}
-                          className="inline-flex items-center gap-1.5 text-xs text-owner-charcoal hover:text-owner-action font-medium"
-                        >
-                          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          {customerPhone}
-                        </a>
+                <div className="space-y-4 p-4 sm:p-5">
+                  <p className="text-xs text-owner-muted">
+                    <span className="font-medium text-owner-charcoal">Placed</span>{" "}
+                    {formatOrderDateTime(order)}
+                  </p>
+
+                  <div className="rounded-lg border border-owner-border/70 bg-owner-paper/40 p-3 sm:p-4 space-y-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">
+                        Customer / contact
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold text-owner-charcoal leading-snug tracking-tight">
+                        {customerName}
+                      </p>
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        {customerPhone ? (
+                          <a
+                            href={`tel:${customerPhone.replace(/\s/g, "")}`}
+                            className="inline-flex items-center gap-1.5 text-xs text-owner-charcoal hover:text-owner-action"
+                          >
+                            <svg className="h-3.5 w-3.5 shrink-0 text-owner-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            <span className="truncate font-medium">{customerPhone}</span>
+                          </a>
+                        ) : null}
+                        {customerEmail ? (
+                          <a
+                            href={`mailto:${customerEmail}`}
+                            className="inline-flex items-start gap-1.5 text-xs text-owner-charcoal hover:text-owner-action break-all"
+                          >
+                            <svg className="h-3.5 w-3.5 shrink-0 text-owner-muted mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span className="min-w-0 font-medium leading-snug">{customerEmail}</span>
+                          </a>
+                        ) : null}
+                        {!customerPhone && !customerEmail ? (
+                          <span className="text-xs text-owner-muted">No phone or email</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-owner-border/60 pt-3 space-y-1.5 text-xs leading-relaxed">
+                      <p className="text-owner-charcoal">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Type</span>
+                        <span className="mx-1.5 text-owner-border">·</span>
+                        <span className="font-medium">{typeLabel}</span>
+                      </p>
+                      {isDelivery && (order.delivery_address || order.delivery_address_line_1) ? (
+                        <p className="text-owner-muted">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Address</span>
+                          <span className="mx-1.5 text-owner-border">·</span>
+                          <span>{order.delivery_address || order.delivery_address_line_1}</span>
+                        </p>
                       ) : null}
-                      {customerEmail ? (
-                        <a
-                          href={`mailto:${customerEmail}`}
-                          className="inline-flex items-center gap-1.5 text-xs text-owner-charcoal hover:text-owner-action font-medium break-all"
-                        >
-                          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          {customerEmail}
-                        </a>
-                      ) : null}
-                      {!customerPhone && !customerEmail ? (
-                        <span className="text-xs text-owner-muted">No phone or email</span>
+                      {notes ? (
+                        <p className="text-owner-muted line-clamp-4" title={notes}>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Notes</span>
+                          <span className="mx-1.5 text-owner-border">·</span>
+                          {notes}
+                        </p>
                       ) : null}
                     </div>
-                  </div>
 
-                  {/* Order type & delivery address */}
-                  <div className="flex flex-col gap-0.5 text-xs">
-                    <p className="text-owner-muted">
-                      <span className="font-medium text-owner-charcoal">Type:</span>{" "}
-                      {orderType === "delivery" ? "Delivery" : orderType === "pickup" ? "Pickup" : orderType || "—"}
-                    </p>
-                    {isDelivery && (order.delivery_address || order.delivery_address_line_1) && (
-                      <p className="text-owner-muted">
-                        <span className="font-medium text-owner-charcoal">Address:</span>{" "}
-                        {order.delivery_address || order.delivery_address_line_1}
-                      </p>
-                    )}
-                    {notes ? (
-                      <p className="text-owner-muted">
-                        <span className="font-medium text-owner-charcoal">Notes:</span> {notes}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* Items */}
-                  {itemsList.length > 0 && (
-                    <div className="rounded-md border border-owner-border overflow-hidden">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted px-2.5 py-1.5 bg-owner-paper/40 border-b border-owner-border">Items</p>
-                      <ul className="divide-y divide-owner-border">
-                        {itemsList.map((line, idx) => (
-                          <li key={line.id ?? idx} className="flex justify-between gap-2 px-2.5 py-1.5 text-xs">
-                            <span className="text-owner-charcoal min-w-0">
-                              {(line.item_name ?? line.name ?? "Item")} × {Number(line.quantity) || 1}
-                            </span>
-                            <span className="shrink-0 text-owner-muted">
-                              {formatPrice(line.total_price ?? (parseFloat(line.item_price ?? line.price) * (line.quantity || 1)))}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="border-t border-owner-border/60 pt-3 min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Items</p>
+                      {itemsList.length > 0 ? (
+                        <ul className="mt-2 space-y-2 text-xs">
+                          {itemsList.map((line, idx) => {
+                            const rowTotal = getLineItemRowTotal(line);
+                            const qty = Number(line.quantity) || 1;
+                            return (
+                              <li
+                                key={line.id ?? line.order_item_id ?? idx}
+                                className="flex flex-col gap-0.5 border-b border-owner-border/35 pb-2 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+                              >
+                                <span className="min-w-0 block text-owner-charcoal leading-snug">
+                                  <span className="font-medium">{getLineItemDisplayName(line)}</span>
+                                  <span className="text-owner-muted">{" · "}× {qty}</span>
+                                </span>
+                                <span className="shrink-0 tabular-nums text-[11px] text-owner-muted sm:pt-0.5">
+                                  {formatPrice(rowTotal)}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="mt-1.5 text-xs text-owner-muted">No line items</p>
+                      )}
                     </div>
-                  )}
-
-                  {/* Total */}
-                  <div className="flex justify-between items-center pt-2 border-t border-owner-border">
-                    <span className="text-sm font-semibold text-owner-charcoal">Total</span>
-                    <span className="text-sm font-semibold text-owner-charcoal">{formatPrice(order.total_amount ?? order.total)}</span>
                   </div>
                 </div>
               </li>

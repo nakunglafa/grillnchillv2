@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-
-function formatPrice(value) {
-  if (value == null || value === "") return "$0.00";
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
+import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 export function CartFloatingButton() {
   const { items, totalItems, totalAmount } = useCart();

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   getMyRestaurants,
@@ -12,7 +12,8 @@ import {
   getOwnerRestaurantReservations,
   getMenusForRestaurant,
 } from "@/lib/api";
-import { toArray } from "@/lib/owner-utils";
+import { toArray, getOrderLineItems } from "@/lib/owner-utils";
+import { EVENTS } from "@/context/RealTimeNotificationContext";
 import { useOwnerRefresh } from "@/context/OwnerRefreshContext";
 import { useScreenWakeLock, getKeepScreenOnPreference } from "@/hooks/useScreenWakeLock";
 import { OrdersTab } from "@/components/owner/OrdersTab";
@@ -128,6 +129,17 @@ const TABS = [
   },
 ];
 
+/** Merge GET list rows with any line items captured from `.new.order` (same OrderResource shape). API eager-loads `items` on lists; cache still helps races and minimal `.OrderStatusUpdated` refetch timing. */
+function mergeCachedBroadcastLines(ordersList, cacheRef) {
+  return ordersList.map((o) => {
+    const fromApi = getOrderLineItems(o);
+    if (fromApi.length > 0) return o;
+    const id = o?.id;
+    const cached = id != null ? cacheRef.current.get(Number(id)) : null;
+    return cached?.length ? { ...o, items: cached } : o;
+  });
+}
+
 export default function OwnerDashboardRestaurantPage() {
   const params = useParams();
   const router = useRouter();
@@ -148,6 +160,11 @@ export default function OwnerDashboardRestaurantPage() {
   const [keepScreenOn, setKeepScreenOn] = useState(false);
 
   const { registerRefresh } = useOwnerRefresh();
+  /**
+   * Line items from `.new.order` before refetch, or if GET list rows omit `items` temporarily.
+   * Updated API docs: OrderResource list/detail eager-load `items`; `.OrderStatusUpdated` stays minimal—refetch fills lines.
+   */
+  const broadcastOrderLinesRef = useRef(new Map());
 
   // Apply screen wake lock when dashboard is open on mobile (Chrome etc.), if enabled in settings
   useScreenWakeLock(keepScreenOn);
@@ -174,7 +191,7 @@ export default function OwnerDashboardRestaurantPage() {
         setRestaurants(restList);
         const restDetail = restDetailRes?.data ?? restDetailRes ?? restList.find((r) => String(r.id) === String(restaurantId));
         setRestaurant(restDetail || restList.find((r) => String(r.id) === String(restaurantId)));
-        setOrders(toArray(oRes));
+        setOrders(mergeCachedBroadcastLines(toArray(oRes), broadcastOrderLinesRef));
         setTables(toArray(tRes));
         setReservations(toArray(rRes));
         setMenus(toArray(mRes));
@@ -187,6 +204,39 @@ export default function OwnerDashboardRestaurantPage() {
         setHasLoaded(true);
       });
   }, [restaurantId, token]);
+
+  useEffect(() => {
+    broadcastOrderLinesRef.current = new Map();
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rid = String(restaurantId ?? "");
+
+    const rememberLines = (orderLike) => {
+      if (!orderLike || typeof orderLike !== "object") return;
+      const orid = orderLike.restaurant_id;
+      if (orid != null && String(orid) !== rid) return;
+      const oid = orderLike.id ?? orderLike.order_id;
+      const lines = getOrderLineItems(orderLike);
+      if (oid != null && lines.length) broadcastOrderLinesRef.current.set(Number(oid), lines);
+    };
+
+    const onNewOrder = (e) => {
+      rememberLines(e.detail ?? {});
+    };
+    const onOrderUpdated = (e) => {
+      const raw = e.detail ?? {};
+      rememberLines(raw.order ?? raw.data?.order ?? raw);
+    };
+
+    window.addEventListener(EVENTS.NEW_ORDER, onNewOrder);
+    window.addEventListener(EVENTS.ORDER_UPDATED, onOrderUpdated);
+    return () => {
+      window.removeEventListener(EVENTS.NEW_ORDER, onNewOrder);
+      window.removeEventListener(EVENTS.ORDER_UPDATED, onOrderUpdated);
+    };
+  }, [restaurantId]);
 
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {

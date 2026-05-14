@@ -14,16 +14,13 @@ import {
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
+import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-
-function formatPrice(value) {
-  if (value == null || value === "") return "$0.00";
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
+/** Card checkout is off unless this env is exactly "true" (pause Stripe without removing keys). */
+const STRIPE_CHECKOUT_ENABLED =
+  String(process.env.NEXT_PUBLIC_ENABLE_STRIPE_CHECKOUT || "").toLowerCase() === "true";
 
 function StripePaymentForm({ clientSecret, customerEmail, onSuccess, onError }) {
   const stripe = useStripe();
@@ -78,7 +75,10 @@ function StripePaymentForm({ clientSecret, customerEmail, onSuccess, onError }) 
 export default function CheckoutPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth();
   const { items, totalAmount, clearCart, hydrate } = useCart();
-  const [paymentOptions, setPaymentOptions] = useState({ stripe: true, pickup: true });
+  const [paymentOptions, setPaymentOptions] = useState({
+    stripe: STRIPE_CHECKOUT_ENABLED,
+    pickup: true,
+  });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -98,7 +98,7 @@ export default function CheckoutPage() {
   }, [hydrate]);
 
   useEffect(() => {
-    if (STRIPE_PK) {
+    if (STRIPE_CHECKOUT_ENABLED && STRIPE_PK) {
       setStripePromise(loadStripe(STRIPE_PK));
     }
   }, []);
@@ -107,11 +107,13 @@ export default function CheckoutPage() {
     getRestaurantPaymentOptions(RESTAURANT_ID)
       .then((opts) => {
         setPaymentOptions({
-          stripe: opts?.stripe ?? true,
+          stripe: STRIPE_CHECKOUT_ENABLED && (opts?.stripe ?? true),
           pickup: opts?.pickup ?? true,
         });
       })
-      .catch(() => setPaymentOptions({ stripe: true, pickup: true }))
+      .catch(() =>
+        setPaymentOptions({ stripe: STRIPE_CHECKOUT_ENABLED, pickup: true })
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -123,7 +125,9 @@ export default function CheckoutPage() {
   }, [user]);
 
   const availableMethods = [];
-  if (paymentOptions.stripe && STRIPE_PK) availableMethods.push({ id: "online_payment", label: "Pay with Card (Stripe)" });
+  if (STRIPE_CHECKOUT_ENABLED && paymentOptions.stripe && STRIPE_PK) {
+    availableMethods.push({ id: "online_payment", label: "Pay with Card (Stripe)" });
+  }
   if (paymentOptions.pickup) availableMethods.push({ id: "cash_on_delivery", label: "Pay on Pickup" });
 
   useEffect(() => {
@@ -241,6 +245,11 @@ export default function CheckoutPage() {
       }
 
       if (paymentMethod === "online_payment") {
+        if (!STRIPE_CHECKOUT_ENABLED) {
+          setError("Card payment is temporarily unavailable. Please choose Pay on Pickup.");
+          setSubmitting(false);
+          return;
+        }
         const piRes = await createPaymentIntent(authToken, {
           restaurant_id: Number(RESTAURANT_ID),
           items: orderItems,
@@ -279,7 +288,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (clientSecret && stripePromise) {
+  if (STRIPE_CHECKOUT_ENABLED && clientSecret && stripePromise) {
     const options = { clientSecret, appearance: { theme: "stripe" } };
     const onlineOrderPayload = {
       restaurant_id: Number(RESTAURANT_ID),

@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { isItemSpicy, SpicyIndicator } from "@/components/SpicyIndicator";
 import { getRestaurant } from "@/lib/api";
 import websiteContentDefaults from "@/data/website-content.json";
+import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
 
 /** Hero collage (defaults to Unsplash — override via .env for your own photos) */
 const HERO_COLLAGE_MAIN =
@@ -148,13 +150,6 @@ const MENU_SHOWCASE_PRIORITIES = [
   { id: "sushi", label: "Sushi", keyword: "sushi", fallbackSubtext: "Maki / Nigiri / Sashimi" },
   { id: "dessert", label: "Dessert", keyword: "dessert", fallbackSubtext: "Cake / Ice cream / Mochi" },
 ];
-
-function formatPrice(value) {
-  if (value == null || value === "") return "";
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(n)) return "";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
 
 // Helper function to capitalize days and format times to 12-hour AM/PM format
 function formatTime(timeStr) {
@@ -1157,10 +1152,11 @@ export default function Home() {
                           <li key={String(itemKey)} className="pb-3">
                             <div className="flex items-baseline gap-2">
                               <h3
-                                className="notranslate text-[1.25rem] font-semibold leading-tight text-white"
+                                className="notranslate flex min-w-0 items-center gap-1.5 text-[1.25rem] font-semibold leading-tight text-white"
                                 translate="no"
                               >
-                                {item.name}
+                                <span className="min-w-0">{item.name}</span>
+                                {isItemSpicy(item) ? <SpicyIndicator sizeClass="text-[1.1rem]" /> : null}
                               </h3>
                               <span className="mb-1 h-px flex-1 border-b border-dotted border-accent/45" />
                               <span className="text-lg font-semibold text-white">

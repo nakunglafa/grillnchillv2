@@ -5,6 +5,8 @@ import { EVENTS } from "@/context/RealTimeNotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { updateOrderStatus, updateReservationStatus } from "@/lib/api";
 import { NotificationStack } from "@/components/NotificationStack";
+import { getOrderLineItems, getLineItemDisplayName } from "@/lib/owner-utils";
+import { formatCurrencyEUROrDash } from "@/lib/format-currency";
 
 /** Extract restaurant ID from /owner/dashboard/[id] path when on owner dashboard */
 function getRestaurantIdFromPath() {
@@ -383,12 +385,21 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
           {type === "order" && (
             <ul className="space-y-1">
               <li><strong className="text-wood-100">Date:</strong> {getOrderDateTimeText(detail)}</li>
-              <li><strong className="text-wood-100">Total:</strong> ${detail.total_amount ?? "—"}</li>
+              <li><strong className="text-wood-100">Total:</strong> {formatCurrencyEUROrDash(detail.total_amount)}</li>
               <li><strong className="text-wood-100">Type:</strong> {detail.order_type ?? (detail.delivery_address?.toLowerCase?.().includes("pickup") ? "Pickup" : "Delivery") ?? "—"}</li>
               <li><strong className="text-wood-100">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name || "—"}</span></li>
-              {detail.items?.length > 0 && (
-                <li><strong className="text-wood-100">Items:</strong> <span className="notranslate" translate="no">{detail.items.map((i) => i.item_name ?? i.name).filter(Boolean).join(", ")}</span></li>
-              )}
+              {(() => {
+                const lines = getOrderLineItems(detail);
+                if (lines.length === 0) return null;
+                return (
+                  <li>
+                    <strong className="text-wood-100">Items:</strong>{" "}
+                    <span className="notranslate" translate="no">
+                      {lines.map((i) => getLineItemDisplayName(i)).filter(Boolean).join(", ")}
+                    </span>
+                  </li>
+                );
+              })()}
               {(detail.delivery_instructions || detail.notes) && <li className="truncate"><strong>Notes:</strong> {detail.delivery_instructions || detail.notes}</li>}
             </ul>
           )}

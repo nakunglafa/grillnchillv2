@@ -6,16 +6,12 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { getOrders } from "@/lib/api";
 import { OrderNotificationModal } from "@/components/OrderNotificationModal";
+import { toArray, getOrderLineItems, getLineItemDisplayName, getLineItemRowTotal } from "@/lib/owner-utils";
+import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 function formatStatus(s) {
   if (!s || typeof s !== "string") return s;
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function formatPrice(v) {
-  if (v == null || v === "") return "$0.00";
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ""));
-  return Number.isNaN(n) ? "$0.00" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 }
 
 const PENDING_STATUSES = ["pending", "pending_confirmation", "new"];
@@ -78,8 +74,8 @@ export default function OrdersPage() {
     }
     getOrders(token)
       .then((data) => {
-        const arr = Array.isArray(data) ? data : data?.data ?? data?.orders ?? [];
-        setOrders(Array.isArray(arr) ? arr : []);
+        const arr = toArray(data);
+        setOrders(arr);
         if (!hasPendingOrders(arr)) setNotificationDismissed(false);
       })
       .catch((err) => {
@@ -100,8 +96,8 @@ export default function OrdersPage() {
     pollIntervalRef.current = setInterval(() => {
       getOrders(token)
         .then((data) => {
-          const arr = Array.isArray(data) ? data : data?.data ?? data?.orders ?? [];
-          setOrders(Array.isArray(arr) ? arr : []);
+          const arr = toArray(data);
+          setOrders(arr);
           if (!hasPendingOrders(arr)) setNotificationDismissed(false);
         })
         .catch(() => {});
@@ -254,7 +250,9 @@ export default function OrdersPage() {
               </div>
             ) : (
               <ul className="space-y-4">
-                {filteredOrders.map((order) => (
+                {filteredOrders.map((order) => {
+                  const lineItems = getOrderLineItems(order);
+                  return (
                   <li key={order.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -274,16 +272,37 @@ export default function OrdersPage() {
                         {formatStatus(order.status ?? order.order_status)}
                       </span>
                     </div>
+                    {lineItems.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02]">
+                        <p className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50">
+                          Items
+                        </p>
+                        <ul className="divide-y divide-white/10">
+                          {lineItems.map((line, idx) => {
+                            const rowTotal = getLineItemRowTotal(line);
+                            return (
+                              <li key={line.id ?? line.order_item_id ?? idx} className="flex justify-between gap-3 px-3 py-2 text-sm">
+                                <span className="min-w-0 text-white/85">
+                                  {getLineItemDisplayName(line)} × {Number(line.quantity) || 1}
+                                </span>
+                                <span className="shrink-0 text-white/55">{formatPrice(rowTotal)}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
                     <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
                       <span className="font-semibold text-white">{formatPrice(order.total ?? order.total_amount)}</span>
-                      {order.items && order.items.length > 0 && (
+                      {lineItems.length > 0 && (
                         <span className="text-sm text-white/45">
-                          {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                          {lineItems.length} item{lineItems.length !== 1 ? "s" : ""}
                         </span>
                       )}
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>
