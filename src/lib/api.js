@@ -207,14 +207,22 @@ export async function markAllNotificationsRead(token) {
 }
 
 /**
- * Web Push subscription for owner devices (Laravel webpush / custom).
- * POST body: raw PushSubscription JSON — { endpoint, keys: { p256dh, auth } }.
- * Adjust the path if your API uses a different route (e.g. /owner/push-subscriptions).
+ * Web Push VAPID public key (API docs: GET /api/web-push/vapid-public-key).
+ * Response: { public_key: string | null, configured: boolean } (may be wrapped in `data`).
+ * Pass token if your deployment requires auth for this route.
  */
-export async function registerPushSubscription(token, subscriptionPayload) {
+export async function getWebPushVapidPublicKey(token) {
+  return apiFetch("/web-push/vapid-public-key", { method: "GET", ...(token ? { token } : {}) });
+}
+
+/**
+ * Save browser PushSubscription for owner / super-admin (native Web Push).
+ * POST body per API: { "subscription": PushSubscription.toJSON() }.
+ */
+export async function registerPushSubscription(token, subscriptionJson) {
   return apiFetch("/push-subscriptions", {
     method: "POST",
-    body: JSON.stringify(subscriptionPayload),
+    body: JSON.stringify({ subscription: subscriptionJson }),
     token,
   });
 }

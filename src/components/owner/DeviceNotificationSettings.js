@@ -95,8 +95,7 @@ export function DeviceNotificationSettings() {
       <div>
         <p className={labelClass}>Phone &amp; system notifications</p>
         <p className={`${descClass} mt-1`}>
-          Get the same new order and reservation alerts in your phone&apos;s notification shade when the dashboard is open or in
-          the background. For alerts when the browser is fully closed, the server must send Web Push (optional setup).
+          While the app stays open or sleeping briefly in the background, you may still get alerts. If you <strong className="font-medium text-owner-charcoal">fully close or swipe away</strong> the installed app, the phone usually stops the website — then only a <strong className="font-medium text-owner-charcoal">push message from your restaurant server</strong> can show an alert (your backend team sets this up with Web Push / VAPID). Turn on notifications here either way so the device is ready.
         </p>
       </div>
 
@@ -151,10 +150,12 @@ export function DeviceNotificationSettings() {
         </button>
       )}
 
-      {permission === "granted" && prefEnabled && process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY && (
+      {permission === "granted" && prefEnabled && (
         <p className={descClass}>
-          Web Push is configured: this device can receive alerts when the dashboard is closed, once the server sends pushes for
-          new orders and reservations.
+          Background alerts use <strong className="font-medium text-owner-charcoal">Web Push</strong>: this app loads the
+          VAPID public key from your API (<strong className="font-medium text-owner-charcoal">GET /web-push/vapid-public-key</strong>) or
+          from <strong className="font-medium text-owner-charcoal">NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY</strong> if set, then saves this
+          device with <strong className="font-medium text-owner-charcoal">POST /push-subscriptions</strong>.
         </p>
       )}
 

@@ -9,6 +9,7 @@ import { LiveNotificationToast } from "@/components/LiveNotificationToast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { CartFloatingButton } from "@/components/CartFloatingButton";
 import { PwaServiceWorkerRegister } from "@/components/PwaServiceWorkerRegister";
+import { PwaOwnerLaunchResume } from "@/components/PwaOwnerLaunchResume";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "missing-client-id";
 
@@ -17,6 +18,7 @@ export function Providers({ children }) {
     <SessionProvider>
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <AuthProvider>
+          <PwaOwnerLaunchResume />
           <OrderingHoursProvider>
             <CartProvider>
               <RealTimeNotificationProvider>

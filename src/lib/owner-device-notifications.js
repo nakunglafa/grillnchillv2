@@ -1,14 +1,13 @@
 /**
  * Owner dashboard: browser / phone notifications for new orders & reservations.
  *
- * - While a tab is open: uses the Push API's registration.showNotification (needs a service worker).
- * - When the tab is closed: requires Web Push from the Laravel API (store subscription via registerPushSubscription).
- *
- * Set NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY (VAPID public key from backend) to register push subscriptions.
- * Backend must implement POST/DELETE /push-subscriptions (or change paths in api.js).
+ * - Foreground: toasts + optional system notifications via the service worker.
+ * - Background / app closed: Laravel sends native Web Push; subscribe via VAPID from
+ *   GET /web-push/vapid-public-key (or mirror in NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY) and
+ *   POST /push-subscriptions with { subscription: PushSubscription.toJSON() }.
  */
 
-import { registerPushSubscription, removePushSubscription } from "@/lib/api";
+import { registerPushSubscription, removePushSubscription, getWebPushVapidPublicKey } from "@/lib/api";
 import { PWA_SERVICE_WORKER_URL } from "@/lib/pwa-constants";
 
 const PREF_KEY = "owner:device-notifications:enabled";
@@ -40,9 +39,26 @@ export function isOwnerDeviceNotificationSupported() {
   return Boolean("serviceWorker" in navigator && "Notification" in window && "PushManager" in window);
 }
 
-function getVapidPublicKey() {
+function getVapidPublicKeyFromEnv() {
   const k = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY;
   return typeof k === "string" && k.trim() ? k.trim() : "";
+}
+
+/**
+ * Prefer live key from API; fallback to NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY (same as server WEBPUSH_VAPID_PUBLIC_KEY).
+ * @returns {Promise<string>}
+ */
+async function resolveVapidPublicKeyForSubscribe(token) {
+  const fromEnv = getVapidPublicKeyFromEnv();
+  try {
+    const data = await getWebPushVapidPublicKey(token);
+    const payload = data?.data && typeof data.data === "object" ? data.data : data;
+    const pk = payload?.public_key != null ? String(payload.public_key).trim() : "";
+    if (pk) return pk;
+  } catch {
+    /* offline, unauthenticated preview, or route not deployed */
+  }
+  return fromEnv;
 }
 
 /** @param {string} base64String */
@@ -102,7 +118,7 @@ export async function enableOwnerBrowserNotifications({ token }) {
     const reg = await registerOwnerPushServiceWorker();
     await reg.update().catch(() => {});
 
-    const vapid = getVapidPublicKey();
+    const vapid = await resolveVapidPublicKeyForSubscribe(token);
     if (vapid && reg.pushManager) {
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
@@ -185,6 +201,8 @@ export async function tryShowOwnerDeviceNotification({ title, body, tag, url }) 
         icon: "/favicon.ico",
         badge: "/favicon.ico",
         data: { url: path },
+        requireInteraction: true,
+        vibrate: [200, 80, 200, 80, 200],
       });
       return;
     }
@@ -193,7 +211,13 @@ export async function tryShowOwnerDeviceNotification({ title, body, tag, url }) 
   }
 
   try {
-    new Notification(title, { body, tag: `owner-${tag}`, data: openUrl });
+    new Notification(title, {
+      body,
+      tag: `owner-${tag}`,
+      data: openUrl,
+      requireInteraction: true,
+      vibrate: [200, 80, 200, 80, 200],
+    });
   } catch {
     /* ignore */
   }
