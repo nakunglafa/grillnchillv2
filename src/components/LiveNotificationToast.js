@@ -24,6 +24,60 @@ function ownerDashboardPath(detail) {
   return rid != null && rid !== "" ? `/owner/dashboard/${rid}` : "/owner";
 }
 
+/** API may send handled_by as a string or as a nested user object */
+function formatHandledByLabel(handledBy) {
+  if (handledBy == null || handledBy === "") return "";
+  if (typeof handledBy === "string" || typeof handledBy === "number") {
+    return String(handledBy).trim();
+  }
+  if (typeof handledBy !== "object") return "";
+  const o = handledBy;
+  const candidates = [
+    o.name,
+    o.full_name,
+    o.display_name,
+    o.email,
+    o.username,
+    o.user_name,
+    typeof o.first_name === "string" || typeof o.last_name === "string"
+      ? [o.first_name, o.last_name].filter(Boolean).join(" ").trim()
+      : null,
+    o.user?.name,
+    o.user?.email,
+    o.staff_name,
+  ];
+  for (const c of candidates) {
+    if (c != null && String(c).trim() !== "") return String(c).trim();
+  }
+  if (o.id != null && o.id !== "") return `User #${o.id}`;
+  return "";
+}
+
+function formatHandledAtLabel(value, formatReadableDateTime) {
+  if (value == null || value === "") return "";
+  if (typeof value === "object" && value !== null && !(value instanceof Date)) {
+    const nested = value.datetime ?? value.at ?? value.date ?? value.created_at ?? value.updated_at;
+    if (nested != null) return formatHandledAtLabel(nested, formatReadableDateTime);
+    return "";
+  }
+  const pretty = formatReadableDateTime(value);
+  if (pretty) return pretty;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+function resolvedElsewhereMessage(detail, formatReadableDateTime) {
+  const who = formatHandledByLabel(detail?.handled_by);
+  const when = formatHandledAtLabel(detail?.handled_at, formatReadableDateTime);
+  if (who) {
+    return when ? `Handled by ${who} at ${when}.` : `Handled by ${who}.`;
+  }
+  if (detail?.handled_by != null) {
+    return when ? `Handled by another staff member at ${when}.` : "Handled by another staff member.";
+  }
+  return "Already handled from another tab/device.";
+}
+
 /** Same nav height as MenuTab (4rem + safe area) + ~1.5rem gap so toasts clear the tab bar */
 const OWNER_NOTIF_STACK_CLASS =
   "!max-sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] max-sm:!pb-0";
@@ -502,9 +556,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       {success && <p className="mt-2 text-sm font-medium text-emerald-700">Status updated!</p>}
       {resolved && !success && (
         <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-sm font-medium text-amber-900 ring-1 ring-amber-200/80">
-          {detail?.handled_by
-            ? `Handled by ${detail.handled_by} at ${detail?.handled_at ? formatReadableDateTime(detail.handled_at) || detail.handled_at : "another device"}.`
-            : "Already handled from another tab/device."}
+          {resolvedElsewhereMessage(detail, formatReadableDateTime)}
         </p>
       )}
 
