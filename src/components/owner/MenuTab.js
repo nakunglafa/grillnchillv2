@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getMenusForRestaurant,
-  createMenuForRestaurant,
   updateMenu,
   deleteMenu,
   getCategoriesForMenu,
@@ -39,6 +38,23 @@ function sortByOrder(a, b) {
   const bo = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER;
   if (ao !== bo) return ao - bo;
   return Number(a?.id || 0) - Number(b?.id || 0);
+}
+
+/**
+ * 1-based new_sort_order for reorder API after dragging an item from fromIndex onto dropTargetIndex.
+ * insertAfter: pointer on lower half of target row → insert after that item.
+ */
+function computeNewItemSortOrder(itemIds, fromIndex, dropTargetIndex, insertAfter) {
+  const n = itemIds.length;
+  if (n === 0 || fromIndex < 0 || fromIndex >= n || dropTargetIndex < 0 || dropTargetIndex >= n) {
+    return null;
+  }
+  const list = itemIds.slice();
+  const [moved] = list.splice(fromIndex, 1);
+  let ins = dropTargetIndex + (insertAfter ? 1 : 0);
+  if (fromIndex < dropTargetIndex) ins -= 1;
+  list.splice(ins, 0, moved);
+  return list.indexOf(moved) + 1;
 }
 
 function parseVariantsDraft(variants) {
@@ -99,10 +115,53 @@ function getItemPriceLabel(item) {
   return Number.isFinite(price) ? price.toFixed(2) : item?.price ?? "-";
 }
 
+/** Space reserved for owner mobile bottom nav (dashboard nav: py-2 top + h-14 row + safe-area bottom). */
+const OWNER_MOBILE_NAV_BOTTOM = "calc(4rem + env(safe-area-inset-bottom, 0px))";
+/** Bottom padding for sheets: clears main nav + Menu tab select/+ toolbar. */
+const OWNER_MENU_SHEET_ABOVE_NAV = "calc(4rem + 3.75rem + env(safe-area-inset-bottom, 0px))";
+
+/** Mobile bottom-sheet modal frame (owner dashboard). Sheet sits above main nav + menu toolbar. */
+function MenuMobileModal({ title, onClose, children }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end md:hidden"
+      style={{ paddingBottom: OWNER_MENU_SHEET_ABOVE_NAV }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="menu-mobile-modal-title"
+    >
+      <button
+        type="button"
+        className="owner-animate-modal-backdrop absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+        aria-label="Close dialog"
+        onClick={onClose}
+      />
+      <div className="owner-animate-modal-sheet relative mt-auto flex max-h-[min(92dvh,calc(100vh-1rem))] w-full flex-col overflow-hidden rounded-t-2xl border border-owner-border bg-owner-card shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-owner-border px-4 py-3">
+          <h2 id="menu-mobile-modal-title" className="min-w-0 truncate text-base font-semibold text-owner-charcoal">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="touch-manipulation shrink-0 rounded-lg border border-owner-border px-3 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-paper"
+          >
+            Done
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MenuTab({ restaurantId, token }) {
   const [menus, setMenus] = useState([]);
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [menusListRefreshing, setMenusListRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
   const [toastType, setToastType] = useState("error");
@@ -115,15 +174,19 @@ export function MenuTab({ restaurantId, token }) {
   const [selectedMenuCategories, setSelectedMenuCategories] = useState([]);
   const [openMainCatForm, setOpenMainCatForm] = useState(false);
   const [openSubCatForm, setOpenSubCatForm] = useState(false);
+  /** Mobile: null | 'picker' | 'select-menu' | 'main-category' | 'sub-category' */
+  const [mobileSheet, setMobileSheet] = useState(null);
 
   const showToast = useCallback((message, type = "error") => {
     setToastMessage(message);
     setToastType(type);
   }, []);
 
-  const loadMenus = useCallback(() => {
+  const loadMenus = useCallback((opts = {}) => {
+    const soft = opts.soft === true;
     if (!restaurantId || !token) return;
-    setLoading(true);
+    if (soft) setMenusListRefreshing(true);
+    else setLoading(true);
     setError("");
     getMenusForRestaurant(token, restaurantId)
       .then((res) => {
@@ -138,7 +201,10 @@ export function MenuTab({ restaurantId, token }) {
         setMenus([]);
         showToast(err?.data?.message || err?.message || "Failed to load menus", "error");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setMenusListRefreshing(false);
+      });
   }, [restaurantId, token, showToast]);
 
   useEffect(() => {
@@ -177,27 +243,13 @@ export function MenuTab({ restaurantId, token }) {
     [token]
   );
 
-  const handleCreateMenu = async (e) => {
-    e.preventDefault();
-    const name = formData.menuName?.trim();
-    if (!name) return;
-    try {
-      await createMenuForRestaurant(token, restaurantId, { name });
-      setFormData({});
-      loadMenus();
-      showToast("Menu created.", "success");
-    } catch (err) {
-      showToast(err?.data?.message || err?.message || "Failed to create menu", "error");
-    }
-  };
-
   const handleUpdateMenu = async (menu) => {
     const name = (formData[`menu-${menu.id}`] ?? menu.name)?.trim();
     if (!name) return;
     try {
       await updateMenu(token, menu.id, { name });
       setEditing(null);
-      loadMenus();
+      loadMenus({ soft: true });
       showToast("Menu updated.", "success");
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to update menu", "error");
@@ -208,7 +260,7 @@ export function MenuTab({ restaurantId, token }) {
     if (!confirm("Delete this menu and all its categories/items?")) return;
     try {
       await deleteMenu(token, menuId);
-      loadMenus();
+      loadMenus({ soft: true });
       showToast("Menu deleted.", "success");
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to delete menu", "error");
@@ -254,6 +306,9 @@ export function MenuTab({ restaurantId, token }) {
       setFormData((p) => ({ ...p, [key]: {} }));
       setCategoriesRefreshTrigger((t) => t + 1);
       showToast("Category created.", "success");
+      setOpenMainCatForm(false);
+      setOpenSubCatForm(false);
+      setMobileSheet(null);
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to create category", "error");
     }
@@ -443,7 +498,7 @@ export function MenuTab({ restaurantId, token }) {
       }
       setEditing(null);
       setItemsRefreshTrigger((t) => t + 1);
-      loadMenus();
+      loadMenus({ soft: true });
       showToast("Item updated.", "success");
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to update item", "error");
@@ -455,7 +510,7 @@ export function MenuTab({ restaurantId, token }) {
     try {
       await deleteItem(token, itemId);
       setItemsRefreshTrigger((t) => t + 1);
-      loadMenus();
+      loadMenus({ soft: true });
       showToast("Item deleted.", "success");
     } catch (err) {
       showToast(err?.data?.message || err?.message || "Failed to delete item", "error");
@@ -493,7 +548,7 @@ export function MenuTab({ restaurantId, token }) {
     Array.isArray(selectedMenuCategories) ? selectedMenuCategories.filter((c) => !c.parent_id) : [];
 
   return (
-    <div className="space-y-4 relative max-w-full min-w-0">
+    <div className="relative max-w-full min-w-0 space-y-4 pb-[calc(4rem+3.75rem+env(safe-area-inset-bottom,0px))] md:pb-0">
       <Toast
         message={toastMessage}
         type={toastType}
@@ -510,29 +565,12 @@ export function MenuTab({ restaurantId, token }) {
       {/* Two columns: left = main menu + categories (forms), right = menu items (editor). */}
       <div
         data-menu-layout="two-col"
-        className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)] items-start gap-6"
+        className={`grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)] items-start gap-3 md:gap-6 transition-opacity duration-300 ease-out ${
+          menusListRefreshing ? "opacity-60" : "opacity-100"
+        }`}
       >
-        {/* Left: add menu + main category + sub-category forms */}
-        <aside className="order-2 md:order-1 w-full shrink-0 md:sticky md:top-20 space-y-4">
-          <div className="owner-card rounded-lg p-3">
-            <h3 className="text-sm font-semibold text-owner-charcoal">Menus</h3>
-            <form onSubmit={handleCreateMenu} className="mt-2 flex flex-col gap-2">
-              <input
-                type="text"
-                placeholder="New menu name"
-                value={formData.menuName || ""}
-                onChange={(e) => setFormData((p) => ({ ...p, menuName: e.target.value }))}
-                className="flex-1 rounded-md border border-owner-border bg-owner-paper px-3 py-1.5 text-sm text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
-              />
-              <button
-                type="submit"
-                className="touch-manipulation h-8 rounded-md bg-owner-action px-3 text-xs font-medium text-white hover:opacity-90"
-              >
-                Add Menu
-              </button>
-            </form>
-          </div>
-
+        {/* Left: menu picker + main / sub-category forms (desktop) */}
+        <aside className="order-2 hidden w-full shrink-0 space-y-4 md:sticky md:top-20 md:order-1 md:block">
           {menus.length > 0 && (
             <div className="space-y-1.5 owner-card rounded-lg p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted">Select menu</p>
@@ -567,7 +605,7 @@ export function MenuTab({ restaurantId, token }) {
                   onClick={() => setOpenMainCatForm((v) => !v)}
                   className="flex w-full items-center justify-between text-left text-xs font-semibold text-owner-charcoal"
                 >
-                  <span className="uppercase tracking-wide">Main category</span>
+                  <span className="uppercase tracking-wide">Add main category</span>
                   <span className="text-owner-action hover:underline">{openMainCatForm ? "Close" : "Add new"}</span>
                 </button>
                 {openMainCatForm && (
@@ -637,7 +675,7 @@ export function MenuTab({ restaurantId, token }) {
                     onClick={() => setOpenSubCatForm((v) => !v)}
                     className="flex w-full items-center justify-between text-left text-xs font-semibold text-owner-charcoal"
                   >
-                    <span className="uppercase tracking-wide">Sub-category</span>
+                    <span className="uppercase tracking-wide">Add sub</span>
                     <span className="text-owner-action hover:underline">{openSubCatForm ? "Close" : "Add new"}</span>
                   </button>
                   {openSubCatForm && (
@@ -731,9 +769,9 @@ export function MenuTab({ restaurantId, token }) {
         </aside>
 
         {/* Right: menu items (selected menu’s categories + items editor) */}
-        <section className="order-1 md:order-2 min-w-0 w-full space-y-3 md:pl-2 pb-6">
+        <section className="order-1 min-w-0 w-full space-y-3 pb-6 md:order-2 md:pl-2">
           {menus.length === 0 && (
-            <p className="text-owner-muted">No menus yet. Create one in the left panel.</p>
+            <p className="text-owner-muted">No menus available yet.</p>
           )}
           {menus.length > 0 && selectedMenu && (
             <MenuSection
@@ -768,6 +806,303 @@ export function MenuTab({ restaurantId, token }) {
           )}
         </section>
       </div>
+
+      {/* Mobile: select + + fixed above owner bottom nav (modals use same stack & sit above nav + this bar) */}
+      <div
+        className="pointer-events-none fixed inset-x-0 z-40 border-t border-owner-border/80 bg-owner-paper/95 px-3 py-2 shadow-[0_-2px_12px_rgba(45,36,30,0.07)] backdrop-blur-md md:hidden"
+        style={{ bottom: OWNER_MOBILE_NAV_BOTTOM }}
+      >
+        <div
+          className={`pointer-events-auto mx-auto flex max-w-[1400px] items-center gap-2 ${menus.length > 0 ? "justify-between" : "justify-end"}`}
+        >
+          {menus.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMobileSheet("select-menu")}
+              className="touch-manipulation flex min-h-12 min-w-0 max-w-[min(72vw,calc(100%-3.75rem))] flex-1 items-center gap-2 rounded-2xl border border-owner-border bg-owner-card py-1.5 pl-3 pr-2 shadow-sm ring-1 ring-black/5"
+              aria-label="Select menu"
+              aria-expanded={mobileSheet === "select-menu"}
+              aria-haspopup="dialog"
+            >
+              <div className="min-w-0 flex-1 text-left">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-owner-muted">Select menu</span>
+                <span className="block truncate text-sm font-semibold leading-tight text-owner-charcoal">
+                  {selectedMenu?.name ?? "…"}
+                </span>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width={18}
+                height={18}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="shrink-0 text-owner-muted"
+                aria-hidden
+              >
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileSheet("picker")}
+            className="touch-manipulation flex size-12 shrink-0 items-center justify-center rounded-full bg-owner-action text-white shadow-lg ring-2 ring-white/30"
+            aria-label="Open menu management options"
+            aria-expanded={mobileSheet === "picker"}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="shrink-0">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {mobileSheet === "picker" && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end md:hidden"
+          style={{ paddingBottom: OWNER_MENU_SHEET_ABOVE_NAV }}
+        >
+          <button
+            type="button"
+            className="owner-animate-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-[1px]"
+            aria-label="Close"
+            onClick={() => setMobileSheet(null)}
+          />
+          <div className="owner-animate-modal-sheet relative mt-auto flex max-h-[min(88dvh,92vh)] w-full flex-col rounded-t-2xl border border-owner-border bg-owner-card shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-owner-border px-4 py-3">
+              <p className="text-sm font-semibold text-owner-charcoal">Menu management</p>
+              <button
+                type="button"
+                onClick={() => setMobileSheet(null)}
+                className="touch-manipulation rounded-lg border border-owner-border px-3 py-2 text-sm font-medium text-owner-charcoal hover:bg-owner-paper"
+              >
+                Close
+              </button>
+            </div>
+            <ul className="min-h-0 flex-1 divide-y divide-owner-border overflow-y-auto overscroll-contain pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+              {selectedMenu && (
+                <li>
+                  <button
+                    type="button"
+                    className="touch-manipulation flex w-full min-h-[48px] items-center gap-3 px-4 py-3 text-left text-sm font-medium text-owner-charcoal hover:bg-owner-paper active:bg-owner-paper"
+                    onClick={() => setMobileSheet("main-category")}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-owner-paper text-owner-muted">
+                      <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        <path d="M3 6h18M3 12h12M3 18h18" />
+                      </svg>
+                    </span>
+                    Add main category
+                  </button>
+                </li>
+              )}
+              {selectedMenu && (
+                <li>
+                  <button
+                    type="button"
+                    disabled={mainCategoriesForSelected.length === 0}
+                    className="touch-manipulation flex w-full min-h-[48px] items-center gap-3 px-4 py-3 text-left text-sm font-medium text-owner-charcoal hover:bg-owner-paper active:bg-owner-paper disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
+                    onClick={() => {
+                      if (mainCategoriesForSelected.length === 0) {
+                        showToast("Add a main category first.", "error");
+                        return;
+                      }
+                      setMobileSheet("sub-category");
+                    }}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-owner-paper text-owner-muted">
+                      <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        <path d="M4 7h16M4 12h10M4 17h14" />
+                      </svg>
+                    </span>
+                    Add sub
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {mobileSheet === "select-menu" && menus.length > 0 && (
+        <MenuMobileModal title="Select menu" onClose={() => setMobileSheet(null)}>
+          <div className="space-y-1.5 owner-card rounded-lg p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-owner-muted">Active menu</p>
+            <div className="space-y-1">
+              {menus.map((menu) => (
+                <button
+                  key={menu.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedMenuId(menu.id);
+                    setExpandedCategory(null);
+                    setMobileSheet(null);
+                  }}
+                  className={`w-full rounded-md px-2.5 py-2.5 text-left text-sm font-medium transition-colors touch-manipulation ${
+                    String(selectedMenu?.id) === String(menu.id)
+                      ? "bg-owner-action text-white shadow-sm"
+                      : "text-owner-charcoal hover:bg-owner-paper"
+                  }`}
+                >
+                  {menu.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </MenuMobileModal>
+      )}
+
+      {mobileSheet === "main-category" && selectedMenu && (
+        <MenuMobileModal title="Add main category" onClose={() => setMobileSheet(null)}>
+          <div className="min-w-0 owner-card rounded-lg p-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateCategory(selectedMenu.id, "main");
+              }}
+              className="flex flex-col gap-2.5"
+            >
+              <input
+                type="text"
+                placeholder="Category name *"
+                required
+                value={formData[`cat-main-${selectedMenu.id}`]?.name ?? ""}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-main-${selectedMenu.id}`]: { ...(p[`cat-main-${selectedMenu.id}`] || {}), name: e.target.value },
+                  }))
+                }
+                className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-2 text-sm text-owner-charcoal outline-none focus:ring-2 focus:ring-owner-action"
+              />
+              <textarea
+                placeholder="Description (optional)"
+                value={formData[`cat-main-${selectedMenu.id}`]?.description ?? ""}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-main-${selectedMenu.id}`]: { ...(p[`cat-main-${selectedMenu.id}`] || {}), description: e.target.value },
+                  }))
+                }
+                rows={2}
+                className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-2 text-xs text-owner-charcoal outline-none focus:ring-2 focus:ring-owner-action"
+              />
+              <ImageUploadDropzone
+                id={`mobile-cat-main-img-${selectedMenu.id}`}
+                label="Image"
+                value={formData[`cat-main-${selectedMenu.id}`]?._imageFile}
+                onChange={(file) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-main-${selectedMenu.id}`]: { ...(p[`cat-main-${selectedMenu.id}`] || {}), _imageFile: file ?? undefined },
+                  }))
+                }
+                onError={showToast}
+                className="mt-0.5"
+                maxBytes={MAX_MENU_IMAGE_BYTES}
+                accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
+                dropHint="Drop or click (max 2MB)"
+              />
+              <button
+                type="submit"
+                className="touch-manipulation h-10 w-full rounded-md bg-owner-action px-3 text-sm font-medium text-white hover:opacity-90"
+              >
+                Save category
+              </button>
+            </form>
+          </div>
+        </MenuMobileModal>
+      )}
+
+      {mobileSheet === "sub-category" && selectedMenu && mainCategoriesForSelected.length > 0 && (
+        <MenuMobileModal title="Add sub" onClose={() => setMobileSheet(null)}>
+          <div className="min-w-0 owner-card rounded-lg p-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateCategory(selectedMenu.id, "sub");
+              }}
+              className="flex flex-col gap-2.5"
+            >
+              <input
+                type="text"
+                placeholder="Sub-category name *"
+                required
+                value={formData[`cat-sub-${selectedMenu.id}`]?.name ?? ""}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-sub-${selectedMenu.id}`]: {
+                      ...(p[`cat-sub-${selectedMenu.id}`] || {}),
+                      name: e.target.value,
+                      parent_id: p[`cat-sub-${selectedMenu.id}`]?.parent_id ?? mainCategoriesForSelected[0]?.id,
+                    },
+                  }))
+                }
+                className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-2 text-sm text-owner-charcoal outline-none focus:ring-2 focus:ring-owner-action"
+              />
+              <div>
+                <label className="block text-[10px] font-medium uppercase tracking-wide text-owner-muted">Under main category</label>
+                <select
+                  value={formData[`cat-sub-${selectedMenu.id}`]?.parent_id ?? mainCategoriesForSelected[0]?.id ?? ""}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      [`cat-sub-${selectedMenu.id}`]: {
+                        ...(p[`cat-sub-${selectedMenu.id}`] || {}),
+                        parent_id: e.target.value ? Number(e.target.value) : null,
+                      },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-md border border-owner-border bg-owner-paper px-2.5 py-2 text-xs text-owner-charcoal outline-none focus:ring-2 focus:ring-owner-action"
+                >
+                  {mainCategoriesForSelected.map((mc) => (
+                    <option key={mc.id} value={mc.id}>
+                      {mc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                placeholder="Description (optional)"
+                value={formData[`cat-sub-${selectedMenu.id}`]?.description ?? ""}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-sub-${selectedMenu.id}`]: { ...(p[`cat-sub-${selectedMenu.id}`] || {}), description: e.target.value },
+                  }))
+                }
+                rows={2}
+                className="rounded-md border border-owner-border bg-owner-paper px-2.5 py-2 text-xs text-owner-charcoal outline-none focus:ring-2 focus:ring-owner-action"
+              />
+              <ImageUploadDropzone
+                id={`mobile-cat-sub-img-${selectedMenu.id}`}
+                label="Image"
+                value={formData[`cat-sub-${selectedMenu.id}`]?._imageFile}
+                onChange={(file) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [`cat-sub-${selectedMenu.id}`]: { ...(p[`cat-sub-${selectedMenu.id}`] || {}), _imageFile: file ?? undefined },
+                  }))
+                }
+                onError={showToast}
+                className="mt-0.5"
+                maxBytes={MAX_MENU_IMAGE_BYTES}
+                accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
+                dropHint="Drop or click (max 2MB)"
+              />
+              <button
+                type="submit"
+                className="touch-manipulation h-10 w-full rounded-md bg-owner-action px-3 text-sm font-medium text-white hover:opacity-90"
+              >
+                Save sub-category
+              </button>
+            </form>
+          </div>
+        </MenuMobileModal>
+      )}
     </div>
   );
 }
@@ -801,14 +1136,31 @@ function MenuSection({
   imageCacheBust = 0,
 }) {
   const [categories, setCategories] = useState([]);
-  const [loadingCat, setLoadingCat] = useState(false);
+  const [loadingCat, setLoadingCat] = useState(true);
+  const [categoriesRefreshing, setCategoriesRefreshing] = useState(false);
+  const categoriesSyncedLenRef = useRef(0);
 
   useEffect(() => {
-    setLoadingCat(true);
-    loadCategories(menu.id).then((cats) => {
-      setCategories(flattenCategories(Array.isArray(cats) ? cats : toArray(cats)));
+    let cancelled = false;
+    const hadData = categoriesSyncedLenRef.current > 0;
+    if (hadData) {
+      setCategoriesRefreshing(true);
       setLoadingCat(false);
+    } else {
+      setLoadingCat(true);
+      setCategoriesRefreshing(false);
+    }
+    loadCategories(menu.id).then((cats) => {
+      if (cancelled) return;
+      const flat = flattenCategories(Array.isArray(cats) ? cats : toArray(cats));
+      setCategories(flat);
+      categoriesSyncedLenRef.current = flat.length;
+      setLoadingCat(false);
+      setCategoriesRefreshing(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [menu.id, loadCategories, categoriesRefreshTrigger]);
 
   const mainCategories = Array.isArray(categories) ? categories.filter((c) => !c.parent_id).sort(sortByOrder) : [];
@@ -818,8 +1170,8 @@ function MenuSection({
       : [];
 
   return (
-    <div className="owner-card rounded-xl shadow-sm">
-      <div className="flex items-center justify-between p-4 md:p-5">
+    <div className="min-w-0 md:owner-card md:rounded-xl">
+      <div className="flex items-center justify-between px-0 py-2 md:px-5 md:py-5">
         {editing === `menu-${menu.id}` ? (
           <div className="flex flex-1 gap-2">
             <input
@@ -864,13 +1216,17 @@ function MenuSection({
         )}
       </div>
 
-      <div className="border-t border-owner-border p-4 md:p-6 lg:p-6">
+      <div className="border-t border-owner-border px-0 py-3 md:px-6 md:py-6">
         {loadingCat ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading...</p>
         ) : (
-          <div className="space-y-3 lg:space-y-4">
+          <div
+            className={`space-y-3 lg:space-y-4 transition-opacity duration-300 ease-out ${
+              categoriesRefreshing ? "pointer-events-none opacity-55" : "opacity-100"
+            }`}
+          >
             <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Tap a category to expand it. Drag items from one category card to another to move them.
+              Tap a category to expand it. Drag items to reorder within a category or move them to another category.
             </p>
             {Array.isArray(categories) && categories.length > 0 ? (
               <div data-menu-inner="accordion-main-and-subcategories" className="space-y-4">
@@ -983,21 +1339,38 @@ function CategorySection({
 }) {
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [itemsRefreshing, setItemsRefreshing] = useState(false);
+  const itemsLenRef = useRef(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [draggingItemId, setDraggingItemId] = useState(null);
+  const [itemDropIndicator, setItemDropIndicator] = useState(null); // { id, after }
   const newItemNameInputRef = useRef(null);
   const [shouldFocusNewItem, setShouldFocusNewItem] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(true);
 
   const imageUrl = (url) => (url && imageCacheBust ? `${url}${url.includes("?") ? "&" : "?"}v=${imageCacheBust}` : url);
 
   useEffect(() => {
-    if (expandedCategory === category.id) {
+    if (expandedCategory !== category.id) return;
+    let cancelled = false;
+    const hadItems = itemsLenRef.current > 0;
+    if (hadItems) {
+      setItemsRefreshing(true);
+      setLoadingItems(false);
+    } else {
       setLoadingItems(true);
-      loadItems(category.id).then((its) => {
-        setItems(its);
-        setLoadingItems(false);
-      });
+      setItemsRefreshing(false);
     }
+    loadItems(category.id).then((its) => {
+      if (cancelled) return;
+      setItems(its);
+      itemsLenRef.current = its.length;
+      setLoadingItems(false);
+      setItemsRefreshing(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [expandedCategory, category.id, loadItems, refreshTrigger]);
 
   useEffect(() => {
@@ -1058,6 +1431,61 @@ function CategorySection({
 
   const handleItemDragEnd = () => {
     setDraggingItemId(null);
+    setItemDropIndicator(null);
+  };
+
+  const handleItemRowDragOver = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.dataTransfer.types.includes("application/json")) return;
+    e.dataTransfer.dropEffect = "move";
+    const rect = e.currentTarget.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    setItemDropIndicator({ id: item.id, after });
+  };
+
+  const handleItemRowDragLeave = (e, itemId) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setItemDropIndicator((cur) => (cur?.id === itemId ? null : cur));
+    }
+  };
+
+  const handleItemRowDrop = (e, targetItem, targetIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setItemDropIndicator(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("application/json") || "{}");
+      if (data.type === "category") {
+        if (data.categoryId && data.categoryId !== category.id && onMoveCategory) {
+          const newParentId = parentCategory ? parentCategory.id : category.id;
+          onMoveCategory(data.categoryId, newParentId, undefined);
+        }
+        return;
+      }
+      if (!data.itemId || data.categoryId == null) return;
+
+      if (data.categoryId !== category.id) {
+        if (onMoveItem) onMoveItem(data.itemId, data.categoryId, category.id);
+        return;
+      }
+
+      if (!onReorderItem) return;
+      const fromIndex = items.findIndex((i) => String(i.id) === String(data.itemId));
+      if (fromIndex === -1) return;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const insertAfter = e.clientY > rect.top + rect.height / 2;
+      const newOrder = computeNewItemSortOrder(
+        items.map((i) => i.id),
+        fromIndex,
+        targetIndex,
+        insertAfter,
+      );
+      if (newOrder == null || newOrder === fromIndex + 1) return;
+      void onReorderItem(category.id, data.itemId, newOrder);
+    } catch (_) {}
   };
 
   const handleCategoryDragStart = (e) => {
@@ -1254,30 +1682,52 @@ function CategorySection({
           </div>
         </div>
       )}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
-          {loadingItems ? (
+      <div
+        className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className={`min-h-0 overflow-hidden ${!isExpanded ? "pointer-events-none" : ""}`}>
+          <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
+          {loadingItems && items.length === 0 ? (
             <p className="mb-4 text-xs text-zinc-500">Loading items...</p>
           ) : (
-            <>
+            <div
+              className={`transition-opacity duration-300 ease-out ${
+                itemsRefreshing ? "pointer-events-none opacity-55" : "opacity-100"
+              }`}
+            >
               <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Drag items to another category to move them.
+                Drag items to reorder in this list, or onto another category to move them.
               </p>
               <ul className="mb-4 space-y-3">
               {items.map((item, itemIndex) => {
                 const editData = formData[`edit-item-${item.id}`] ?? item;
+                const isRowDropTarget =
+                  itemDropIndicator && String(itemDropIndicator.id) === String(item.id);
+                const isEditingItem = editing === `item-${item.id}`;
                 return (
                   <li
                     key={item.id}
-                    draggable={editing !== `item-${item.id}`}
-                    onDragStart={editing !== `item-${item.id}` ? (e) => handleItemDragStart(e, item) : undefined}
-                    onDragEnd={editing !== `item-${item.id}` ? handleItemDragEnd : undefined}
-                    className={`rounded-lg border border-owner-border bg-owner-paper/40 p-3 ${
-                      editing !== `item-${item.id}` ? "cursor-grab active:cursor-grabbing" : ""
-                    } ${draggingItemId === item.id ? "opacity-50" : ""}`}
+                    draggable={!isEditingItem}
+                    onDragStart={!isEditingItem ? (e) => handleItemDragStart(e, item) : undefined}
+                    onDragEnd={!isEditingItem ? handleItemDragEnd : undefined}
+                    onDragOver={(e) => handleItemRowDragOver(e, item)}
+                    onDragLeave={(e) => handleItemRowDragLeave(e, item.id)}
+                    onDrop={(e) => handleItemRowDrop(e, item, itemIndex)}
+                    className={`rounded-lg border border-owner-border bg-owner-paper/40 p-3 transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                      !isEditingItem ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${isEditingItem ? "bg-owner-card shadow-lg ring-2 ring-owner-action/30" : ""} ${
+                      draggingItemId === item.id ? "opacity-50" : ""
+                    } ${isRowDropTarget && !isEditingItem ? "ring-2 ring-inset ring-emerald-500" : ""}`}
                   >
-                    {editing === `item-${item.id}` ? (
-                      <div className="space-y-3">
+                    <div
+                      className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                        isEditingItem ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                      }`}
+                    >
+                      <div className={`min-h-0 ${!isEditingItem ? "pointer-events-none" : ""}`}>
+                        <div className="space-y-3 pb-0.5">
                         {(editData._imageFile || item.image_url) && (
                           <div className="flex items-center gap-3">
                             <img
@@ -1555,8 +2005,15 @@ function CategorySection({
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    </div>
+                    </div>
+                    <div
+                      className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                        isEditingItem ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+                      }`}
+                    >
+                      <div className={`min-h-0 ${isEditingItem ? "pointer-events-none" : ""}`}>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         {/* Left: image + text */}
                         <div className="flex min-w-0 flex-1 items-start gap-3">
                           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-owner-paper flex items-center justify-center">
@@ -1669,13 +2126,44 @@ function CategorySection({
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  </div>
                   </li>
                 );
               })}
               </ul>
-            </>
-          )}
+              <div className="overflow-hidden rounded-xl border border-dashed border-owner-border/70 bg-owner-paper/40 transition-[box-shadow,border-color] duration-300 hover:border-owner-action/40">
+                <button
+                  type="button"
+                  onClick={() => setAddItemOpen((o) => !o)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-owner-paper/60"
+                  aria-expanded={addItemOpen}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide text-owner-charcoal">
+                    Add new item
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={18}
+                    height={18}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`shrink-0 text-owner-muted transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${addItemOpen ? "rotate-180" : ""}`}
+                    aria-hidden
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                <div
+                  className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                    addItemOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  }`}
+                >
+                  <div className="min-h-0">
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -1683,12 +2171,13 @@ function CategorySection({
                 await onCreateItem(category.id, e);
                 const list = await loadItems(category.id);
                 setItems(list);
+                itemsLenRef.current = list.length;
                 setShouldFocusNewItem(true);
               } catch (_) {
                 // Validation or API error already handled by parent
               }
             }}
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-3 border-t border-owner-border px-3 pb-3 pt-2"
           >
             <div className="flex flex-wrap gap-2">
               <input
@@ -1931,8 +2420,14 @@ function CategorySection({
               Add Item
             </button>
           </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

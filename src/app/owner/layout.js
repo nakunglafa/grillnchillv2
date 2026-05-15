@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { isOwner } from "@/lib/owner-utils";
 import { OwnerRefreshProvider } from "@/context/OwnerRefreshContext";
+import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
 import { EVENTS } from "@/context/RealTimeNotificationContext";
 
 function OwnerLayoutInner({ children }) {
@@ -31,7 +32,7 @@ function OwnerLayoutInner({ children }) {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) {
-      router.replace("/login?redirect=/owner/dashboard");
+      router.replace(`/login?redirect=${encodeURIComponent(ownerPrimaryDashboardHref())}`);
       return;
     }
     if (!isOwner(user)) {
@@ -80,7 +81,7 @@ function OwnerLayoutInner({ children }) {
         <header className="sticky top-0 z-40 h-[60px] border-b border-owner-walnut/20 bg-owner-walnut">
           <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
             <Link
-              href="/owner/dashboard"
+              href={ownerPrimaryDashboardHref()}
               className="touch-manipulation min-h-[44px] inline-flex items-center gap-2 text-lg md:text-base font-semibold text-owner-nav"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-owner-nav">

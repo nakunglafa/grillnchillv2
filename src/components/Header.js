@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { getRestaurant } from "@/lib/api";
 import { isOwner } from "@/lib/owner-utils";
+import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
 import { CartDrawer } from "@/components/CartDrawer";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
@@ -223,7 +224,7 @@ export function Header({ variant = "default" }) {
               Menus
             </Link>
             <Link href="/book" className={navLink}>
-              Book
+              Reservation
             </Link>
           </nav>
         )}
@@ -252,7 +253,7 @@ export function Header({ variant = "default" }) {
                 Menu
               </Link>
               <Link href="/book" className={navLink}>
-                Book a Table
+                Reservation
               </Link>
               {loading ? (
                 <span className="text-sm text-wood-600">...</span>
@@ -307,7 +308,7 @@ export function Header({ variant = "default" }) {
                       </Link>
                       {isOwner(user) && (
                         <Link
-                          href="/owner/dashboard"
+                          href={ownerPrimaryDashboardHref()}
                           onClick={() => setAccountMenuOpen(false)}
                           className="block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-accent hover:bg-white/80 hover:text-accent-hover"
                         >
@@ -347,16 +348,11 @@ export function Header({ variant = "default" }) {
           )}
 
           {siteChrome && !loading && isAuthenticated && (
-            <>
-              <Link
-                href="/orders"
-                className="hidden rounded-sm px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/90 hover:text-accent xl:inline"
-              >
-                Orders
-              </Link>
-              <Link
-                href="/profile"
-                className="hidden rounded-sm px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/90 hover:text-accent xl:inline"
+            <div className="relative hidden xl:block" ref={accountMenuRef}>
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/90 hover:bg-white/10 hover:text-accent transition-colors"
               >
                 <span
                   className={user?.name ? "notranslate" : undefined}
@@ -364,8 +360,64 @@ export function Header({ variant = "default" }) {
                 >
                   {user?.name ? user.name.split(" ")[0] : "Account"}
                 </span>
-              </Link>
-            </>
+                <svg
+                  className={`h-3 w-3 transition-transform ${accountMenuOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.167l3.71-3.936a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-lg border border-white/20 bg-wood-50 p-1.5 shadow-xl">
+                  <Link
+                    href="/profile"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-wood-700 hover:bg-white/80 hover:text-accent"
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    href="/reservations"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-wood-700 hover:bg-white/80 hover:text-accent"
+                  >
+                    My Reservations
+                  </Link>
+                  <Link
+                    href="/orders"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-wood-700 hover:bg-white/80 hover:text-accent"
+                  >
+                    My Orders
+                  </Link>
+                  {isOwner(user) && (
+                    <Link
+                      href={ownerPrimaryDashboardHref()}
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-accent hover:bg-white/80 hover:text-accent-hover"
+                    >
+                      Owner Dashboard
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      logout();
+                    }}
+                    className="mt-1 block w-full rounded-md px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.12em] text-wood-700 hover:bg-white/80 hover:text-accent"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           {siteChrome && !loading && !isAuthenticated && (
             <Link
@@ -413,7 +465,7 @@ export function Header({ variant = "default" }) {
                   Menus
                 </Link>
                 <Link href="/book" className="text-base font-medium text-white" onClick={closeMenu}>
-                  Book
+                  Reservation
                 </Link>
                 <div className="flex gap-4 border-t border-white/10 pt-4 text-white">
                   <SocialRow socialLinks={socialLinks} />
@@ -444,7 +496,7 @@ export function Header({ variant = "default" }) {
                   Menu
                 </Link>
                 <Link href="/book" className="text-base font-medium text-wood-900" onClick={closeMenu}>
-                  Book a Table
+                  Reservation
                 </Link>
               </>
             )}
@@ -453,12 +505,28 @@ export function Header({ variant = "default" }) {
             ) : isAuthenticated ? (
               siteChrome ? (
                 <>
+                  {isOwner(user) && (
+                    <Link
+                      href={ownerPrimaryDashboardHref()}
+                      className="text-base font-medium text-accent"
+                      onClick={closeMenu}
+                    >
+                      Owner Dashboard
+                    </Link>
+                  )}
+                  <Link
+                    href="/reservations"
+                    className="text-base font-medium text-white/90"
+                    onClick={closeMenu}
+                  >
+                    My Reservations
+                  </Link>
                   <Link
                     href="/orders"
                     className="text-base font-medium text-white/90"
                     onClick={closeMenu}
                   >
-                    Orders
+                    My Orders
                   </Link>
                   <Link
                     href="/profile"
@@ -469,15 +537,25 @@ export function Header({ variant = "default" }) {
                       className={user?.name ? "notranslate" : undefined}
                       translate={user?.name ? "no" : undefined}
                     >
-                      {user?.name ? user.name.split(" ")[0] : "Account"}
+                      {user?.name || "Profile"}
                     </span>
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      closeMenu();
+                    }}
+                    className="w-full text-left text-base font-medium text-white/90"
+                  >
+                    Logout
+                  </button>
                 </>
               ) : (
                 <>
                   {isOwner(user) && (
                     <Link
-                      href="/owner/dashboard"
+                      href={ownerPrimaryDashboardHref()}
                       className="text-base font-medium text-accent"
                       onClick={closeMenu}
                     >

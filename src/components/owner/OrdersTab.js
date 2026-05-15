@@ -6,6 +6,8 @@ import { getRestaurantOrders, updateOrderStatus } from "@/lib/api";
 import { Toast } from "@/components/Toast";
 import { toArray, getOrderLineItems, getLineItemDisplayName, getLineItemRowTotal } from "@/lib/owner-utils";
 import { formatCurrencyEUROrDash as formatPrice } from "@/lib/format-currency";
+import { EstimatedReadyMinutesForm } from "@/components/owner/EstimatedReadyMinutesForm";
+import { printOrderKitchenReceipt } from "@/lib/order-receipt-print";
 
 // API-supported status values (confirmed = accept, rejected = reject)
 const STATUS_OPTIONS = [
@@ -91,6 +93,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
   const [orderView, setOrderView] = useState(ORDER_VIEW.ACTIVE);
+  const [estimateDialog, setEstimateDialog] = useState(null);
 
   const loadOrders = useCallback((silent = false, cacheBust = false) => {
     if (!token || !restaurantId) return;
@@ -136,7 +139,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
     loadOrders(false);
   }, [loadOrders, ordersProp]);
 
-  async function handleStatusChange(orderId, newStatus) {
+  async function handleStatusChange(orderId, newStatus, estimatedMinutes) {
     if (!token || !restaurantId) return;
     let cancellationReason;
     if (newStatus === "cancelled") {
@@ -148,11 +151,22 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
         return;
       }
     }
+
+    let fifthParam;
+    if (newStatus === "cancelled") {
+      fifthParam = cancellationReason;
+    } else if (
+      (newStatus === "confirmed" || newStatus === "preparing") &&
+      estimatedMinutes != null
+    ) {
+      fifthParam = { estimated_ready_minutes: estimatedMinutes };
+    }
+
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
     try {
-      await updateOrderStatus(token, restaurantId, orderId, newStatus, cancellationReason);
+      await updateOrderStatus(token, restaurantId, orderId, newStatus, fifthParam);
       if (onRefresh) onRefresh();
       else loadOrders(true, true);
     } catch (err) {
@@ -286,8 +300,29 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                 className="mb-4 w-full break-inside-avoid overflow-hidden rounded-xl border border-owner-border bg-owner-card shadow-sm transition-shadow hover:shadow-md"
               >
                 {/* Status-colored top: total + status (no table layout) */}
-                <div className={`px-4 py-3 sm:px-5 sm:py-4 ${bannerClass}`}>
-                  <div className="flex flex-col gap-3">
+                <div className={`relative px-4 py-3 sm:px-5 sm:py-4 ${bannerClass}`}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      printOrderKitchenReceipt({
+                        ...order,
+                        restaurant_id: order.restaurant_id ?? restaurantId,
+                      })
+                    }
+                    className="absolute right-3 top-3 z-10 flex h-9 w-9 touch-manipulation items-center justify-center rounded-lg border border-white/35 bg-white/15 text-white shadow-md hover:bg-white/25"
+                    title="Print receipt (80 mm thermal — choose Epson TM-m30 in print dialog)"
+                    aria-label="Print order receipt"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                      />
+                    </svg>
+                  </button>
+                  <div className="flex flex-col gap-3 pr-10">
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-white/85">
                         Order #{order.id}
@@ -304,7 +339,14 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                       <select
                         id={`order-status-${order.id}`}
                         value={statusValue}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "confirmed" || v === "preparing") {
+                            setEstimateDialog({ orderId: order.id, newStatus: v });
+                            return;
+                          }
+                          handleStatusChange(order.id, v);
+                        }}
                         className="touch-manipulation h-11 w-full rounded-lg border-0 bg-white/95 px-3 text-sm font-semibold text-slate-900 shadow-md outline-none ring-2 ring-white/30 focus:ring-4 focus:ring-white/50"
                       >
                         {getOptionsForOrder(order).map((s) => (
@@ -322,6 +364,18 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                     <span className="font-medium text-owner-charcoal">Placed</span>{" "}
                     {formatOrderDateTime(order)}
                   </p>
+                  {(order.estimated_ready_minutes != null || order.estimated_ready_at) && (
+                    <p className="mt-1 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                      Est. ready
+                      {order.estimated_ready_minutes != null ? ` ~${order.estimated_ready_minutes} min` : ""}
+                      {order.estimated_ready_at
+                        ? ` · ${new Date(order.estimated_ready_at).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}`
+                        : ""}
+                    </p>
+                  )}
 
                   <div className="rounded-lg border border-owner-border/70 bg-owner-paper/40 p-3 sm:p-4 space-y-3">
                     <div className="min-w-0">
@@ -415,6 +469,27 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
             );
           })}
         </ul>
+      )}
+      {estimateDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="owner-animate-modal-backdrop absolute inset-0 bg-black/50" aria-hidden />
+          <div className="owner-animate-modal-center relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">
+            <h3 className="text-base font-bold text-owner-charcoal">Update order status</h3>
+            <p className="mt-1 text-sm text-owner-muted">
+              Setting to <strong className="text-owner-charcoal">{estimateDialog.newStatus.replace(/_/g, " ")}</strong>
+              . Optionally tell the customer how long to wait.
+            </p>
+            <EstimatedReadyMinutesForm
+              className="mt-4"
+              onCancel={() => setEstimateDialog(null)}
+              onConfirm={(min) => {
+                const { orderId, newStatus } = estimateDialog;
+                setEstimateDialog(null);
+                handleStatusChange(orderId, newStatus, min);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

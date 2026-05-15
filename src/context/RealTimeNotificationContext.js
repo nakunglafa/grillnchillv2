@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useCallback, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { isOwner } from "@/lib/owner-utils";
 import { createEcho } from "@/lib/echo";
@@ -31,6 +31,91 @@ export function RealTimeNotificationProvider({ children }) {
   const userChannelRef = useRef(null);
   const restaurantChannelsRef = useRef([]);
   const initializedKeyRef = useRef(null);
+
+  const [notifications, setNotifications] = useState([]);
+
+  const markAsRead = useCallback((id) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  }, []);
+
+  const markAllAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  // Listen to window events to populate the notifications array
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const getReservationKey = (d) => {
+      const id = d?.id ?? d?.booking_id ?? d?.reservation_id ?? d?.data?.id ?? d?.data?.reservation_id ?? d?.reservation?.id;
+      if (id != null && id !== "") return `reservation-${id}`;
+      return `reservation-${d?.restaurant_id ?? ""}-${d?.reservation_date ?? ""}-${d?.reservation_time ?? ""}`;
+    };
+
+    const getOrderKey = (d) => {
+      const id = d?.id ?? d?.order_id ?? d?.table_order_id ?? d?.data?.id ?? d?.data?.order_id ?? d?.order?.id;
+      if (id != null && id !== "") return `order-${id}`;
+      return `order-${d?.restaurant_id ?? ""}-${Date.now()}`;
+    };
+
+    const handleNewReservation = (e) => {
+      const detail = e.detail ?? {};
+      const key = getReservationKey(detail);
+      setNotifications((prev) => {
+        if (prev.some((n) => n.type === "reservation" && n.dedupeKey === key)) return prev;
+        const id = `res-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        return [{ id, dedupeKey: key, type: "reservation", detail, read: false, createdAt: new Date().toISOString() }, ...prev];
+      });
+    };
+
+    const handleNewOrder = (e) => {
+      const detail = e.detail ?? {};
+      const key = getOrderKey(detail);
+      setNotifications((prev) => {
+        if (prev.some((n) => n.type === "order" && n.dedupeKey === key)) return prev;
+        const id = `ord-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        return [{ id, dedupeKey: key, type: "order", detail, read: false, createdAt: new Date().toISOString() }, ...prev];
+      });
+    };
+
+    const handleReservationUpdated = (e) => {
+      const detail = e.detail ?? {};
+      const status = detail.status || detail.state || "updated";
+      const key = getReservationKey(detail) + "-update-" + status + "-" + Date.now();
+      
+      setNotifications((prev) => {
+        const id = `res-upd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        return [{ id, dedupeKey: key, type: "reservation-update", detail, read: false, createdAt: new Date().toISOString() }, ...prev];
+      });
+    };
+
+    const handleOrderUpdated = (e) => {
+      const detail = e.detail ?? {};
+      const status = detail.status || detail.order_status || detail.state || "updated";
+      const key = getOrderKey(detail) + "-update-" + status + "-" + Date.now();
+      
+      setNotifications((prev) => {
+        const id = `ord-upd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        return [{ id, dedupeKey: key, type: "order-update", detail, read: false, createdAt: new Date().toISOString() }, ...prev];
+      });
+    };
+
+    window.addEventListener(EVENTS.NEW_RESERVATION, handleNewReservation);
+    window.addEventListener(EVENTS.NEW_ORDER, handleNewOrder);
+    window.addEventListener(EVENTS.RESERVATION_UPDATED, handleReservationUpdated);
+    window.addEventListener(EVENTS.ORDER_UPDATED, handleOrderUpdated);
+
+    return () => {
+      window.removeEventListener(EVENTS.NEW_RESERVATION, handleNewReservation);
+      window.removeEventListener(EVENTS.NEW_ORDER, handleNewOrder);
+      window.removeEventListener(EVENTS.RESERVATION_UPDATED, handleReservationUpdated);
+      window.removeEventListener(EVENTS.ORDER_UPDATED, handleOrderUpdated);
+    };
+  }, []);
 
   /**
    * Clean up a specific Echo instance. Pass the instance to avoid disconnecting
@@ -67,13 +152,9 @@ export function RealTimeNotificationProvider({ children }) {
     if (typeof window === "undefined") return;
     // Wait for auth to be fully resolved (token validated via getCurrentUser)
     if (authLoading) {
-      if (DEBUG) console.log("[Notifications] Waiting for auth to load...");
       return;
     }
     if (!isAuthenticated || !token || !user || !user.id || !isOwner(user)) {
-      if (DEBUG && isAuthenticated && user && !isOwner(user)) {
-        console.log("[Notifications] User is not owner/super-admin, skipping:", user.role ?? user.role_id);
-      }
       const prevEcho = echoRef.current;
       const prevChannels = [...restaurantChannelsRef.current];
       const prevUserCh = userChannelRef.current;
@@ -89,7 +170,6 @@ export function RealTimeNotificationProvider({ children }) {
     const userId = user.id;
     const initKey = `${userId}:${String(token).slice(-16)}`;
     if (echoRef.current && initializedKeyRef.current === initKey) {
-      if (DEBUG) console.log("[Notifications] Echo already initialized for current user/token, skipping re-init.");
       return;
     }
     // Must use echo.private() for private channels - it triggers auth to /broadcasting/auth.
@@ -119,17 +199,14 @@ export function RealTimeNotificationProvider({ children }) {
       const key = getReservationKey(flat);
       const now = Date.now();
       if (recentReservationKeys.has(key) && now - recentReservationKeys.get(key) < DEDUPE_MS) {
-        if (DEBUG) console.log("[Notifications] Skipping duplicate reservation:", key);
         return;
       }
       recentReservationKeys.set(key, now);
       setTimeout(() => recentReservationKeys.delete(key), DEDUPE_MS);
-      if (DEBUG) console.log("[Notifications] New reservation received:", payload);
       window.dispatchEvent(new CustomEvent(EVENTS.NEW_RESERVATION, { detail: flat }));
     };
 
     const dispatchReservationUpdated = (payload) => {
-      if (DEBUG) console.log("[Notifications] Reservation updated:", payload);
       const detail = payload?.data ?? payload ?? {};
       window.dispatchEvent(new CustomEvent(EVENTS.RESERVATION_UPDATED, { detail }));
     };
@@ -142,7 +219,6 @@ export function RealTimeNotificationProvider({ children }) {
       return `order-${d?.restaurant_id ?? ""}-${Date.now()}`;
     };
     const dispatchOrder = (payload, channelRestaurantId) => {
-      if (DEBUG) console.log("[Notifications] New order received:", payload);
       // Laravel broadcasts new.order with { order: {...} }; also support { data: { order } }
       let order = payload?.order ?? payload?.table_order ?? payload?.data?.order ?? payload?.data ?? payload ?? {};
       if (order && typeof order === "object" && order.order) order = order.order;
@@ -153,7 +229,6 @@ export function RealTimeNotificationProvider({ children }) {
       const key = getOrderKey(detail);
       const now = Date.now();
       if (recentOrderKeys.has(key) && now - recentOrderKeys.get(key) < DEDUPE_MS) {
-        if (DEBUG) console.log("[Notifications] Skipping duplicate order:", key);
         return;
       }
       recentOrderKeys.set(key, now);
@@ -162,7 +237,6 @@ export function RealTimeNotificationProvider({ children }) {
     };
 
     const dispatchOrderUpdated = (payload) => {
-      if (DEBUG) console.log("[Notifications] Order updated:", payload);
       const detail = payload?.data ?? payload ?? {};
       window.dispatchEvent(new CustomEvent(EVENTS.ORDER_UPDATED, { detail }));
     };
@@ -235,9 +309,6 @@ export function RealTimeNotificationProvider({ children }) {
         .listen("Illuminate\\Notifications\\Events\\BroadcastNotificationCreated", handleLaravelNotification)
         .notification(handleNotification);
 
-      userChannel.on("pusher:subscription_succeeded", () => {
-        if (DEBUG) console.log("[Notifications] Subscribed to user channel: private-" + userChannelName);
-      });
       userChannel.on("pusher:subscription_error", (err) => {
         if (DEBUG) console.error("[Notifications] User channel subscription failed:", err);
       });
@@ -268,7 +339,6 @@ export function RealTimeNotificationProvider({ children }) {
 
         // Orders: API docs say event name is ".new.order" on private-restaurant.{id} (OrderPlacedEvent)
         const orderHandler = (payload) => {
-          if (DEBUG) console.log("[Notifications] Order event received on restaurant channel", restaurantId, payload);
           injectRestaurantIdOrder(payload);
         };
         // Reservations: API docs say ".ReservationCreated" on restaurant channel; also new.reservation
@@ -315,17 +385,11 @@ export function RealTimeNotificationProvider({ children }) {
             dispatchReservationUpdated(detail);
           });
 
-        ch.on("pusher:subscription_succeeded", () => {
-          if (DEBUG) console.log("[Notifications] Subscribed to restaurant channel: private-" + chName);
-        });
         ch.on("pusher:subscription_error", (err) => {
           if (DEBUG) console.warn("[Notifications] Restaurant channel subscription failed:", chName, err);
         });
       });
 
-      if (DEBUG) {
-        console.log("[Notifications] Subscribed to user +", restaurantIds?.length ?? 0, "restaurant channel(s). Waiting for events...");
-      }
     });
 
     return () => {
@@ -348,7 +412,7 @@ export function RealTimeNotificationProvider({ children }) {
   }, [authLoading, isAuthenticated, token, user?.id, user?.role, cleanupEcho]);
 
   return (
-    <RealTimeNotificationContext.Provider value={{}}>
+    <RealTimeNotificationContext.Provider value={{ notifications, markAsRead, markAllAsRead, clearNotifications }}>
       {children}
     </RealTimeNotificationContext.Provider>
   );

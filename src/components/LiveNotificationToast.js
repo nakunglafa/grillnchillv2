@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { EVENTS } from "@/context/RealTimeNotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { updateOrderStatus, updateReservationStatus } from "@/lib/api";
 import { NotificationStack } from "@/components/NotificationStack";
 import { getOrderLineItems, getLineItemDisplayName } from "@/lib/owner-utils";
 import { formatCurrencyEUROrDash } from "@/lib/format-currency";
+import { EstimatedReadyMinutesForm } from "@/components/owner/EstimatedReadyMinutesForm";
+import { tryShowOwnerDeviceNotification } from "@/lib/owner-device-notifications";
+import { printOrderKitchenReceipt } from "@/lib/order-receipt-print";
 
 /** Extract restaurant ID from /owner/dashboard/[id] path when on owner dashboard */
 function getRestaurantIdFromPath() {
@@ -15,43 +19,90 @@ function getRestaurantIdFromPath() {
   return m ? m[1] : null;
 }
 
+function ownerDashboardPath(detail) {
+  const rid = detail?.restaurant_id ?? detail?.restaurant?.id ?? getRestaurantIdFromPath();
+  return rid != null && rid !== "" ? `/owner/dashboard/${rid}` : "/owner";
+}
+
+/** Same nav height as MenuTab (4rem + safe area) + ~1.5rem gap so toasts clear the tab bar */
+const OWNER_NOTIF_STACK_CLASS =
+  "!max-sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] max-sm:!pb-0";
+
 /**
  * Centralized live notification stack: food orders and table reservations.
  * All events appear in one stack, bottom-right (desktop) / bottom with margin (mobile).
  * Newest on top, stacked like social site popups.
  */
 export function LiveNotificationToast() {
+  const pathname = usePathname();
   const [toasts, setToasts] = useState([]);
   const ringIntervalRef = useRef(null);
+  const deviceNotifDedupeRef = useRef({ tag: "", at: 0 });
+  const ownerStackClass = pathname?.startsWith("/owner") ? OWNER_NOTIF_STACK_CLASS : "";
+
+  const fireDeviceNotification = useCallback((payload) => {
+    if (typeof window === "undefined") return;
+    const now = Date.now();
+    const { tag } = payload;
+    if (deviceNotifDedupeRef.current.tag === tag && now - deviceNotifDedupeRef.current.at < 500) return;
+    deviceNotifDedupeRef.current = { tag, at: now };
+    void tryShowOwnerDeviceNotification(payload);
+  }, []);
 
   const playNotificationSound = useCallback(() => {
     if (typeof window === "undefined") return;
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      gain.connect(ctx.destination);
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.92, ctx.currentTime);
+      master.connect(ctx.destination);
 
-      // Two-tone ringtone pattern (different from previous short beep).
-      const toneA = ctx.createOscillator();
-      toneA.type = "triangle";
-      toneA.frequency.setValueAtTime(720, ctx.currentTime);
-      toneA.connect(gain);
-      toneA.start(ctx.currentTime);
-      toneA.stop(ctx.currentTime + 0.28);
+      // Ascending major arpeggio + octave partial (bell-like, not a flat beep)
+      const notes = [
+        { f: 587.33, at: 0.0, peak: 0.12 }, // D5
+        { f: 739.99, at: 0.09, peak: 0.14 }, // F#5
+        { f: 880.0, at: 0.18, peak: 0.16 }, // A5
+        { f: 1174.66, at: 0.3, peak: 0.2 }, // D6
+      ];
+      const sustain = 0.38;
 
-      const toneB = ctx.createOscillator();
-      toneB.type = "triangle";
-      toneB.frequency.setValueAtTime(980, ctx.currentTime + 0.32);
-      toneB.connect(gain);
-      toneB.start(ctx.currentTime + 0.32);
-      toneB.stop(ctx.currentTime + 0.68);
+      notes.forEach(({ f, at, peak }) => {
+        const t0 = ctx.currentTime + at;
 
-      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.72);
-      setTimeout(() => ctx.close().catch(() => {}), 900);
+        const body = ctx.createOscillator();
+        body.type = "sine";
+        body.frequency.setValueAtTime(f, t0);
+
+        const bright = ctx.createOscillator();
+        bright.type = "sine";
+        bright.frequency.setValueAtTime(f * 2, t0);
+
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.linearRampToValueAtTime(peak, t0 + 0.022);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + sustain);
+
+        const bLevel = ctx.createGain();
+        bLevel.gain.value = 0.62;
+        const brLevel = ctx.createGain();
+        brLevel.gain.value = 0.38;
+
+        body.connect(bLevel);
+        bright.connect(brLevel);
+        bLevel.connect(env);
+        brLevel.connect(env);
+        env.connect(master);
+
+        body.start(t0);
+        bright.start(t0);
+        body.stop(t0 + sustain + 0.06);
+        bright.stop(t0 + sustain + 0.06);
+      });
+
+      const doneMs = Math.ceil((0.32 + sustain + 0.18) * 1000);
+      setTimeout(() => ctx.close().catch(() => {}), doneMs);
     } catch (_) {
       // Ignore autoplay/sound API errors to avoid breaking notifications.
     }
@@ -113,9 +164,16 @@ export function LiveNotificationToast() {
         const id = `res-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const restaurantName = detail.restaurant?.name ?? "Restaurant";
         const customerName = detail.customer_name ?? detail.user?.name ?? "A customer";
+        const message = `${customerName} made a reservation at ${restaurantName}`;
+        fireDeviceNotification({
+          title: "New reservation",
+          body: message,
+          tag: key,
+          url: ownerDashboardPath(detail),
+        });
         return [
           ...prev,
-          { id, dedupeKey: key, type: "reservation", title: "New Reservation", message: `${customerName} made a reservation at ${restaurantName}`, detail, resolved: false },
+          { id, dedupeKey: key, type: "reservation", title: "New Reservation", message, detail, resolved: false },
         ];
       });
     };
@@ -128,9 +186,16 @@ export function LiveNotificationToast() {
         playNotificationSound();
         const id = `ord-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const restaurantName = detail.restaurant_name ?? detail.restaurant?.name ?? "Restaurant";
+        const message = `New order received for ${restaurantName}`;
+        fireDeviceNotification({
+          title: "New order",
+          body: message,
+          tag: key,
+          url: ownerDashboardPath(detail),
+        });
         return [
           ...prev,
-          { id, dedupeKey: key, type: "order", title: "New Order", message: `New order received for ${restaurantName}`, detail, resolved: false },
+          { id, dedupeKey: key, type: "order", title: "New Order", message, detail, resolved: false },
         ];
       });
     };
@@ -158,7 +223,7 @@ export function LiveNotificationToast() {
           detail,
         },
       ]);
-      setTimeout(() => removeToast(id), 8000);
+      setTimeout(() => removeToast(id), 2000);
     };
 
     const handleOrderUpdated = (e) => {
@@ -184,7 +249,7 @@ export function LiveNotificationToast() {
           detail,
         },
       ]);
-      setTimeout(() => removeToast(id), 8000);
+      setTimeout(() => removeToast(id), 2000);
     };
 
     window.addEventListener(EVENTS.NEW_RESERVATION, handleReservation);
@@ -198,7 +263,7 @@ export function LiveNotificationToast() {
       window.removeEventListener(EVENTS.RESERVATION_UPDATED, handleReservationUpdated);
       window.removeEventListener(EVENTS.ORDER_UPDATED, handleOrderUpdated);
     };
-  }, [playNotificationSound, removeToast]);
+  }, [playNotificationSound, removeToast, fireDeviceNotification]);
 
   if (toasts.length === 0) return null;
 
@@ -206,7 +271,7 @@ export function LiveNotificationToast() {
   const ordered = [...toasts].reverse();
 
   return (
-    <NotificationStack>
+    <NotificationStack className={ownerStackClass}>
       {ordered.map((t) =>
         t.type === "reservation-updated" ? (
           <LiveToastItem
@@ -234,6 +299,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
   const [success, setSuccess] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [orderAcceptPicking, setOrderAcceptPicking] = useState(false);
 
   const isReservation = type === "reservation";
   const isActionable = !success && !resolved;
@@ -280,13 +346,10 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
     );
   };
 
-  const handleAction = async (status, cancellationReason) => {
+  const handleAction = async (status, cancellationReason, estimatedReadyMinutes) => {
     setLoading(true);
     setError(null);
     try {
-      if (process.env.NODE_ENV === "development" && detail) {
-        console.log("[LiveNotification] Accept/Reject payload:", { type, detail });
-      }
       const inner = detail?.order ?? detail?.reservation ?? detail?.table_order ?? detail?.data ?? detail;
       const entity = inner?.order ?? inner?.reservation ?? inner?.table_order ?? inner;
       let restaurantId = entity?.restaurant_id ?? inner?.restaurant_id ?? detail?.restaurant_id ?? entity?.restaurant?.id ?? inner?.restaurant?.id ?? detail?.restaurant?.id ?? detail?.data?.restaurant_id;
@@ -309,10 +372,17 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       if (type === "reservation") {
         await updateReservationStatus(token, restaurantId, itemId, status, cancellationReason);
       } else if (type === "order") {
-        await updateOrderStatus(token, restaurantId, itemId, status === "confirmed" ? "confirmed" : "rejected");
+        if (status === "confirmed") {
+          const extra =
+            estimatedReadyMinutes != null ? { estimated_ready_minutes: estimatedReadyMinutes } : {};
+          await updateOrderStatus(token, restaurantId, itemId, "confirmed", extra);
+        } else {
+          await updateOrderStatus(token, restaurantId, itemId, "rejected");
+        }
       }
 
       setSuccess(true);
+      setOrderAcceptPicking(false);
       onResolved?.();
       if (type === "order") {
         window.dispatchEvent(new CustomEvent(EVENTS.ORDER_UPDATED, { detail }));
@@ -352,8 +422,26 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
   return (
     <div
       role="alert"
-      className="relative w-full overflow-hidden rounded-2xl border border-owner-border bg-owner-card p-4 text-left text-owner-charcoal shadow-xl ring-1 ring-black/5"
+      className="relative w-full overflow-hidden rounded-2xl border border-owner-border bg-owner-card p-4 pr-12 text-left text-owner-charcoal shadow-xl ring-1 ring-black/5"
     >
+      {type === "order" && detail && (
+        <button
+          type="button"
+          onClick={() => printOrderKitchenReceipt(detail)}
+          className="absolute right-2 top-2 z-10 flex h-9 w-9 touch-manipulation items-center justify-center rounded-lg border border-owner-border bg-owner-paper text-owner-charcoal shadow-sm hover:bg-white hover:ring-1 hover:ring-owner-border"
+          title="Print receipt (80 mm thermal, e.g. Epson TM-m30 — choose printer in print dialog)"
+          aria-label="Print order receipt"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+            />
+          </svg>
+        </button>
+      )}
       <div className="flex items-center gap-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
@@ -421,21 +509,32 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       )}
 
       {isActionable && (
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={() => handleAction("confirmed")}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
-          >
-            {loading ? "..." : "Accept"}
-          </button>
-          <button
-            onClick={() => (isReservation ? openRejectDialog() : handleAction("rejected"))}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
-          >
-            {loading ? "..." : "Reject"}
-          </button>
+        <div className="mt-4 space-y-3">
+          {type === "order" && orderAcceptPicking ? (
+            <EstimatedReadyMinutesForm
+              disabled={loading}
+              onCancel={() => setOrderAcceptPicking(false)}
+              onConfirm={(min) => handleAction("confirmed", null, min)}
+              className="rounded-xl border border-owner-border bg-owner-paper p-3"
+            />
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => (type === "order" ? setOrderAcceptPicking(true) : handleAction("confirmed"))}
+                disabled={loading}
+                className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "..." : "Accept"}
+              </button>
+              <button
+                onClick={() => (isReservation ? openRejectDialog() : handleAction("rejected"))}
+                disabled={loading}
+                className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "..." : "Reject"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

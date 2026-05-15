@@ -689,8 +689,9 @@ export function ReservationsTab({ restaurantId, reservations: reservationsProp, 
     </div>
 
     {cancelDialogOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="owner-animate-modal-backdrop absolute inset-0 bg-black/50" aria-hidden />
+        <div className="owner-animate-modal-center relative w-full max-w-md rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">
           <h3 className="text-lg font-semibold text-owner-charcoal">Cancel Reservation</h3>
           <p className="mt-1 text-sm text-owner-muted">
             Please enter the cancellation reason. This will be sent to the API and saved.

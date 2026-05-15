@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * Bottom-right toast notification.
  * @param {{ message: string | null; type?: 'error' | 'success' | 'info'; onClose: () => void; duration?: number }} props
  */
-export function Toast({ message, type = "error", onClose, duration = 6000 }) {
+export function Toast({ message, type = "error", onClose, duration: durationProp }) {
+  const pathname = usePathname();
+  const isOwnerRoute = pathname?.startsWith("/owner") ?? false;
+  const duration = durationProp ?? (isOwnerRoute ? 2000 : 6000);
+
   useEffect(() => {
     if (!message) return;
     const t = setTimeout(onClose, duration);
@@ -43,9 +48,13 @@ export function Toast({ message, type = "error", onClose, duration = 6000 }) {
     info: "text-zinc-700 hover:text-zinc-900",
   };
 
+  const mobileBottomClass = isOwnerRoute
+    ? "max-sm:!bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] max-sm:!pb-0"
+    : "max-sm:bottom-6 max-sm:pb-[env(safe-area-inset-bottom)]";
+
   return (
     <div
-      className={`fixed z-[110] max-w-sm rounded-xl p-4 bottom-6 right-6 left-auto max-sm:left-4 max-sm:right-4 max-sm:bottom-6 max-sm:pb-[env(safe-area-inset-bottom)] ${styles[type]}`}
+      className={`fixed z-[110] max-w-sm rounded-xl p-4 bottom-6 right-6 left-auto max-sm:left-4 max-sm:right-4 ${mobileBottomClass} ${styles[type]}`}
       role="alert"
     >
       <div className="flex items-start gap-3">

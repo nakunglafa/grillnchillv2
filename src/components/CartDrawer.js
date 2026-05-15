@@ -3,12 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { useOrderingHours } from "@/context/OrderingHoursContext";
 import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 const DRAWER_TRANSITION_MS = 300;
 
 export function CartDrawer({ open, onClose }) {
   const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate } = useCart();
+  const { orderingAccepting, openingSlots } = useOrderingHours();
+  const checkoutBlocked =
+    Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
   const [isExiting, setIsExiting] = useState(false);
   const timeoutRef = useRef(null);
 
@@ -122,8 +126,13 @@ export function CartDrawer({ open, onClose }) {
                     </div>
                   </div>
                 </li>
-              ))}
-            </ul>
+            ))}
+          </ul>
+          )}
+          {checkoutBlocked && items.length > 0 && (
+            <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-950">
+              Ordering is only available during opening hours. You can review your cart, but checkout is paused until we open.
+            </p>
           )}
         </div>
         {items.length > 0 && (
@@ -132,13 +141,19 @@ export function CartDrawer({ open, onClose }) {
               <span>Total</span>
               <span>{formatPrice(totalAmount)}</span>
             </div>
-            <Link
-              href="/checkout"
-              onClick={handleClose}
-              className="block w-full rounded-xl bg-accent py-3 text-center font-medium text-wood-950 hover:bg-accent-hover transition-colors"
-            >
-              Proceed to Checkout
-            </Link>
+            {checkoutBlocked ? (
+              <span className="block w-full cursor-not-allowed rounded-xl bg-wood-400/50 py-3 text-center font-medium text-wood-700">
+                Checkout unavailable (closed)
+              </span>
+            ) : (
+              <Link
+                href="/checkout"
+                onClick={handleClose}
+                className="block w-full rounded-xl bg-accent py-3 text-center font-medium text-wood-950 hover:bg-accent-hover transition-colors"
+              >
+                Proceed to Checkout
+              </Link>
+            )}
           </div>
         )}
       </div>

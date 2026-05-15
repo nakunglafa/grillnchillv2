@@ -6,6 +6,7 @@ import { isItemSpicy, SpicyIndicator } from "@/components/SpicyIndicator";
 import { toArray } from "@/lib/owner-utils";
 import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
 import { useCart } from "@/context/CartContext";
+import { useOrderingHours } from "@/context/OrderingHoursContext";
 
 function sortBySortOrder(a, b) {
   const ao = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER;
@@ -37,7 +38,7 @@ function createVariantCartItem(item, variant) {
   };
 }
 
-function MenuItemCard({ item, addItem }) {
+function MenuItemCard({ item, addItem, orderingEnabled }) {
   const availableVariants = getAvailableVariants(item);
   const itemAvailable = item?.is_available !== false;
   const hasBasePrice = item?.price != null && item?.price !== "";
@@ -47,9 +48,9 @@ function MenuItemCard({ item, addItem }) {
     : null;
 
   return (
-    <li className="flex gap-3 bg-white/[0.04] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all hover:bg-white/[0.06]">
+    <article className="flex h-full flex-col overflow-hidden bg-white/[0.04] shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all hover:bg-white/[0.06]">
       {item.image_url && (
-        <div className="h-20 w-20 shrink-0 overflow-hidden bg-white/10 ring-1 ring-white/10 sm:h-24 sm:w-24">
+        <div className="aspect-[4/3] w-full shrink-0 overflow-hidden bg-white/10 ring-1 ring-white/10">
           <img
             src={item.image_url}
             alt={item.name ? item.name : "Menu item"}
@@ -57,7 +58,7 @@ function MenuItemCard({ item, addItem }) {
           />
         </div>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col p-3">
         <div className="flex flex-wrap items-start justify-between gap-1.5">
           <span
             className="notranslate flex min-w-0 items-center gap-1 text-[15px] font-sans font-bold leading-tight tracking-[0.01em] text-white"
@@ -77,13 +78,13 @@ function MenuItemCard({ item, addItem }) {
           ) : null}
         </div>
         {item.description && (
-          <p className="mt-1 line-clamp-2 font-sans text-[12px] italic leading-snug text-white/65">{item.description}</p>
+          <p className="mt-1 line-clamp-3 font-sans text-[12px] italic leading-snug text-white/65">{item.description}</p>
         )}
         {item.dietary_info && (
           <p className="mt-1 text-[11px] leading-tight text-white/45">{item.dietary_info}</p>
         )}
         {availableVariants.length > 0 ? (
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2 flex flex-1 flex-col space-y-1.5">
             {availableVariants.map((variant) => (
               <div
                 key={variant?.id ?? `${item?.id}-${variant?.type_name}-${variant?.sort_order}`}
@@ -95,37 +96,41 @@ function MenuItemCard({ item, addItem }) {
                   </p>
                   <p className="text-[13px] font-semibold text-accent">{formatPrice(variant?.price)}</p>
                 </div>
-                {itemAvailable ? (
+                {!orderingEnabled ? (
+                  <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-white/40">Closed</span>
+                ) : itemAvailable ? (
                   <button
                     type="button"
                     onClick={() => addItem(createVariantCartItem(item, variant), 1)}
-                    className="rounded-sm bg-accent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
+                    className="shrink-0 rounded-sm bg-accent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
                   >
                     Add
                   </button>
                 ) : (
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-white/40">Unavailable</span>
+                  <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-white/40">Unavailable</span>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          canAddBase && (
+          !orderingEnabled && canAddBase ? (
+            <p className="mt-auto text-center text-[10px] uppercase tracking-[0.12em] text-white/40">Ordering closed</p>
+          ) : orderingEnabled && canAddBase ? (
             <button
               type="button"
               onClick={() => addItem({ ...item, menu_item_id: item.id }, 1)}
-              className="mt-2 rounded-sm bg-accent px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
+              className="mt-auto rounded-sm bg-accent px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
             >
               Add to Cart
             </button>
-          )
+          ) : null
         )}
       </div>
-    </li>
+    </article>
   );
 }
 
-function SpecialMenuItemCard({ item, addItem }) {
+function SpecialMenuItemCard({ item, addItem, orderingEnabled }) {
   const availableVariants = getAvailableVariants(item);
   const itemAvailable = item?.is_available !== false;
   const hasBasePrice = item?.price != null && item?.price !== "";
@@ -138,9 +143,18 @@ function SpecialMenuItemCard({ item, addItem }) {
     : (item.price != null && item.price !== "" ? formatPrice(item.price) : "");
 
   return (
-    <li className="bg-white/[0.04] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.28)] transition-all hover:bg-white/[0.06]">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
+    <article className="flex h-full flex-col overflow-hidden bg-white/[0.04] shadow-[0_10px_28px_rgba(0,0,0,0.28)] transition-all hover:bg-white/[0.06]">
+      {item.image_url ? (
+        <div className="aspect-[4/3] w-full shrink-0 overflow-hidden bg-white/10 ring-1 ring-white/10">
+          <img
+            src={item.image_url}
+            alt={item.name ? item.name : "Special menu item"}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
+      <div className="flex min-h-0 flex-1 flex-col p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <h3
             className="notranslate flex min-w-0 flex-wrap items-center gap-1.5 font-sans text-lg font-extrabold leading-tight tracking-[0.02em] text-white md:text-xl"
             translate="no"
@@ -149,63 +163,58 @@ function SpecialMenuItemCard({ item, addItem }) {
             {isItemSpicy(item) ? <SpicyIndicator sizeClass="text-lg md:text-xl" /> : null}
           </h3>
           {priceLabel ? (
-            <p className="mt-1 font-sans text-sm font-semibold tracking-[0.01em] text-accent">{priceLabel}</p>
+            <p className="font-sans text-sm font-semibold tracking-[0.01em] text-accent">{priceLabel}</p>
           ) : null}
         </div>
-        {item.image_url ? (
-          <div className="h-18 w-18 shrink-0 overflow-hidden bg-white/10 ring-1 ring-white/10">
-            <img
-              src={item.image_url}
-              alt={item.name ? item.name : "Special menu item"}
-              className="h-full w-full object-cover"
-            />
-          </div>
+
+        {item.description ? (
+          <p className="mt-2 line-clamp-4 font-sans text-[12px] leading-relaxed text-white/68">{item.description}</p>
         ) : null}
-      </div>
 
-      {item.description ? (
-        <p className="mt-2 font-sans text-[12px] leading-relaxed text-white/68">{item.description}</p>
-      ) : null}
-
-      {availableVariants.length > 0 ? (
-        <div className="mt-3 space-y-1.5">
-          {availableVariants.map((variant) => (
-            <div
-              key={variant?.id ?? `${item?.id}-${variant?.type_name}-${variant?.sort_order}`}
-              className="flex items-center justify-between gap-2 bg-white/[0.03] px-2.5 py-1.5"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-sans text-[10px] font-semibold uppercase tracking-[0.08em] text-white/85">
-                  {variant?.type_name}
-                </p>
-                <p className="font-sans text-[13px] font-semibold text-accent">{formatPrice(variant?.price)}</p>
+        {availableVariants.length > 0 ? (
+          <div className="mt-3 flex flex-1 flex-col space-y-1.5">
+            {availableVariants.map((variant) => (
+              <div
+                key={variant?.id ?? `${item?.id}-${variant?.type_name}-${variant?.sort_order}`}
+                className="flex items-center justify-between gap-2 bg-white/[0.03] px-2.5 py-1.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-sans text-[10px] font-semibold uppercase tracking-[0.08em] text-white/85">
+                    {variant?.type_name}
+                  </p>
+                  <p className="font-sans text-[13px] font-semibold text-accent">{formatPrice(variant?.price)}</p>
+                </div>
+                {!orderingEnabled ? (
+                  <span className="shrink-0 font-sans text-[10px] uppercase tracking-[0.12em] text-white/40">Closed</span>
+                ) : itemAvailable ? (
+                  <button
+                    type="button"
+                    onClick={() => addItem(createVariantCartItem(item, variant), 1)}
+                    className="shrink-0 rounded-sm bg-accent px-3 py-1 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
+                  >
+                    Add
+                  </button>
+                ) : (
+                  <span className="shrink-0 font-sans text-[10px] uppercase tracking-[0.12em] text-white/40">Unavailable</span>
+                )}
               </div>
-              {itemAvailable ? (
-                <button
-                  type="button"
-                  onClick={() => addItem(createVariantCartItem(item, variant), 1)}
-                  className="rounded-sm bg-accent px-3 py-1 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
-                >
-                  Add
-                </button>
-              ) : (
-                <span className="font-sans text-[10px] uppercase tracking-[0.12em] text-white/40">Unavailable</span>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        canAddBase && (
-          <button
-            type="button"
-            onClick={() => addItem({ ...item, menu_item_id: item.id }, 1)}
-            className="mt-3 rounded-sm bg-accent px-4 py-2 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
-          >
-            Add to Cart
-          </button>
-        )
-      )}
-    </li>
+            ))}
+          </div>
+        ) : (
+          !orderingEnabled && canAddBase ? (
+            <p className="mt-auto text-center font-sans text-[10px] uppercase tracking-[0.12em] text-white/40">Ordering closed</p>
+          ) : orderingEnabled && canAddBase ? (
+            <button
+              type="button"
+              onClick={() => addItem({ ...item, menu_item_id: item.id }, 1)}
+              className="mt-auto rounded-sm bg-accent px-4 py-2 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover"
+            >
+              Add to Cart
+            </button>
+          ) : null
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -223,7 +232,7 @@ function sentenceCase(s) {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function CategorySection({ category, addItem, isNested = false, searchTerm }) {
+function CategorySection({ category, addItem, orderingEnabled, isNested = false, searchTerm }) {
   const items = Array.isArray(category.items)
     ? category.items
     : toArray(category.items || []);
@@ -282,13 +291,11 @@ function CategorySection({ category, addItem, isNested = false, searchTerm }) {
         </div>
       )}
       {filteredItems.length > 0 && (
-        <ul className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+        <ul className="mt-2 list-none p-0 m-0 columns-1 gap-x-4 sm:columns-2 lg:columns-3 [column-fill:balance]">
           {filteredItems.map((item) => (
-            <MenuItemCard
-              key={item.id ?? item.name ?? "menu-item"}
-              item={item}
-              addItem={addItem}
-            />
+            <li key={item.id ?? item.name ?? "menu-item"} className="mb-4 break-inside-avoid">
+              <MenuItemCard item={item} addItem={addItem} orderingEnabled={orderingEnabled} />
+            </li>
           ))}
         </ul>
       )}
@@ -297,6 +304,7 @@ function CategorySection({ category, addItem, isNested = false, searchTerm }) {
           key={child.id ?? child.name ?? "menu-category"}
           category={child}
           addItem={addItem}
+          orderingEnabled={orderingEnabled}
           isNested
           searchTerm={searchTerm}
         />
@@ -318,7 +326,7 @@ function CategorySectionPreviewMatches(category, term) {
   return children.some((c) => CategorySectionPreviewMatches(c, term));
 }
 
-function SpecialMenuSection({ specialMenu, addItem, searchTerm }) {
+function SpecialMenuSection({ specialMenu, addItem, orderingEnabled, searchTerm }) {
   const term = normalizeText(searchTerm);
   const items = (Array.isArray(specialMenu?.items) ? specialMenu.items : toArray(specialMenu?.items || [])).sort(sortBySortOrder);
   const filtered = !term
@@ -340,9 +348,11 @@ function SpecialMenuSection({ specialMenu, addItem, searchTerm }) {
           <p className="mt-1 text-center font-sans text-[11px] font-medium uppercase tracking-[0.12em] text-white/60 md:text-xs">
             Special menu items
           </p>
-          <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+          <ul className="mt-4 list-none p-0 m-0 columns-1 gap-x-4 sm:columns-2 lg:columns-3 [column-fill:balance]">
             {filtered.map((item) => (
-              <SpecialMenuItemCard key={item.id ?? item.name ?? "special-item"} item={item} addItem={addItem} />
+              <li key={item.id ?? item.name ?? "special-item"} className="mb-4 break-inside-avoid">
+                <SpecialMenuItemCard item={item} addItem={addItem} orderingEnabled={orderingEnabled} />
+              </li>
             ))}
           </ul>
         </div>
@@ -353,6 +363,9 @@ function SpecialMenuSection({ specialMenu, addItem, searchTerm }) {
 
 export function MenuClient({ restaurant, menus, specialMenuLists }) {
   const { addItem } = useCart();
+  const { orderingAccepting, openingSlots } = useOrderingHours();
+  const showOrderingClosedBanner =
+    Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const mobileCategoryRefs = useRef({});
@@ -494,6 +507,16 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
       />
       <Header variant="marketing" />
       <main className="relative z-10 w-full px-0 py-5 pb-28 sm:px-4 md:py-8 md:pb-24 lg:px-8 xl:px-12">
+        {showOrderingClosedBanner && (
+          <div className="mx-auto mb-4 max-w-4xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-center sm:px-5">
+            <p className="font-sans text-xs font-semibold uppercase tracking-[0.12em] text-amber-200/95">
+              Ordering paused
+            </p>
+            <p className="mt-1 font-sans text-sm text-white/75">
+              Pickup orders can only be placed during opening hours. The menu below is for browsing only right now.
+            </p>
+          </div>
+        )}
         {restaurant?.name && (
           <div className="mb-4 hidden text-center md:mb-7 md:block">
             <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Menus</p>
@@ -602,6 +625,7 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                     key={sm.id ?? sm.name ?? "special-menu"}
                     specialMenu={sm}
                     addItem={addItem}
+                    orderingEnabled={orderingAccepting}
                     searchTerm={searchTerm}
                   />
                 ))}
@@ -625,6 +649,7 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                           <CategorySection
                             category={category}
                             addItem={addItem}
+                            orderingEnabled={orderingAccepting}
                             searchTerm={searchTerm}
                           />
                         </div>

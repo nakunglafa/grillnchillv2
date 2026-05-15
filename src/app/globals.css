@@ -125,8 +125,8 @@ body {
 /* Layered data cards: pure white + soft shadow */
 .owner-theme .owner-card {
   background-color: var(--owner-card);
-  box-shadow: var(--owner-card-shadow);
-  border: 1px solid var(--owner-border);
+  /* box-shadow: var(--owner-card-shadow);
+  border: 1px solid var(--owner-border); */
 }
 /* Default text on cards is Deep Charcoal, but :where() keeps the rule at
    zero specificity so any explicit Tailwind utility (text-white, text-red-500…) overrides it. */
@@ -151,6 +151,74 @@ body {
 .owner-theme [class*="dark:text-"] {
   background-color: inherit !important;
   color: inherit !important;
+}
+
+/* Owner dashboard – tab transitions, modals, sheets (respect reduced motion) */
+@keyframes owner-tab-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes owner-modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes owner-modal-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes owner-modal-center-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.owner-theme .owner-animate-tab {
+  animation: owner-tab-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.owner-theme .owner-animate-modal-backdrop {
+  animation: owner-modal-backdrop-enter 0.22s ease-out both;
+}
+.owner-theme .owner-animate-modal-sheet {
+  animation: owner-modal-sheet-enter 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.owner-theme .owner-animate-modal-center {
+  animation: owner-modal-center-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.owner-theme .owner-tab-button-transition {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .owner-theme .owner-animate-tab,
+  .owner-theme .owner-animate-modal-backdrop,
+  .owner-theme .owner-animate-modal-sheet,
+  .owner-theme .owner-animate-modal-center {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .owner-theme .owner-tab-button-transition {
+    transition: none !important;
+  }
 }
 
 /* Glass utility for client UI */

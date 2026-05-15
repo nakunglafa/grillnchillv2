@@ -3,8 +3,7 @@ import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
-import { Footer } from "@/components/Footer";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { OwnerAwareSiteChrome } from "@/components/OwnerAwareSiteChrome";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CookieConsentGate } from "@/components/CookieConsentGate";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
@@ -107,6 +106,26 @@ export const metadata = {
       "max-snippet": -1,
     },
   },
+  appleWebApp: {
+    capable: true,
+    title: process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() || "Thai Maki",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#241e19",
+  colorScheme: "dark",
 };
 
 export default async function RootLayout({ children }) {
@@ -216,11 +235,9 @@ export default async function RootLayout({ children }) {
             }),
           }}
         />
-        <div className="flex min-h-screen flex-col">
+        <OwnerAwareSiteChrome restaurantName={restaurantName} socialLinks={socialLinks}>
           <Providers>{children}</Providers>
-          <LanguageSwitcher />
-          <Footer restaurantName={restaurantName} socialLinks={socialLinks} />
-        </div>
+        </OwnerAwareSiteChrome>
         <CookieConsentGate initialConsent={initialConsent} />
       </body>
     </html>

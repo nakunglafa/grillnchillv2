@@ -1601,7 +1601,7 @@ export default function Home() {
                       Reserve A Table
                     </h2>
                     <p className="mt-5 text-[15px] leading-relaxed text-white/88">
-                      Book your table in advance to enjoy a smooth arrival and the best dining
+                      Reserve your table in advance to enjoy a smooth arrival and the best dining
                       experience. Whether it&apos;s a casual lunch, a family dinner, or a special
                       celebration, our team is ready to welcome you with attentive service and fresh,
                       carefully prepared dishes.

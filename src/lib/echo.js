@@ -66,15 +66,10 @@ export async function createEcho({ userId, token }) {
       import("laravel-echo"),
     ]);
     const PusherLib = PusherModule.default;
-    if (DEBUG) {
-      PusherLib.logToConsole = true;
-    }
+    PusherLib.logToConsole = false;
     const EchoLib = EchoModule.default;
     window.Pusher = PusherLib;
     const echo = new EchoLib(config);
-    if (DEBUG) {
-      console.log("[Echo] Created successfully. Auth endpoint:", config.authEndpoint);
-    }
     return echo;
   } catch (err) {
     if (DEBUG) {

@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getMyRestaurants } from "@/lib/api";
 import { isOwner } from "@/lib/owner-utils";
 import { toArray } from "@/lib/owner-utils";
+import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
 
 async function redirectAfterLogin(router, searchParams, user, token) {
   if (isOwner(user)) {
@@ -19,13 +20,13 @@ async function redirectAfterLogin(router, searchParams, user, token) {
         if (restaurants.length > 0) {
           router.push(`/owner/dashboard/${restaurants[0].id}`);
         } else {
-          router.push("/owner/dashboard");
+          router.push(ownerPrimaryDashboardHref());
         }
       } catch {
-        router.push("/owner/dashboard");
+        router.push(ownerPrimaryDashboardHref());
       }
     } else {
-      router.push("/owner/dashboard");
+      router.push(ownerPrimaryDashboardHref());
     }
   } else {
     const redirect = searchParams.get("redirect") || "/";

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useOrderingHours } from "@/context/OrderingHoursContext";
+import { DEFAULT_RESTAURANT_TIMEZONE, isRestaurantOpenForOrdering } from "@/lib/opening-hours";
 import {
   getRestaurantPaymentOptions,
   createOrder,
@@ -75,6 +77,11 @@ function StripePaymentForm({ clientSecret, customerEmail, onSuccess, onError }) 
 export default function CheckoutPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth();
   const { items, totalAmount, clearCart, hydrate } = useCart();
+  const { openingSlots } = useOrderingHours();
+  const orderingClosedNow =
+    Array.isArray(openingSlots) &&
+    openingSlots.length > 0 &&
+    !isRestaurantOpenForOrdering(openingSlots, DEFAULT_RESTAURANT_TIMEZONE, new Date());
   const [paymentOptions, setPaymentOptions] = useState({
     stripe: STRIPE_CHECKOUT_ENABLED,
     pickup: true,
@@ -222,6 +229,14 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError("");
     if (!validateGuestContact()) return;
+    if (
+      Array.isArray(openingSlots) &&
+      openingSlots.length > 0 &&
+      !isRestaurantOpenForOrdering(openingSlots, DEFAULT_RESTAURANT_TIMEZONE, new Date())
+    ) {
+      setError("The restaurant is closed. You can only place orders during opening hours.");
+      return;
+    }
     setSubmitting(true);
     try {
       const authToken = token || undefined;
@@ -318,6 +333,16 @@ export default function CheckoutPage() {
                 customerEmail={customerEmail}
                 onSuccess={async (transactionId) => {
                   try {
+                    if (
+                      Array.isArray(openingSlots) &&
+                      openingSlots.length > 0 &&
+                      !isRestaurantOpenForOrdering(openingSlots, DEFAULT_RESTAURANT_TIMEZONE, new Date())
+                    ) {
+                      setError(
+                        "The restaurant is now closed. If a payment was processed, please contact the restaurant for assistance."
+                      );
+                      return;
+                    }
                     await createOrder(token || undefined, {
                       ...onlineOrderPayload,
                       transaction_id: transactionId,
@@ -349,6 +374,15 @@ export default function CheckoutPage() {
       <Header />
       <main className="mx-auto max-w-2xl px-4 py-8 text-zinc-900 dark:text-zinc-100 md:py-12">
         <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">Checkout</h1>
+
+        {orderingClosedNow && (
+          <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-50">
+            <p className="font-medium">Ordering is paused — we are outside opening hours.</p>
+            <p className="mt-1 text-sm text-amber-900/90 dark:text-amber-100/90">
+              Please come back when the restaurant is open to complete your order.
+            </p>
+          </div>
+        )}
 
         <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Order summary</h2>
@@ -457,7 +491,7 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={submitting || !gdprConsent}
+            disabled={submitting || !gdprConsent || orderingClosedNow}
             className="w-full rounded-xl bg-zinc-900 py-4 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {submitting ? "Placing order…" : `Place order · ${formatPrice(totalAmount)}`}

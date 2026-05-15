@@ -1,3 +1,5 @@
+import { normalizeEstimatedReadyMinutes } from "@/lib/order-ready-estimate";
+
 /**
  * Restaurant API client.
  * Base URL: NEXT_PUBLIC_API_URL (e.g. https://restaurant.digitallisbon.pt/api)
@@ -204,6 +206,28 @@ export async function markAllNotificationsRead(token) {
   return apiFetch("/notifications/mark-all-read", { method: "POST", token });
 }
 
+/**
+ * Web Push subscription for owner devices (Laravel webpush / custom).
+ * POST body: raw PushSubscription JSON — { endpoint, keys: { p256dh, auth } }.
+ * Adjust the path if your API uses a different route (e.g. /owner/push-subscriptions).
+ */
+export async function registerPushSubscription(token, subscriptionPayload) {
+  return apiFetch("/push-subscriptions", {
+    method: "POST",
+    body: JSON.stringify(subscriptionPayload),
+    token,
+  });
+}
+
+/** @param {string} endpoint - subscription.endpoint */
+export async function removePushSubscription(token, endpoint) {
+  return apiFetch("/push-subscriptions", {
+    method: "DELETE",
+    body: JSON.stringify({ endpoint }),
+    token,
+  });
+}
+
 // ——— Owner ———
 
 export async function getMyRestaurants(token) {
@@ -263,13 +287,24 @@ export async function getRestaurantOrders(token, restaurantId, status, cacheBust
   return apiFetch(`/owner/restaurants/${restaurantId}/orders${q}`, { token });
 }
 
-export async function updateOrderStatus(token, restaurantId, orderId, newStatus, cancellationReason) {
-  const body = {
-    status: newStatus,
-    ...(newStatus === "cancelled"
-      ? { cancellation_reason: String(cancellationReason ?? "").trim() || "Cancelled" }
-      : {}),
-  };
+export async function updateOrderStatus(token, restaurantId, orderId, newStatus, fifthParam) {
+  let cancellationReason;
+  let estimated_ready_minutes;
+  if (fifthParam != null && typeof fifthParam === "object" && !Array.isArray(fifthParam)) {
+    cancellationReason = fifthParam.cancellation_reason ?? fifthParam.cancellationReason;
+    estimated_ready_minutes = fifthParam.estimated_ready_minutes;
+  } else {
+    cancellationReason = fifthParam;
+  }
+
+  const body = { status: newStatus };
+  if (newStatus === "cancelled") {
+    body.cancellation_reason = String(cancellationReason ?? "").trim() || "Cancelled";
+  }
+  const m = normalizeEstimatedReadyMinutes(estimated_ready_minutes);
+  if ((newStatus === "confirmed" || newStatus === "preparing") && m != null) {
+    body.estimated_ready_minutes = m;
+  }
   return apiFetch(
     `/owner/restaurants/${restaurantId}/orders/${orderId}/status`,
     { method: "PATCH", body: JSON.stringify(body), token }

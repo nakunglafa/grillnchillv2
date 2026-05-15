@@ -641,7 +641,7 @@ export default function BookPage() {
             <div className="w-full border border-white/10 bg-white/3 p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
             <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-accent">Confirmed</p>
             <h1 className="font-display mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">
-              Booking request received
+              Reservation request received
             </h1>
             <p className="mt-2 text-xs text-white/75 sm:text-sm">
               {restaurant?.name} — {dateStr} at {timeStr || "—"}, party of {r.party_size ?? party_size}
@@ -649,7 +649,7 @@ export default function BookPage() {
             <p className="mx-auto mt-3 max-w-xl text-[11px] leading-relaxed text-white/55 sm:text-xs">
               {isAuthenticated
                 ? "You can view and manage your reservations in your account."
-                : "If you provided an email, you will receive a confirmation once the restaurant confirms your table. To track your booking in your account, log in with the same email."}
+                : "If you provided an email, you will receive a confirmation once the restaurant confirms your table. To track your reservation in your account, log in with the same email."}
             </p>
             {!isAuthenticated && (
               <p className="mt-2 text-[11px] text-white/55 sm:text-xs">
@@ -708,7 +708,7 @@ export default function BookPage() {
 
         <div className="mb-4 text-left md:mb-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Reservations</p>
-          <h1 className="font-display mt-1.5 text-2xl font-semibold tracking-tight text-white md:text-3xl">Book a table</h1>
+          <h1 className="font-display mt-1.5 text-2xl font-semibold tracking-tight text-white md:text-3xl">Reserve a table</h1>
           <p className="mt-1 text-sm text-white/60">{restaurant.name}</p>
           <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
             Step {bookStep} of 2 — {bookStep === 1 ? "When" : "Your details"}
@@ -717,11 +717,11 @@ export default function BookPage() {
 
         {!isAuthenticated && bookStep === 2 && (
           <div className="mb-4 w-full border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-left text-xs leading-snug text-amber-100/95 ring-1 ring-amber-500/20">
-            Booking as guest: enter your name and at least one of phone or email.{" "}
+            Reserving as guest: enter your name and at least one of phone or email.{" "}
             <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
               Log in
             </Link>{" "}
-            to track your booking.
+            to track your reservation.
           </div>
         )}
 
@@ -944,23 +944,23 @@ export default function BookPage() {
             onChange={setGdprConsent}
           />
 
-          <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:gap-3">
+          <div className="mt-2 flex w-full flex-col gap-3 sm:mt-3 sm:flex-row sm:items-stretch sm:gap-3">
             <button
               type="button"
               onClick={() => {
                 setError("");
                 setBookStep(1);
               }}
-              className="touch-manipulation h-11 w-full rounded-sm border border-white/20 bg-white/6 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/10 sm:h-12 sm:min-w-[140px] sm:flex-1"
+              className="touch-manipulation inline-flex min-h-[48px] w-full items-center justify-center rounded-sm border border-white/20 bg-white/6 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 transition-colors hover:border-accent/35 hover:bg-white/10 sm:min-h-12 sm:flex-1 sm:min-w-0 sm:text-xs"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={submitting || reservationConfigMissing || !gdprConsent}
-              className="touch-manipulation h-11 w-full flex-2 rounded-sm bg-accent text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:h-12 sm:text-xs"
+              className="touch-manipulation inline-flex min-h-[48px] w-full items-center justify-center rounded-sm bg-accent px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-950 shadow-md transition-colors hover:bg-accent-hover disabled:opacity-50 active:scale-[0.99] sm:min-h-12 sm:flex-1 sm:min-w-0 sm:text-xs"
             >
-              {submitting ? "Confirming…" : reservationConfigMissing ? "Booking unavailable" : "Confirm booking"}
+              {submitting ? "Confirming…" : reservationConfigMissing ? "Reservation unavailable" : "Confirm reservation"}
             </button>
           </div>
           </>

@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getProfile, updateProfile } from "@/lib/api";
 import { Toast } from "@/components/Toast";
 import { isOwner } from "@/lib/owner-utils";
+import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -134,7 +135,7 @@ export default function ProfilePage() {
               My Reservations
             </Link>
             {isOwner(user) && (
-              <Link href="/owner/dashboard" className="rounded-full border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs text-accent hover:bg-accent/20">
+              <Link href={ownerPrimaryDashboardHref()} className="rounded-full border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs text-accent hover:bg-accent/20">
                 Owner Dashboard
               </Link>
             )}

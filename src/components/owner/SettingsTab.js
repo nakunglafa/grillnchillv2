@@ -12,6 +12,8 @@ import {
 } from "@/lib/api";
 import { setKeepScreenOnPreference } from "@/hooks/useScreenWakeLock";
 import { ImageUploadDropzone } from "@/components/owner/ImageUploadDropzone";
+import { DeviceNotificationSettings } from "@/components/owner/DeviceNotificationSettings";
+import { PrintPreferencesSettings } from "@/components/owner/PrintPreferencesSettings";
 
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
@@ -416,7 +418,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
             <a
               key={item.id}
               href={`#${item.id}`}
-              className="touch-manipulation inline-flex shrink-0 h-8 items-center rounded-full border border-owner-border bg-owner-card px-3 text-xs font-medium text-owner-charcoal hover:bg-owner-paper active:scale-[0.98]"
+              className="touch-manipulation owner-tab-button-transition inline-flex shrink-0 h-8 items-center rounded-full border border-owner-border bg-owner-card px-3 text-xs font-medium text-owner-charcoal hover:bg-owner-paper active:scale-[0.97]"
             >
               {item.label}
             </a>
@@ -438,7 +440,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
               <li key={item.id}>
                 <a
                   href={`#${item.id}`}
-                  className="block rounded-md px-3 py-2 text-xs font-medium text-owner-charcoal hover:bg-owner-paper transition-colors"
+                  className="owner-tab-button-transition block rounded-md px-3 py-2 text-xs font-medium text-owner-charcoal hover:bg-owner-paper"
                 >
                   {item.label}
                 </a>
@@ -841,6 +843,8 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
             </span>
           </label>
         )}
+        <DeviceNotificationSettings />
+        <PrintPreferencesSettings />
       </section>
       </div>
     </div>

@@ -12,7 +12,7 @@ export async function generateMetadata() {
     const phone = restaurant?.phone || "+351 920 311 793";
 
     const title =
-      "Book a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
+      "Reserve a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
 
     const description =
       `Reserve a sua mesa em ${name}, ${address}. ` +
@@ -39,7 +39,7 @@ export async function generateMetadata() {
       },
     };
   } catch {
-    const fallbackTitle = "Book a Table | Thai Restaurant in Almancil, Faro, Algarve";
+    const fallbackTitle = "Reserve a Table | Thai Restaurant in Almancil, Faro, Algarve";
     const fallbackDescription =
       "Book your table at Thai Maki, a Thai and sushi restaurant in Almancil near Faro, Algarve.";
 

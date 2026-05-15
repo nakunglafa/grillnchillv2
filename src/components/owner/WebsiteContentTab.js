@@ -397,32 +397,36 @@ export function WebsiteContentTab({ restaurantId, token }) {
   };
 
   const inputClass =
-    "w-full rounded-xl border border-owner-border bg-owner-card px-4 py-3 text-sm text-owner-charcoal placeholder:text-owner-muted sm:rounded-lg";
-  const labelClass = "mb-1 block text-sm font-medium text-owner-charcoal";
-  const sectionClass = "owner-card rounded-xl p-6 border border-owner-border";
+    "w-full rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-xs text-owner-charcoal placeholder:text-owner-muted md:rounded-xl md:px-4 md:py-2.5 md:text-sm";
+  const labelClass =
+    "mb-0.5 block text-xs font-medium text-owner-charcoal md:mb-1 md:text-sm";
+  const sectionClass =
+    "rounded-lg border border-owner-border bg-owner-card p-4 md:rounded-xl md:p-6";
   const btnPrimaryClass =
-    "touch-manipulation min-h-[48px] rounded-xl bg-owner-action px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:rounded-lg";
+    "touch-manipulation min-h-[44px] rounded-lg bg-owner-action px-4 py-2.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 md:min-h-[48px] md:rounded-xl md:px-5 md:py-3 md:text-sm";
 
   if (loadingSaved) {
     return (
-      <div className="rounded-xl border border-owner-border bg-owner-card p-6">
-        <p className="text-owner-muted">Loading website content...</p>
+      <div className="rounded-lg border border-owner-border bg-owner-card p-4 md:p-6">
+        <p className="text-xs text-owner-muted md:text-sm">Loading website content...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 max-w-full min-w-0">
+    <div className="max-w-full min-w-0 space-y-3 md:space-y-4">
       {(error || success) && (
         <div className="space-y-2">
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-600 md:p-3 md:text-sm">{error}</p>
+          )}
           {success && (
-            <p className="rounded-lg border border-owner-success/40 bg-white p-3 text-sm text-owner-success">
+            <p className="rounded-md border border-owner-success/40 bg-white p-2 text-xs text-owner-success md:p-3 md:text-sm">
               {success}
             </p>
           )}
           {lastServerUpdate?.at && (
-            <p className="rounded-lg border border-owner-border bg-owner-paper p-3 text-xs text-owner-muted">
+            <p className="rounded-md border border-owner-border bg-owner-paper p-2 text-[11px] text-owner-muted md:p-3 md:text-xs">
               Last server update: {new Date(lastServerUpdate.at).toLocaleString()}.
             </p>
           )}
@@ -430,11 +434,11 @@ export function WebsiteContentTab({ restaurantId, token }) {
       )}
 
       <section className={sectionClass}>
-        <h3 className="mb-3 text-xl font-semibold text-owner-charcoal">Story content</h3>
-        <p className="mb-4 text-sm text-owner-muted">
-          Control homepage story text and section headings. Leave blank to use default content.
+        <h3 className="mb-1 text-base font-semibold text-owner-charcoal md:mb-2 md:text-xl">Story content</h3>
+        <p className="mb-3 text-[11px] leading-snug text-owner-muted md:mb-4 md:text-sm md:leading-normal">
+          Homepage story, headings, and optional video. Leave blank for defaults.
         </p>
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-3 md:space-y-4">
           <label>
             <span className={labelClass}>Story heading</span>
             <input
@@ -450,7 +454,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
             <textarea
               value={form.storyText}
               onChange={(e) => setForm((prev) => ({ ...prev, storyText: e.target.value }))}
-              rows={4}
+              rows={3}
               className={inputClass}
               placeholder="Write your brand story..."
             />
@@ -465,7 +469,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
               placeholder="https://youtube.com/... or https://vimeo.com/..."
             />
           </label>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 md:gap-4">
             <label>
               <span className={labelClass}>Thai section title</span>
               <input
@@ -485,14 +489,14 @@ export function WebsiteContentTab({ restaurantId, token }) {
               />
             </label>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 md:gap-4">
             <label>
               <span className={labelClass}>Thai section intro (optional)</span>
               <textarea
                 value={form.thaiSectionIntro}
                 onChange={(e) => setForm((prev) => ({ ...prev, thaiSectionIntro: e.target.value }))}
-                rows={3}
-                className={inputClass}
+                rows={2}
+                className={`${inputClass} md:min-h-21`}
               />
             </label>
             <label>
@@ -500,27 +504,27 @@ export function WebsiteContentTab({ restaurantId, token }) {
               <textarea
                 value={form.sushiSectionIntro}
                 onChange={(e) => setForm((prev) => ({ ...prev, sushiSectionIntro: e.target.value }))}
-                rows={3}
-                className={inputClass}
+                rows={2}
+                className={`${inputClass} md:min-h-21`}
               />
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:gap-3 md:pt-2">
             <button type="submit" disabled={saving} className={btnPrimaryClass}>
               {saving ? "Saving..." : "Save website content"}
             </button>
             <button
               type="button"
               onClick={handleExportJson}
-              className="touch-manipulation min-h-[48px] rounded-xl border border-owner-border px-5 py-3 text-sm font-medium text-owner-charcoal hover:bg-owner-paper sm:rounded-lg"
+              className="touch-manipulation min-h-[44px] rounded-lg border border-owner-border px-4 py-2.5 text-xs font-medium text-owner-charcoal hover:bg-owner-paper md:min-h-[48px] md:rounded-xl md:px-5 md:py-3 md:text-sm"
             >
               Export JSON
             </button>
             <button
               type="button"
               onClick={handleReset}
-              className="touch-manipulation min-h-[48px] rounded-xl border border-owner-border px-5 py-3 text-sm font-medium text-owner-charcoal hover:bg-owner-paper sm:rounded-lg"
+              className="touch-manipulation min-h-[44px] rounded-lg border border-owner-border px-4 py-2.5 text-xs font-medium text-owner-charcoal hover:bg-owner-paper md:min-h-[48px] md:rounded-xl md:px-5 md:py-3 md:text-sm"
             >
               Reset to defaults
             </button>
@@ -529,11 +533,11 @@ export function WebsiteContentTab({ restaurantId, token }) {
       </section>
 
       <section className={sectionClass}>
-        <h3 className="mb-3 text-xl font-semibold text-owner-charcoal">Our Menus cards area</h3>
-        <p className="mb-4 text-sm text-owner-muted">
-          Control the heading, intro, and card details for the homepage &quot;Our Menus&quot; block.
+        <h3 className="mb-1 text-base font-semibold text-owner-charcoal md:mb-2 md:text-xl">Our Menus cards</h3>
+        <p className="mb-3 text-[11px] leading-snug text-owner-muted md:mb-4 md:text-sm md:leading-normal">
+          Heading, intro, and the three homepage menu cards.
         </p>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2 md:gap-4">
           <label>
             <span className={labelClass}>Section eyebrow</span>
             <input
@@ -554,18 +558,20 @@ export function WebsiteContentTab({ restaurantId, token }) {
           </label>
           <label className="md:col-span-2">
             <span className={labelClass}>Section intro text</span>
-            <textarea
-              value={form.menuShowcaseIntro}
-              onChange={(e) => setForm((prev) => ({ ...prev, menuShowcaseIntro: e.target.value }))}
-              rows={3}
-              className={inputClass}
-            />
+              <textarea
+                value={form.menuShowcaseIntro}
+                onChange={(e) => setForm((prev) => ({ ...prev, menuShowcaseIntro: e.target.value }))}
+                rows={2}
+                className={`${inputClass} md:min-h-22`}
+              />
           </label>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border border-owner-border p-4">
-            <h4 className="mb-3 text-base font-semibold text-owner-charcoal">Thai card</h4>
+        <div className="mt-3 divide-y divide-owner-border/60 border-t border-owner-border/60 md:mt-4 md:grid md:gap-4 md:divide-y-0 md:border-0 md:pt-0 lg:grid-cols-3">
+          <div className="space-y-3 py-3 first:pt-0 md:rounded-lg md:border md:border-owner-border/70 md:p-3 md:py-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-owner-muted md:text-sm md:normal-case md:tracking-normal md:text-owner-charcoal">
+              Thai card
+            </h4>
             <label>
               <span className={labelClass}>Title</span>
               <input
@@ -575,7 +581,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
                 className={inputClass}
               />
             </label>
-            <label className="mt-3 block">
+            <label className="mt-1 block md:mt-3">
               <span className={labelClass}>Subtext</span>
               <input
                 type="text"
@@ -585,8 +591,10 @@ export function WebsiteContentTab({ restaurantId, token }) {
               />
             </label>
           </div>
-          <div className="rounded-lg border border-owner-border p-4">
-            <h4 className="mb-3 text-base font-semibold text-owner-charcoal">Sushi card</h4>
+          <div className="space-y-3 py-3 md:rounded-lg md:border md:border-owner-border/70 md:p-3 md:py-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-owner-muted md:text-sm md:normal-case md:tracking-normal md:text-owner-charcoal">
+              Sushi card
+            </h4>
             <label>
               <span className={labelClass}>Title</span>
               <input
@@ -596,7 +604,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
                 className={inputClass}
               />
             </label>
-            <label className="mt-3 block">
+            <label className="mt-1 block md:mt-3">
               <span className={labelClass}>Subtext</span>
               <input
                 type="text"
@@ -606,8 +614,10 @@ export function WebsiteContentTab({ restaurantId, token }) {
               />
             </label>
           </div>
-          <div className="rounded-lg border border-owner-border p-4">
-            <h4 className="mb-3 text-base font-semibold text-owner-charcoal">Dessert card</h4>
+          <div className="space-y-3 py-3 md:rounded-lg md:border md:border-owner-border/70 md:p-3 md:py-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-owner-muted md:text-sm md:normal-case md:tracking-normal md:text-owner-charcoal">
+              Dessert card
+            </h4>
             <label>
               <span className={labelClass}>Title</span>
               <input
@@ -617,7 +627,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
                 className={inputClass}
               />
             </label>
-            <label className="mt-3 block">
+            <label className="mt-1 block md:mt-3">
               <span className={labelClass}>Subtext</span>
               <input
                 type="text"
@@ -633,19 +643,24 @@ export function WebsiteContentTab({ restaurantId, token }) {
       </section>
 
       <section className={sectionClass}>
-        <h3 className="mb-3 text-xl font-semibold text-owner-charcoal">Images control</h3>
-        <p className="mb-4 text-sm text-owner-muted">
-          Upload images or paste URLs. Uploaded images are stored on server and auto-saved to DB.
+        <h3 className="mb-1 text-base font-semibold text-owner-charcoal md:mb-2 md:text-xl">Images</h3>
+        <p className="mb-3 text-[11px] leading-snug text-owner-muted md:mb-4 md:text-sm md:leading-normal">
+          Paste URLs or upload — images save to the server automatically.
         </p>
 
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="space-y-5 md:grid md:gap-6 lg:grid-cols-2 xl:gap-8">
           {IMAGE_GROUPS.map((group) => (
-            <div key={group.id} className="rounded-lg border border-owner-border p-4">
-              <h4 className="text-base font-semibold text-owner-charcoal">{group.title}</h4>
-              <p className="mt-1 text-xs text-owner-muted">{group.description}</p>
-              <div className="mt-4 grid gap-5">
-                {group.fields.map((field) => (
-                  <div key={field.key} className="rounded-lg border border-owner-border/70 p-3">
+            <div key={group.id} className="space-y-3 border-t border-owner-border/70 pt-4 first:border-t-0 first:pt-0 md:space-y-4 md:rounded-lg md:border md:border-owner-border/60 md:p-4 md:pt-4">
+              <div>
+                <h4 className="text-sm font-semibold text-owner-charcoal md:text-base">{group.title}</h4>
+                <p className="mt-0.5 text-[11px] leading-snug text-owner-muted md:text-xs">{group.description}</p>
+              </div>
+              <div className="space-y-4">
+                {group.fields.map((field, idx) => (
+                  <div
+                    key={field.key}
+                    className={`space-y-2 ${idx > 0 ? "border-t border-owner-border/45 pt-4" : ""}`}
+                  >
                     <label>
                       <span className={labelClass}>{field.label} (URL)</span>
                       <input
@@ -656,7 +671,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
                         className={inputClass}
                       />
                     </label>
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <ImageUploadDropzone
                         id={`website-content-${field.key}`}
                         label=""
@@ -665,16 +680,16 @@ export function WebsiteContentTab({ restaurantId, token }) {
                         onError={setError}
                         maxBytes={MAX_IMAGE_BYTES}
                         accept="image/jpeg,image/png,image/jpg,image/webp"
-                        dropHint="Drop image or click to choose (max 500 KB)"
+                        dropHint="Drop or tap (max 500 KB)"
                       />
-                      <p className="mt-1 text-xs text-owner-muted">{field.recommendation}</p>
+                      <p className="mt-0.5 text-[10px] leading-snug text-owner-muted md:text-xs">{field.recommendation}</p>
                     </div>
                     {(imagePreviews[field.key] || form[field.key]) && (
-                      <div className="mt-3 overflow-hidden rounded-lg border border-owner-border bg-owner-paper">
+                      <div className="mt-2 overflow-hidden rounded-md border border-owner-border bg-owner-paper">
                         <img
                           src={imagePreviews[field.key] || form[field.key]}
                           alt={`${field.label} preview`}
-                          className="h-40 w-full object-cover"
+                          className="h-28 w-full object-cover sm:h-32 md:h-40"
                         />
                       </div>
                     )}

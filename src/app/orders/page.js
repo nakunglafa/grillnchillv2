@@ -277,6 +277,18 @@ export default function OrdersPage() {
                         {order.created_at && (
                           <p className="mt-1 text-sm text-white/45">{new Date(order.created_at).toLocaleString()}</p>
                         )}
+                        {(order.estimated_ready_minutes != null || order.estimated_ready_at) && (
+                          <p className="mt-2 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100/95">
+                            <span className="font-semibold text-emerald-200">Estimated ready</span>
+                            {order.estimated_ready_minutes != null ? ` · ~${order.estimated_ready_minutes} min` : ""}
+                            {order.estimated_ready_at
+                              ? ` · by ${new Date(order.estimated_ready_at).toLocaleString(undefined, {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}`
+                              : ""}
+                          </p>
+                        )}
                       </div>
                       <span
                         className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(

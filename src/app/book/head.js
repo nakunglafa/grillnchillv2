@@ -1,7 +1,7 @@
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://restaurant.digitallisbon.pt").replace(/\/$/, "");
 
 export default function Head() {
-  const title = "Book a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
+  const title = "Reserve a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
   const description =
     "Reserve your table at Thai Maki in Almancil near Faro, Algarve. Ideal for users searching thai or sushi restaurant near me.";
   const canonical = `${SITE_URL}/book`;
