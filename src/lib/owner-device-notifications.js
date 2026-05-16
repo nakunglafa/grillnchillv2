@@ -120,13 +120,14 @@ export async function enableOwnerBrowserNotifications({ token }) {
 
     const vapid = await resolveVapidPublicKeyForSubscribe(token);
     if (vapid && reg.pushManager) {
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapid),
-        });
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        await existing.unsubscribe().catch(() => {});
       }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid),
+      });
       if (sub?.endpoint) {
         try {
           await registerPushSubscription(token, sub.toJSON ? sub.toJSON() : sub);
@@ -137,6 +138,14 @@ export async function enableOwnerBrowserNotifications({ token }) {
           return { ok: true, permission: "granted", error: `${msg} (on-device alerts still work when the dashboard is open)` };
         }
       }
+    } else if (!vapid && reg.pushManager) {
+      setOwnerDeviceNotificationPref(true);
+      return {
+        ok: true,
+        permission: "granted",
+        error:
+          "Web Push is not configured (no VAPID key from the API or .env). Background alerts when the app is closed will not work until the server exposes a public key.",
+      };
     }
 
     setOwnerDeviceNotificationPref(true);
@@ -175,6 +184,48 @@ export async function disableOwnerDeviceNotifications(token) {
     /* ignore */
   }
   rememberPushEndpoint("");
+}
+
+/**
+ * Re-create the Push subscription and POST it again (use after changing VAPID keys on the server, or if background pushes stopped).
+ * Requires notification permission already granted.
+ * @param {{ token: string }} opts
+ */
+export async function resyncOwnerWebPushSubscription({ token }) {
+  if (typeof window === "undefined" || !token) {
+    return { ok: false, error: "Not available" };
+  }
+  if (Notification.permission !== "granted") {
+    return { ok: false, error: "Allow notifications first." };
+  }
+  try {
+    const reg = await registerOwnerPushServiceWorker();
+    await reg.update().catch(() => {});
+    const vapid = await resolveVapidPublicKeyForSubscribe(token);
+    if (!vapid || !reg.pushManager) {
+      return {
+        ok: false,
+        error: "VAPID public key missing. Check GET /web-push/vapid-public-key or NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY.",
+      };
+    }
+    const old = await reg.pushManager.getSubscription();
+    if (old) {
+      await old.unsubscribe().catch(() => {});
+    }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapid),
+    });
+    if (!sub?.endpoint) {
+      return { ok: false, error: "Could not subscribe to push." };
+    }
+    await registerPushSubscription(token, sub.toJSON ? sub.toJSON() : sub);
+    rememberPushEndpoint(sub.endpoint);
+    setOwnerDeviceNotificationPref(true);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || "Web Push re-register failed." };
+  }
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   getOwnerDeviceNotificationPref,
   enableOwnerBrowserNotifications,
   disableOwnerDeviceNotifications,
+  resyncOwnerWebPushSubscription,
 } from "@/lib/owner-device-notifications";
 
 const labelClass = "text-sm font-medium text-owner-charcoal";
@@ -151,12 +152,38 @@ export function DeviceNotificationSettings() {
       )}
 
       {permission === "granted" && prefEnabled && (
-        <p className={descClass}>
-          Background alerts use <strong className="font-medium text-owner-charcoal">Web Push</strong>: this app loads the
-          VAPID public key from your API (<strong className="font-medium text-owner-charcoal">GET /web-push/vapid-public-key</strong>) or
-          from <strong className="font-medium text-owner-charcoal">NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY</strong> if set, then saves this
-          device with <strong className="font-medium text-owner-charcoal">POST /push-subscriptions</strong>.
-        </p>
+        <>
+          <p className={descClass}>
+            Background alerts use <strong className="font-medium text-owner-charcoal">Web Push</strong>: this app loads the VAPID
+            public key from your API (<strong className="font-medium text-owner-charcoal">GET /web-push/vapid-public-key</strong>) or
+            from <strong className="font-medium text-owner-charcoal">NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY</strong>, then registers this
+            device with <strong className="font-medium text-owner-charcoal">POST /push-subscriptions</strong>.
+          </p>
+          <p className={`${descClass} text-[11px]`}>
+            If alerts work on screen but <strong className="font-medium text-owner-charcoal">not when the app is minimized</strong>,
+            the server must actually <strong className="font-medium text-owner-charcoal">send the push</strong> (queue worker running:
+            <strong className="font-medium text-owner-charcoal"> php artisan queue:work</strong>, or{" "}
+            <strong className="font-medium text-owner-charcoal">QUEUE_CONNECTION=sync</strong> in Laravel). After changing VAPID keys,
+            tap <strong className="font-medium text-owner-charcoal">Re-register Web Push</strong> below.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setMessage("");
+              try {
+                const r = await resyncOwnerWebPushSubscription({ token });
+                setMessage(r.ok ? "Web Push re-registered on this device." : r.error || "Re-register failed.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="touch-manipulation rounded-lg border border-owner-border bg-owner-card px-3 py-2 text-xs font-medium text-owner-charcoal hover:bg-owner-paper"
+          >
+            {busy ? "Working…" : "Re-register Web Push"}
+          </button>
+        </>
       )}
 
       {message && <p className="text-xs text-owner-muted">{message}</p>}
