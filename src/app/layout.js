@@ -34,7 +34,7 @@ function isServerUnreachable(err) {
 }
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://restaurant.digitallisbon.pt").replace(/\/$/, "");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://thainmaki.pt").replace(/\/$/, "");
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
