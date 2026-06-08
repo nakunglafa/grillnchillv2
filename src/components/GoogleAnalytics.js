@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { COOKIE_CONSENT_EVENT, getCurrentConsent } from "@/components/CookieConsentGate";
 
 const GA_ID = "G-6VH93MEK2E";
+const AW_ID = "AW-17418124464";
 
 /**
  * Loads Google Analytics only when the visitor has chosen "Accept all".
@@ -47,6 +48,7 @@ export function GoogleAnalytics({ initialConsent = null }) {
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${GA_ID}', { anonymize_ip: true });
+            gtag('config', '${AW_ID}');
           `,
         }}
       />

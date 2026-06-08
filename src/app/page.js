@@ -851,10 +851,10 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-wood-100">
         <Header variant="overlay" />
-        <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
+        <section className="hero-sovy-wood relative min-h-[calc(100dvh-var(--site-header-height))] w-full overflow-hidden max-md:min-h-[calc(100svh-var(--site-header-height))]">
           <HeroVideoBackdrop />
-          <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center px-4 pb-10 pt-[5.5rem] sm:px-6 sm:pb-14 sm:pt-24 lg:px-10 lg:pb-16 lg:pt-28">
-            <div className="max-w-3xl animate-pulse">
+          <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--site-header-height))] w-full max-w-[1600px] flex-col justify-end items-start px-4 pt-3 pb-8 max-md:min-h-[calc(100svh-var(--site-header-height))] max-md:pb-[calc(3rem+var(--language-switcher-gutter)+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-4 md:min-h-[calc(100dvh-var(--site-header-height))] md:items-stretch md:justify-center md:pt-24 md:pb-14 lg:px-10 lg:pb-16 lg:pt-28">
+            <div className="max-w-3xl animate-pulse w-full">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
                 Loading website...
               </p>
@@ -881,7 +881,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-wood-100">
       <Header variant="overlay" />
-      <section className="hero-sovy-wood relative min-h-dvh w-full overflow-hidden">
+      <section className="hero-sovy-wood relative min-h-[calc(100dvh-var(--site-header-height))] w-full overflow-hidden max-md:min-h-[calc(100svh-var(--site-header-height))]">
         <HeroVideoBackdrop />
         <div
           className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_90%_60%_at_70%_20%,rgba(201,162,39,0.07),transparent_55%)]"
@@ -896,39 +896,74 @@ export default function Home() {
           aria-hidden
         />
 
-        {/* Full-viewport fold: vertically centered content, no short max-height cap */}
-        <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center px-4 pb-10 pt-[5.5rem] sm:px-6 sm:pb-14 sm:pt-24 lg:px-10 lg:pb-16 lg:pt-28">
-          <div className="max-w-3xl">
-            <h1 className="font-sans text-[clamp(2.5rem,5.5vw,5rem)] font-bold leading-[1.02] tracking-tight text-white">
+        {/* Mobile: bottom-left stack over hero video; md+ vertically centered (original) */}
+        <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--site-header-height))] w-full max-w-[1600px] flex-col justify-end items-start px-4 pt-3 pb-8 max-md:min-h-[calc(100svh-var(--site-header-height))] max-md:pb-[calc(3rem+var(--language-switcher-gutter)+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-4 md:min-h-[calc(100dvh-var(--site-header-height))] md:items-stretch md:justify-center md:pt-24 md:pb-14 lg:px-10 lg:pb-16 lg:pt-28">
+          <div className="w-full max-w-3xl">
+            <h1 className="font-sans text-[clamp(1.65rem,7.25vw,2.4rem)] font-bold leading-[1.04] tracking-tight text-white md:leading-[1.02] md:text-[clamp(2.5rem,5.5vw,5rem)]">
               <span className="block">We Only Serve</span>
               <span className="block">
                 A <span className="text-accent">Delicious</span>
               </span>
               <span className="block">Dishes</span>
             </h1>
-            <div className="mt-8 flex flex-col gap-8 sm:mt-10 sm:flex-row sm:items-center sm:gap-10 lg:gap-12">
-              <Link
-                href="/book"
-                className="inline-flex w-max items-center justify-center rounded-sm bg-accent px-10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-14 sm:py-4"
-              >
-                Reserve now
-              </Link>
-              {promoVideoUrl ? (
+            <p className="font-display mt-2 max-w-xl text-[11px] italic leading-snug text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:text-[12px] sm:leading-relaxed md:mt-8 md:text-[15px] lg:text-[16px]">
+              The only thing we&apos;re serious about is food. We will wait for your seat in our
+              restaurant and satisfy you with quality food.
+            </p>
+            <div className="mt-3 flex flex-col gap-4 md:mt-10 md:gap-0">
+              {/* Mobile: Menu + Reserve now side by side */}
+              <div className="flex w-full max-w-md gap-3 max-md:pr-[var(--language-switcher-gutter)] md:hidden">
+                <Link
+                  href="/menu"
+                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm border-2 border-white/45 bg-white/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition-colors hover:border-accent/80 hover:bg-white/10 hover:text-accent sm:px-4 sm:text-[11px] sm:tracking-[0.2em]"
+                >
+                  Menu
+                </Link>
+                <Link
+                  href="/book"
+                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm bg-accent px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-4 sm:text-[11px] sm:tracking-[0.2em]"
+                >
+                  Reserve now
+                </Link>
+              </div>
+              {/* md+: single Reserve + optional video (matches original layout) */}
+              <div className="hidden flex-col gap-8 md:flex md:flex-row md:items-center md:gap-10 lg:gap-12">
+                <Link
+                  href="/book"
+                  className="inline-flex w-max items-center justify-center rounded-sm bg-accent px-10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-14 sm:py-4"
+                >
+                  Reserve now
+                </Link>
+                {promoVideoUrl ? (
+                  <a
+                    href={promoVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-4 text-white"
+                  >
+                    {PlayCircle}
+                    <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            {promoVideoUrl ? (
+              <div className="mt-3 max-md:pr-[var(--language-switcher-gutter)] md:hidden">
                 <a
                   href={promoVideoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-4 text-white"
+                  className="group inline-flex items-center gap-3 text-white"
                 >
-                  {PlayCircle}
-                  <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-accent bg-accent shadow-lg sm:h-14 sm:w-14">
+                    <svg className="ml-0.5 h-5 w-5 text-wood-950 sm:ml-1 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </span>
+                  <span className="text-[15px] font-medium tracking-wide sm:text-[17px]">Watch Video</span>
                 </a>
-              ) : null}
-            </div>
-            <p className="font-display mt-10 max-w-xl text-[13px] italic leading-relaxed text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:mt-12 sm:text-[15px] lg:text-[16px]">
-              The only thing we&apos;re serious about is food. We will wait for your seat in our
-              restaurant and satisfy you with quality food.
-            </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

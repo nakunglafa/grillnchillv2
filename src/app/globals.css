@@ -41,6 +41,16 @@
   --owner-muted: #5C5C5C;
   --owner-border: rgba(45, 36, 30, 0.12);
   --owner-card-shadow: 0 1px 3px rgba(45, 36, 30, 0.06), 0 4px 12px rgba(45, 36, 30, 0.04);
+  /* Match Header overlay bar (h-16 / sm:h-17) — hero height subtracts this so first screen fits */
+  --site-header-height: 4rem;
+  /* Fixed LanguageSwitcher (bottom-right) — hero/mobile CTAs stay clear */
+  --language-switcher-gutter: 4.5rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --site-header-height: 4.25rem;
+  }
 }
 
 @theme inline {
@@ -311,7 +321,7 @@ body {
 .language-switcher {
   position: fixed;
   right: 1rem;
-  bottom: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   z-index: 70;
   display: inline-flex;
   align-items: center;
