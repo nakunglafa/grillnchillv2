@@ -223,6 +223,9 @@ export function Header({ variant = "default" }) {
             <Link href="/menu" className={navLink}>
               Menus
             </Link>
+            <Link href="/all-you-can-eat-lunch" className={navLink}>
+              Rodizio
+            </Link>
             <Link href="/book" className={navLink}>
               Reservation
             </Link>
@@ -251,6 +254,9 @@ export function Header({ variant = "default" }) {
             <nav className="hidden items-center gap-1 md:flex lg:gap-2">
               <Link href="/menu" className={navLink}>
                 Menu
+              </Link>
+              <Link href="/all-you-can-eat-lunch" className={navLink}>
+                Rodizio
               </Link>
               <Link href="/book" className={navLink}>
                 Reservation
@@ -464,6 +470,9 @@ export function Header({ variant = "default" }) {
                 <Link href="/menu" className="text-base font-medium text-white" onClick={closeMenu}>
                   Menus
                 </Link>
+                <Link href="/all-you-can-eat-lunch" className="text-base font-medium text-white" onClick={closeMenu}>
+                  Rodizio
+                </Link>
                 <Link href="/book" className="text-base font-medium text-white" onClick={closeMenu}>
                   Reservation
                 </Link>
@@ -494,6 +503,9 @@ export function Header({ variant = "default" }) {
               <>
                 <Link href="/menu" className="text-base font-medium text-wood-900" onClick={closeMenu}>
                   Menu
+                </Link>
+                <Link href="/all-you-can-eat-lunch" className="text-base font-medium text-wood-900" onClick={closeMenu}>
+                  Rodizio
                 </Link>
                 <Link href="/book" className="text-base font-medium text-wood-900" onClick={closeMenu}>
                   Reservation

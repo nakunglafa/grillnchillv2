@@ -8,6 +8,11 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CookieConsentGate } from "@/components/CookieConsentGate";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
+import {
+  getDefaultShareImage,
+  mergeWebsiteContent,
+  pickShareImage,
+} from "@/lib/website-content";
 
 // Max time we wait for the backend before declaring it unreachable and showing
 // the "site unavailable" page. Long enough to absorb a slow cold start, short
@@ -67,58 +72,92 @@ const siteKeywords = [
   "Thai food Algarve",
   "book restaurant table Almancil",
   "restaurant menu Almancil",
+  "rodizio Almancil",
+  "all you can eat lunch Almancil",
 ];
 
-export const metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: siteTitle,
-    template: "%s | Thai Maki",
-  },
-  description: siteDescription,
-  keywords: siteKeywords,
-  applicationName: "Thai Maki",
-  category: "restaurant",
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: siteTitle,
+function buildSiteMetadata(shareImageUrl) {
+  const ogImages = shareImageUrl
+    ? [
+        {
+          url: shareImageUrl,
+          width: 1200,
+          height: 630,
+          alt: "Thai Maki — Thai and sushi restaurant in Almancil, Algarve",
+        },
+      ]
+    : [];
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: siteTitle,
+      template: "%s | Thai Maki",
+    },
     description: siteDescription,
-    url: SITE_URL,
-    siteName: "Thai Maki",
-    locale: "en_GB",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: siteTitle,
-    description: siteDescription,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    keywords: siteKeywords,
+    applicationName: "Thai Maki",
+    category: "restaurant",
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      title: siteTitle,
+      description: siteDescription,
+      url: SITE_URL,
+      siteName: "Thai Maki",
+      locale: "en_GB",
+      type: "website",
+      ...(ogImages.length ? { images: ogImages } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteTitle,
+      description: siteDescription,
+      ...(shareImageUrl ? { images: [shareImageUrl] } : {}),
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-  appleWebApp: {
-    capable: true,
-    title: process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() || "Thai Maki",
-    statusBarStyle: "black-translucent",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-  },
-};
+    appleWebApp: {
+      capable: true,
+      title: process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() || "Thai Maki",
+      statusBarStyle: "black-translucent",
+    },
+    icons: {
+      icon: [
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+  };
+}
+
+export async function generateMetadata() {
+  try {
+    const data = await getRestaurant(RESTAURANT_ID);
+    const rest = data?.restaurant ?? data?.data ?? data;
+    const websiteContent = mergeWebsiteContent(
+      rest?.id ?? RESTAURANT_ID,
+      data?.website_content ?? rest?.website_content ?? null
+    );
+    const shareImageUrl =
+      pickShareImage(websiteContent, rest?.logo_url) ||
+      getDefaultShareImage(RESTAURANT_ID);
+    return buildSiteMetadata(shareImageUrl);
+  } catch {
+    return buildSiteMetadata(getDefaultShareImage(RESTAURANT_ID));
+  }
+}
 
 export const viewport = {
   width: "device-width",
@@ -134,6 +173,7 @@ export default async function RootLayout({ children }) {
   let restaurantMeta;
   /** @type {{ x?: string | null; facebook?: string | null; instagram?: string | null; tripadvisor?: string | null } | undefined} */
   let socialLinks;
+  let schemaImage = getDefaultShareImage(RESTAURANT_ID);
   let serverDown = false;
 
   // Read the consent cookie on the server so the modal (and any GA scripts)
@@ -166,6 +206,13 @@ export default async function RootLayout({ children }) {
     if (rest?.social_links && typeof rest.social_links === "object") {
       socialLinks = rest.social_links;
     }
+    const websiteContent = mergeWebsiteContent(
+      rest?.id ?? RESTAURANT_ID,
+      data?.website_content ?? rest?.website_content ?? null
+    );
+    schemaImage =
+      pickShareImage(websiteContent, rest?.logo_url) ||
+      getDefaultShareImage(RESTAURANT_ID);
   } catch (err) {
     if (isServerUnreachable(err)) {
       serverDown = true;
@@ -204,7 +251,7 @@ export default async function RootLayout({ children }) {
               "@context": "https://schema.org",
               "@type": "Restaurant",
               name: restaurantName,
-              image: restaurantMeta?.logo_url || undefined,
+              image: schemaImage || restaurantMeta?.logo_url || undefined,
               address: restaurantMeta?.address
                 ? {
                     "@type": "PostalAddress",

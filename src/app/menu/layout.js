@@ -1,5 +1,6 @@
 import { getRestaurant } from "@/lib/api";
 import { toArray } from "@/lib/owner-utils";
+import { getDefaultShareImage, mergeWebsiteContent, pickShareImage } from "@/lib/website-content";
 
 const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
 
@@ -38,8 +39,13 @@ export async function generateMetadata() {
     const address = restaurant?.address || "Almancil, Algarve";
     const phone = restaurant?.phone || "+351 920 311 793";
     const logoUrl =
-      restaurant?.logo_url ||
-      "https://thainmaki.pt/cover.jpg";
+      pickShareImage(
+        mergeWebsiteContent(
+          restaurant?.id ?? RESTAURANT_ID,
+          data?.website_content ?? restaurant?.website_content ?? null
+        ),
+        restaurant?.logo_url
+      ) || getDefaultShareImage(RESTAURANT_ID);
 
     const menuItemNames =
       collectMenuItemNames(restaurant?.menus ?? data?.menus ?? []) || [];

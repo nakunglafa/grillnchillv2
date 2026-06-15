@@ -900,15 +900,14 @@ export default function Home() {
         <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--site-header-height))] w-full max-w-[1600px] flex-col justify-end items-start px-4 pt-3 pb-8 max-md:min-h-[calc(100svh-var(--site-header-height))] max-md:pb-[calc(3rem+var(--language-switcher-gutter)+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-4 md:min-h-[calc(100dvh-var(--site-header-height))] md:items-stretch md:justify-center md:pt-24 md:pb-14 lg:px-10 lg:pb-16 lg:pt-28">
           <div className="w-full max-w-3xl">
             <h1 className="font-sans text-[clamp(1.65rem,7.25vw,2.4rem)] font-bold leading-[1.04] tracking-tight text-white md:leading-[1.02] md:text-[clamp(2.5rem,5.5vw,5rem)]">
-              <span className="block">We Only Serve</span>
+              <span className="block">Thai &amp; Sushi Restaurant</span>
               <span className="block">
-                A <span className="text-accent">Delicious</span>
+                in <span className="text-accent">Almancil</span>, Algarve
               </span>
-              <span className="block">Dishes</span>
             </h1>
             <p className="font-display mt-2 max-w-xl text-[11px] italic leading-snug text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:text-[12px] sm:leading-relaxed md:mt-8 md:text-[15px] lg:text-[16px]">
-              The only thing we&apos;re serious about is food. We will wait for your seat in our
-              restaurant and satisfy you with quality food.
+              We only serve delicious dishes — fresh sushi, authentic Thai flavours, and a
+              welcoming dining experience near Faro.
             </p>
             <div className="mt-3 flex flex-col gap-4 md:mt-10 md:gap-0">
               {/* Mobile: Menu + Reserve now side by side */}
