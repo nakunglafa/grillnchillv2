@@ -1,0 +1,14 @@
+{
+  "name": "thainmaki-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local ESC/POS kitchen print agent for Thai & Maki owner dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

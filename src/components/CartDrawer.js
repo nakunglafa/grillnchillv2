@@ -9,7 +9,7 @@ import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 const DRAWER_TRANSITION_MS = 300;
 
 export function CartDrawer({ open, onClose }) {
-  const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate } = useCart();
+  const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate, orderType, setOrderType } = useCart();
   const { orderingAccepting, openingSlots } = useOrderingHours();
   const checkoutBlocked =
     Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
@@ -137,6 +137,33 @@ export function CartDrawer({ open, onClose }) {
         </div>
         {items.length > 0 && (
           <div className="shrink-0 border-t border-white/20 bg-wood-100/80 p-4">
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-wood-600">Order type</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderType("pickup")}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    orderType === "pickup"
+                      ? "bg-accent text-wood-950"
+                      : "border border-wood-400/40 bg-white/40 text-wood-800 hover:bg-white/60"
+                  }`}
+                >
+                  Pickup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderType("delivery")}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    orderType === "delivery"
+                      ? "bg-accent text-wood-950"
+                      : "border border-wood-400/40 bg-white/40 text-wood-800 hover:bg-white/60"
+                  }`}
+                >
+                  Delivery
+                </button>
+              </div>
+            </div>
             <div className="mb-4 flex justify-between text-lg font-semibold text-wood-900">
               <span>Total</span>
               <span>{formatPrice(totalAmount)}</span>

@@ -74,9 +74,17 @@ function StripePaymentForm({ clientSecret, customerEmail, onSuccess, onError }) 
   );
 }
 
+function buildDeliveryAddress(street, city, postalCode) {
+  return [street, postalCode, city]
+    .map((s) => String(s || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function CheckoutPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth();
-  const { items, totalAmount, clearCart, hydrate } = useCart();
+  const { items, totalAmount, clearCart, hydrate, orderType, setOrderType } = useCart();
+  const isDelivery = orderType === "delivery";
   const { openingSlots } = useOrderingHours();
   const orderingClosedNow =
     Array.isArray(openingSlots) &&
@@ -97,6 +105,9 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryStreet, setDeliveryStreet] = useState("");
+  const [deliveryCity, setDeliveryCity] = useState("");
+  const [deliveryPostalCode, setDeliveryPostalCode] = useState("");
   const [notes, setNotes] = useState("");
   const [gdprConsent, setGdprConsent] = useState(false);
 
@@ -131,17 +142,18 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
+  const cashLabel = isDelivery ? "Pay on Delivery" : "Pay on Pickup";
   const availableMethods = [];
   if (STRIPE_CHECKOUT_ENABLED && paymentOptions.stripe && STRIPE_PK) {
     availableMethods.push({ id: "online_payment", label: "Pay with Card (Stripe)" });
   }
-  if (paymentOptions.pickup) availableMethods.push({ id: "cash_on_delivery", label: "Pay on Pickup" });
+  if (paymentOptions.pickup) availableMethods.push({ id: "cash_on_delivery", label: cashLabel });
 
   useEffect(() => {
     if (availableMethods.length > 0 && !availableMethods.find((m) => m.id === paymentMethod)) {
       setPaymentMethod(availableMethods[0].id);
     }
-  }, [availableMethods.length, paymentMethod]);
+  }, [availableMethods.length, paymentMethod, cashLabel]);
 
   if (authLoading || loading) {
     return (
@@ -153,8 +165,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  // Guests can checkout; they must provide name and at least one of email or phone below.
 
   if (items.length === 0 && !success) {
     return (
@@ -178,7 +188,9 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-semibold text-emerald-900 dark:text-emerald-100">Order placed!</h2>
             <p className="mt-2 text-emerald-800 dark:text-emerald-200">
               {paymentMethod === "cash_on_delivery"
-                ? "Pay when you pick up your order."
+                ? isDelivery
+                  ? "Pay when your order is delivered."
+                  : "Pay when you pick up your order."
                 : "Your payment has been processed."}
             </p>
             {!isAuthenticated && (
@@ -206,6 +218,25 @@ export default function CheckoutPage() {
     };
   });
 
+  const deliveryAddress = buildDeliveryAddress(deliveryStreet, deliveryCity, deliveryPostalCode);
+
+  function buildOrderPayload(extra = {}) {
+    const payload = {
+      restaurant_id: Number(RESTAURANT_ID),
+      order_type: isDelivery ? "delivery" : "pickup",
+      items: orderItems,
+      customer_name: (customerName || "").trim(),
+      customer_email: (customerEmail || "").trim() || undefined,
+      customer_phone: (customerPhone || "").trim() || undefined,
+      delivery_instructions: (notes || "").trim() || undefined,
+      ...extra,
+    };
+    if (isDelivery && deliveryAddress) {
+      payload.delivery_address = deliveryAddress;
+    }
+    return payload;
+  }
+
   function validateGuestContact() {
     const nameOk = (customerName || "").trim().length > 0;
     const hasEmail = (customerEmail || "").trim().length > 0;
@@ -214,7 +245,24 @@ export default function CheckoutPage() {
       setError("Please enter your name.");
       return false;
     }
-    if (!isAuthenticated && !hasEmail && !hasPhone) {
+    if (isDelivery) {
+      if (!hasPhone) {
+        setError("Phone number is required for delivery orders.");
+        return false;
+      }
+      if (!(deliveryStreet || "").trim()) {
+        setError("Please enter your street address.");
+        return false;
+      }
+      if (!(deliveryCity || "").trim()) {
+        setError("Please enter your city.");
+        return false;
+      }
+      if (!(deliveryPostalCode || "").trim()) {
+        setError("Please enter your postal code.");
+        return false;
+      }
+    } else if (!isAuthenticated && !hasEmail && !hasPhone) {
       setError("As a guest, please provide at least your email or phone number.");
       return false;
     }
@@ -241,9 +289,6 @@ export default function CheckoutPage() {
     try {
       const authToken = token || undefined;
 
-      // Record the GDPR consent first, before any other server interaction.
-      // This way the audit row exists regardless of whether the user later
-      // completes payment (online) or successfully creates the order (cash).
       const consentPayload = await buildGdprConsentPayload();
       try {
         await submitGdprConsent(RESTAURANT_ID, consentPayload, authToken);
@@ -261,7 +306,7 @@ export default function CheckoutPage() {
 
       if (paymentMethod === "online_payment") {
         if (!STRIPE_CHECKOUT_ENABLED) {
-          setError("Card payment is temporarily unavailable. Please choose Pay on Pickup.");
+          setError(`Card payment is temporarily unavailable. Please choose ${cashLabel}.`);
           setSubmitting(false);
           return;
         }
@@ -274,21 +319,17 @@ export default function CheckoutPage() {
           setClientSecret(secret);
           return;
         }
-        setError("Could not initialize payment. Try Pay on Pickup instead.");
+        setError(`Could not initialize payment. Try ${cashLabel} instead.`);
         return;
       }
 
-      await createOrder(authToken, {
-        restaurant_id: Number(RESTAURANT_ID),
-        order_type: "pickup",
-        items: orderItems,
-        payment_method: "cash_on_delivery",
-        payment_status: "pending",
-        customer_name: (customerName || "").trim(),
-        customer_email: (customerEmail || "").trim() || undefined,
-        customer_phone: (customerPhone || "").trim() || undefined,
-        delivery_instructions: (notes || "").trim() || undefined,
-      });
+      await createOrder(
+        authToken,
+        buildOrderPayload({
+          payment_method: "cash_on_delivery",
+          payment_status: "pending",
+        })
+      );
       clearCart();
       setSuccess(true);
     } catch (err) {
@@ -305,20 +346,10 @@ export default function CheckoutPage() {
 
   if (STRIPE_CHECKOUT_ENABLED && clientSecret && stripePromise) {
     const options = { clientSecret, appearance: { theme: "stripe" } };
-    const onlineOrderPayload = {
-      restaurant_id: Number(RESTAURANT_ID),
-      order_type: "pickup",
-      items: orderItems,
+    const onlineOrderPayload = buildOrderPayload({
       payment_method: "online_payment",
       payment_status: "paid",
-      customer_name: (customerName || "").trim(),
-      customer_email: (customerEmail || "").trim() || undefined,
-      customer_phone: (customerPhone || "").trim() || undefined,
-      delivery_instructions: (notes || "").trim() || undefined,
-      // GDPR consent has already been recorded against this restaurant via
-      // POST /restaurants/{id}/gdpr-consent at submit time, so we do NOT
-      // re-send the gdpr_consent_* fields with the order itself.
-    };
+    });
     return (
       <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
@@ -410,6 +441,36 @@ export default function CheckoutPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Order type
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderType("pickup")}
+                className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                  !isDelivery
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-800 hover:border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-100"
+                }`}
+              >
+                Pickup
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderType("delivery")}
+                className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                  isDelivery
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-800 hover:border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-100"
+                }`}
+              >
+                Delivery
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Payment method
             </label>
             <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
@@ -434,7 +495,9 @@ export default function CheckoutPage() {
 
           {!isAuthenticated && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-50">
-              Checking out as guest: please enter your name and at least one of email or phone.
+              {isDelivery
+                ? "Checking out as guest: name, phone, and delivery address are required."
+                : "Checking out as guest: please enter your name and at least one of email or phone."}
               {" "}
               <span className="text-amber-900/90 dark:text-amber-100/95">To track your order later, <Link href="/login" className="font-semibold underline hover:no-underline">log in</Link> before or after placing it.</span>
             </p>
@@ -451,7 +514,7 @@ export default function CheckoutPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Email {!isAuthenticated ? "(required if no phone)" : ""}
+              Email {!isAuthenticated && !isDelivery ? "(required if no phone)" : ""}
             </label>
             <input
               type="email"
@@ -462,15 +525,56 @@ export default function CheckoutPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Phone {!isAuthenticated ? "(required if no email)" : ""}
+              Phone {isDelivery ? "*" : !isAuthenticated ? "(required if no email)" : ""}
             </label>
             <input
               type="tel"
+              required={isDelivery}
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               className="w-full rounded-xl border border-zinc-300 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
           </div>
+
+          {isDelivery && (
+            <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60 sm:p-5">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Delivery address</h3>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Street address *</label>
+                <input
+                  type="text"
+                  required
+                  value={deliveryStreet}
+                  onChange={(e) => setDeliveryStreet(e.target.value)}
+                  placeholder="Street and number"
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">City *</label>
+                  <input
+                    type="text"
+                    required
+                    value={deliveryCity}
+                    onChange={(e) => setDeliveryCity(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Postal code *</label>
+                  <input
+                    type="text"
+                    required
+                    value={deliveryPostalCode}
+                    onChange={(e) => setDeliveryPostalCode(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</label>
             <textarea
@@ -478,7 +582,7 @@ export default function CheckoutPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               className="w-full rounded-xl border border-zinc-300 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-              placeholder="Special requests, allergies, etc."
+              placeholder={isDelivery ? "Delivery instructions, allergies, etc." : "Special requests, allergies, etc."}
             />
           </div>
 

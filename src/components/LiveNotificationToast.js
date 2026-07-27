@@ -11,6 +11,7 @@ import { formatCurrencyEUROrDash } from "@/lib/format-currency";
 import { EstimatedReadyMinutesForm } from "@/components/owner/EstimatedReadyMinutesForm";
 import { tryShowOwnerDeviceNotification } from "@/lib/owner-device-notifications";
 import { printOrderKitchenReceipt } from "@/lib/order-receipt-print";
+import { autoPrintNewOrderIfEnabled } from "@/lib/kitchen-print-agent";
 
 /** Extract restaurant ID from /owner/dashboard/[id] path when on owner dashboard */
 function getRestaurantIdFromPath() {
@@ -235,6 +236,11 @@ export function LiveNotificationToast() {
     const handleOrder = (e) => {
       const detail = e.detail ?? {};
       const key = getOrderKey(detail);
+      void autoPrintNewOrderIfEnabled(detail).then((result) => {
+        if (result?.ok === false && result.error) {
+          console.warn("[kitchen-print] auto-print failed:", result.error);
+        }
+      });
       setToasts((prev) => {
         if (prev.some((t) => t.type === "order" && t.dedupeKey === key)) return prev;
         playNotificationSound();
@@ -481,10 +487,10 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       {type === "order" && detail && (
         <button
           type="button"
-          onClick={() => printOrderKitchenReceipt(detail)}
+          onClick={() => void printOrderKitchenReceipt(detail)}
           className="absolute right-2 top-2 z-10 flex h-9 w-9 touch-manipulation items-center justify-center rounded-lg border border-owner-border bg-owner-paper text-owner-charcoal shadow-sm hover:bg-white hover:ring-1 hover:ring-owner-border"
-          title="Print receipt (80 mm thermal, e.g. Epson TM-m30 — choose printer in print dialog)"
-          aria-label="Print order receipt"
+          title="Reprint kitchen ticket (print agent)"
+          aria-label="Reprint kitchen ticket"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path

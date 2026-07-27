@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
-import { getReservations } from "@/lib/api";
+import { getReservations, cancelReservation } from "@/lib/api";
+
+const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Get a Date for the reservation (for sorting or display).
@@ -55,6 +57,19 @@ function formatStatus(status) {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
+function isCancelledStatus(status) {
+  const s = String(status || "").toLowerCase();
+  return s === "cancelled" || s === "canceled";
+}
+
+/** Free online cancel if reservation starts more than 24 hours from now. */
+function canCancelOnline(r, nowMs = Date.now()) {
+  if (isCancelledStatus(r?.status)) return false;
+  const d = getReservationDate(r);
+  if (!d || Number.isNaN(d.getTime())) return false;
+  return d.getTime() - nowMs > CANCEL_WINDOW_MS;
+}
+
 const TAB_UPCOMING = "upcoming";
 const TAB_PAST = "past";
 
@@ -65,6 +80,10 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState(TAB_UPCOMING);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const loadReservations = useCallback(() => {
     if (!token) return;
@@ -99,7 +118,7 @@ export default function ReservationsPage() {
     const pa = [];
     list.forEach((r) => {
       const d = getReservationDate(r);
-      if (d && d.getTime() >= now) up.push(r);
+      if (d && d.getTime() >= now && !isCancelledStatus(r.status)) up.push(r);
       else pa.push(r);
     });
     up.sort((a, b) => getTime(a) - getTime(b));
@@ -109,6 +128,31 @@ export default function ReservationsPage() {
 
   const displayList = activeTab === TAB_UPCOMING ? upcoming : past;
 
+  async function handleConfirmCancel() {
+    if (!cancelTarget || !token) return;
+    if (!canCancelOnline(cancelTarget)) {
+      setCancelError("Online cancellation is only available more than 24 hours before your reservation. Please contact the restaurant.");
+      return;
+    }
+    setCancelling(true);
+    setCancelError("");
+    try {
+      await cancelReservation(token, cancelTarget.id, cancelReason);
+      setCancelTarget(null);
+      setCancelReason("");
+      loadReservations();
+    } catch (err) {
+      setCancelError(
+        err?.data?.message ||
+          (err?.data?.errors ? Object.values(err.data.errors).flat().join(" ") : null) ||
+          err?.message ||
+          "Could not cancel this reservation. Please try again or contact the restaurant."
+      );
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   if (authLoading) return null;
   if (!isAuthenticated) return null;
 
@@ -116,7 +160,10 @@ export default function ReservationsPage() {
     <div className="min-h-screen bg-wood-100">
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold text-wood-900">My reservations</h1>
+        <h1 className="mb-2 text-2xl font-bold text-wood-900">My reservations</h1>
+        <p className="mb-6 text-sm text-wood-600">
+          Free online cancellation up to 24 hours before your reservation. Within 24 hours, please contact the restaurant.
+        </p>
         {error && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
             <p className="text-red-300">{error}</p>
@@ -167,18 +214,51 @@ export default function ReservationsPage() {
               </p>
             ) : (
               <ul className="space-y-4">
-                {displayList.map((r) => (
-                  <li key={r.id} className="glass rounded-xl p-5 border border-white/10">
-                    <p className="font-semibold text-wood-900">{r.restaurant?.name ?? `Restaurant #${r.restaurant_id}`}</p>
-                    <p className="mt-1 text-wood-600">{formatReservationDateTime(r)}</p>
-                    <p className="mt-0.5 text-sm text-wood-500">{Number(r.party_size) === 1 ? "1 guest" : `${r.party_size} guests`}</p>
-                    <p className="mt-2">
-                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-medium text-emerald-200 capitalize">
-                        {formatStatus(r.status)}
-                      </span>
-                    </p>
-                  </li>
-                ))}
+                {displayList.map((r) => {
+                  const cancellable = activeTab === TAB_UPCOMING && canCancelOnline(r, now);
+                  const within24h =
+                    activeTab === TAB_UPCOMING &&
+                    !isCancelledStatus(r.status) &&
+                    !cancellable &&
+                    getReservationDate(r) &&
+                    getReservationDate(r).getTime() >= now;
+                  return (
+                    <li key={r.id} className="glass rounded-xl border border-white/10 p-5">
+                      <p className="font-semibold text-wood-900">{r.restaurant?.name ?? `Restaurant #${r.restaurant_id}`}</p>
+                      <p className="mt-1 text-wood-600">{formatReservationDateTime(r)}</p>
+                      <p className="mt-0.5 text-sm text-wood-500">{Number(r.party_size) === 1 ? "1 guest" : `${r.party_size} guests`}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+                            isCancelledStatus(r.status)
+                              ? "bg-red-500/20 text-red-200"
+                              : "bg-emerald-500/20 text-emerald-200"
+                          }`}
+                        >
+                          {formatStatus(r.status)}
+                        </span>
+                        {cancellable ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancelError("");
+                              setCancelReason("");
+                              setCancelTarget(r);
+                            }}
+                            className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-200 transition-colors hover:bg-red-500/20"
+                          >
+                            Cancel reservation
+                          </button>
+                        ) : null}
+                        {within24h ? (
+                          <span className="text-xs text-wood-500">
+                            Within 24 hours — please contact the restaurant to cancel.
+                          </span>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>
@@ -187,6 +267,64 @@ export default function ReservationsPage() {
           <Link href="/book" className="text-wood-600 underline hover:text-wood-900">Book another table</Link>
         </p>
       </main>
+
+      {cancelTarget ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-reservation-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-wood-100 p-6 shadow-2xl">
+            <h2 id="cancel-reservation-title" className="text-lg font-semibold text-wood-900">
+              Cancel reservation?
+            </h2>
+            <p className="mt-2 text-sm text-wood-600">
+              {formatReservationDateTime(cancelTarget)}
+              {" · "}
+              {Number(cancelTarget.party_size) === 1 ? "1 guest" : `${cancelTarget.party_size} guests`}
+            </p>
+            <p className="mt-3 text-xs text-wood-500">
+              Free cancellation is available more than 24 hours before your reservation time.
+            </p>
+            <label className="mt-4 block text-sm font-medium text-wood-700">
+              Reason (optional)
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={3}
+                className="mt-1 w-full rounded-xl border border-wood-400/40 bg-white/60 px-3 py-2 text-wood-900"
+                placeholder="Tell us why you're cancelling…"
+              />
+            </label>
+            {cancelError ? (
+              <p className="mt-3 text-sm font-medium text-red-600">{cancelError}</p>
+            ) : null}
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={() => {
+                  setCancelTarget(null);
+                  setCancelReason("");
+                  setCancelError("");
+                }}
+                className="flex-1 rounded-xl border border-wood-400/40 px-4 py-2.5 text-sm font-medium text-wood-800 hover:bg-white/40 disabled:opacity-50"
+              >
+                Keep reservation
+              </button>
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={handleConfirmCancel}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {cancelling ? "Cancelling…" : "Confirm cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

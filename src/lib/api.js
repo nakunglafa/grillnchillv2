@@ -140,6 +140,22 @@ export async function getReservations(token) {
 }
 
 /**
+ * Cancel a reservation as the logged-in customer.
+ * PATCH /reservations/{id}/status with status cancelled.
+ */
+export async function cancelReservation(token, reservationId, cancellationReason) {
+  const body = {
+    status: "cancelled",
+    cancellation_reason: String(cancellationReason ?? "").trim() || "Cancelled by guest",
+  };
+  return apiFetch(`/reservations/${reservationId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+    token,
+  });
+}
+
+/**
  * Create a reservation. Auth optional.
  * Guests: send customer_name and at least one of confirmation_phone or customer_email.
  * @param {string} [token] - Optional; omit for guest booking.

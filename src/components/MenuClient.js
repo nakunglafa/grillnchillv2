@@ -7,6 +7,7 @@ import { toArray } from "@/lib/owner-utils";
 import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
 import { useCart } from "@/context/CartContext";
 import { useOrderingHours } from "@/context/OrderingHoursContext";
+import { OrderTypeModal } from "@/components/OrderTypeModal";
 
 function sortBySortOrder(a, b) {
   const ao = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER;
@@ -362,13 +363,24 @@ function SpecialMenuSection({ specialMenu, addItem, orderingEnabled, searchTerm 
 }
 
 export function MenuClient({ restaurant, menus, specialMenuLists }) {
-  const { addItem } = useCart();
+  const { addItem, setOrderType } = useCart();
   const { orderingAccepting, openingSlots } = useOrderingHours();
   const showOrderingClosedBanner =
     Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [orderTypeModalOpen, setOrderTypeModalOpen] = useState(true);
   const mobileCategoryRefs = useRef({});
+
+  function handleOrderTypeSelect(type) {
+    setOrderType(type);
+    setOrderTypeModalOpen(false);
+  }
+
+  function handleOrderTypeClose() {
+    // Keep current/saved choice (defaults to pickup); browsing stays unblocked
+    setOrderTypeModalOpen(false);
+  }
 
   // sidebar: top-level categories (in order) for quick jumps + filtering UI
   const buildSidebar = (menu) => {
@@ -501,6 +513,11 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
 
   return (
     <div className="relative min-h-screen bg-[#0a0908] text-white">
+      <OrderTypeModal
+        open={orderTypeModalOpen}
+        onSelect={handleOrderTypeSelect}
+        onClose={handleOrderTypeClose}
+      />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
         aria-hidden
@@ -513,7 +530,7 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
               Ordering paused
             </p>
             <p className="mt-1 font-sans text-sm text-white/75">
-              Pickup orders can only be placed during opening hours. The menu below is for browsing only right now.
+              Orders can only be placed during opening hours. The menu below is for browsing only right now.
             </p>
           </div>
         )}
@@ -630,14 +647,14 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                   />
                 ))}
 
-              {menus.map((menu) => {
+              {menus.map((menu, idx) => {
                 const categories = Array.isArray(menu.categories)
                   ? menu.categories
                   : toArray(menu.categories || menu);
                 const sortedCategories = [...categories].sort(sortBySortOrder);
                 return (
                   <section
-                    key={menu.id ?? menu.name ?? Math.random()}
+                    key={menu.id ?? menu.name ?? `menu-${idx}`}
                     className="overflow-hidden bg-white/[0.03] shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
                   >
                     <div className="divide-y divide-white/10">

@@ -5,6 +5,7 @@ import {
   getResolvedPrinterDisplayLabel,
   getReceiptLayoutMm,
 } from "@/lib/owner-print-preferences";
+import { printViaAgent } from "@/lib/kitchen-print-agent";
 
 function escapeHtml(s) {
   if (s == null) return "";
@@ -260,17 +261,35 @@ function printViaPopup(html) {
   return true;
 }
 
+function printBrowserFallback(detail) {
+  const html = buildReceiptHtmlDocument(detail);
+  if (typeof document === "undefined") return false;
+  if (printViaHiddenIframe(html)) return true;
+  return printViaPopup(html);
+}
+
 /**
- * ~80mm thermal receipt. Uses a hidden iframe first (reliable; no blank tab).
+ * Kitchen ticket: prefers local print agent (ESC/POS). Optional browser print dialog fallback.
  *
  * @param {Record<string, unknown>} detail - Same order payload as LiveNotificationToast `detail`.
+ * @returns {Promise<{ ok: boolean, via?: 'agent' | 'browser', error?: string }>}
  */
-export function printOrderKitchenReceipt(detail) {
-  if (typeof window === "undefined" || !detail) return;
+export async function printOrderKitchenReceipt(detail) {
+  if (typeof window === "undefined" || !detail) {
+    return { ok: false, error: "No order to print" };
+  }
 
-  const html = buildReceiptHtmlDocument(detail);
-  if (typeof document === "undefined") return;
-
-  if (printViaHiddenIframe(html)) return;
-  printViaPopup(html);
+  try {
+    await printViaAgent(detail);
+    return { ok: true, via: "agent" };
+  } catch (err) {
+    const message = err?.message || String(err);
+    const prefs = getOwnerPrintPreferences();
+    if (prefs.browserFallback) {
+      printBrowserFallback(detail);
+      return { ok: true, via: "browser", error: message };
+    }
+    window.alert(message);
+    return { ok: false, error: message };
+  }
 }

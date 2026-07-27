@@ -648,8 +648,8 @@ export default function BookPage() {
             </p>
             <p className="mx-auto mt-3 max-w-xl text-[11px] leading-relaxed text-white/55 sm:text-xs">
               {isAuthenticated
-                ? "You can view and manage your reservations in your account."
-                : "If you provided an email, you will receive a confirmation once the restaurant confirms your table. To track your reservation in your account, log in with the same email."}
+                ? "You can view and manage your reservations in your account. Free online cancellation is available up to 24 hours before your reservation; within 24 hours, please contact the restaurant."
+                : "If you provided an email, you will receive a confirmation once the restaurant confirms your table. To track your reservation in your account, log in with the same email. Free online cancellation (when logged in) is available up to 24 hours before your reservation."}
             </p>
             {!isAuthenticated && (
               <p className="mt-2 text-[11px] text-white/55 sm:text-xs">

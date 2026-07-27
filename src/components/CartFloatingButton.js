@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useOrderingHours } from "@/context/OrderingHoursContext";
 import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
 export function CartFloatingButton() {
+  const pathname = usePathname();
   const { totalItems, totalAmount } = useCart();
   const { orderingAccepting, openingSlots } = useOrderingHours();
   const checkoutBlocked =
@@ -13,13 +15,16 @@ export function CartFloatingButton() {
 
   if (totalItems === 0) return null;
 
-  const className =
-    "fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-xl px-5 py-3 font-medium shadow-lg transition md:bottom-8 md:right-8";
+  const onMenu = pathname === "/menu" || pathname?.startsWith("/menu/");
+  // Lift above the fixed mobile search bar on /menu (z-50, ~5.5–6.5rem tall)
+  const positionClass = onMenu
+    ? "fixed bottom-24 right-4 z-[60] flex items-center gap-3 rounded-xl px-5 py-3 font-medium shadow-lg transition lg:bottom-8 lg:right-8"
+    : "fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-xl px-5 py-3 font-medium shadow-lg transition md:bottom-8 md:right-8";
 
   if (checkoutBlocked) {
     return (
       <div
-        className={`${className} cursor-not-allowed bg-wood-400/80 text-wood-800`}
+        className={`${positionClass} cursor-not-allowed bg-wood-400/80 text-wood-800`}
         style={{ marginBottom: "env(safe-area-inset-bottom, 0)" }}
         role="status"
         aria-label="Ordering is only available during opening hours"
@@ -35,7 +40,7 @@ export function CartFloatingButton() {
   return (
     <Link
       href="/checkout"
-      className={`${className} bg-accent text-wood-950 shadow-lg hover:bg-accent-hover`}
+      className={`${positionClass} bg-accent text-wood-950 shadow-lg hover:bg-accent-hover`}
       style={{ marginBottom: "env(safe-area-inset-bottom, 0)" }}
       aria-label={`Proceed to checkout with ${totalItems} items`}
     >

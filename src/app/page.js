@@ -235,12 +235,124 @@ function formatOpeningHoursSentence(openingHours) {
   return parts.join(" | ");
 }
 
-/** Shown when API has no curated testimonials yet */
-const DEFAULT_TESTIMONIAL_FALLBACK = {
-  quote:
-    "The discovery of a new dish does more for the happiness of mankind than the discovery of a star.",
-  reviewer_name: "Anthelme Brillat-Savarin",
-};
+/** Shown when API has no curated testimonials yet — used by lower parallax fallbacks only via PLACEHOLDER_TESTIMONIALS */
+
+function StarRow({ rating, className = "text-[#fbbc04]", size = "md" }) {
+  const value = Number(rating);
+  const filled = Number.isFinite(value) ? Math.round(Math.min(5, Math.max(0, value))) : 0;
+  const sizeClass = size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4";
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${className}`} aria-hidden>
+      {Array.from({ length: 5 }, (_, i) => (
+        <svg
+          key={i}
+          className={`${sizeClass} ${i < filled ? "fill-current" : "fill-current opacity-25"}`}
+          viewBox="0 0 20 20"
+        >
+          <path d="M10 15.27L16.18 19l-1.64-7.03L20 7.24l-7.19-.61L10 0 7.19 6.63 0 7.24l5.46 4.73L3.82 19z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+function GoogleGIcon({ className = "h-6 w-6" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden>
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
+  );
+}
+
+const AVATAR_COLORS = ["#0d9488", "#7c3aed", "#ea580c", "#16a34a", "#2563eb", "#db2777"];
+
+function ReviewerAvatar({ review, index, className = "h-8 w-8" }) {
+  const initial = String(review?.author || "?").trim().charAt(0).toUpperCase() || "?";
+  const bg = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  if (review?.photoUri) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={review.photoUri}
+        alt=""
+        className={`${className} rounded-full object-cover ring-2 ring-white`}
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+  return (
+    <span
+      className={`${className} inline-flex items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-white`}
+      style={{ backgroundColor: bg }}
+      aria-hidden
+    >
+      {initial}
+    </span>
+  );
+}
+
+/** Nina-style Google rating strip: G + stars + score + avatars + +N */
+function GoogleRatingBadge({ rating, userRatingCount, reviews, href }) {
+  if (rating == null) return null;
+  const count = typeof userRatingCount === "number" ? userRatingCount : null;
+  const avatars = (Array.isArray(reviews) ? reviews : []).slice(0, 4);
+
+  return (
+    <a
+      href={href || "https://maps.google.com/?q=Thai+N+Maki+Almancil"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full bg-white/95 px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-white sm:gap-2.5 sm:px-4"
+      aria-label={`Google rating ${Number(rating).toFixed(1)} out of 5${count != null ? ` from ${count} reviews` : ""}`}
+    >
+      <GoogleGIcon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+      <StarRow rating={5} className="text-[#fbbc04]" size="md" />
+      <span className="font-sans text-base font-bold tabular-nums text-zinc-900 sm:text-lg">
+        {Number(rating).toFixed(1)}
+      </span>
+      {avatars.length > 0 ? (
+        <span className="ml-0.5 flex items-center pl-1">
+          {avatars.map((r, i) => (
+            <span key={`${r.author}-${i}`} className={i === 0 ? "" : "-ml-2"}>
+              <ReviewerAvatar review={r} index={i} className="h-7 w-7 sm:h-8 sm:w-8" />
+            </span>
+          ))}
+        </span>
+      ) : null}
+      {count != null && count > 0 ? (
+        <span className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white sm:text-xs">
+          +{count.toLocaleString()}
+        </span>
+      ) : null}
+    </a>
+  );
+}
+
+function GoogleReviewCard({ review, index }) {
+  const text = String(review?.text || "").trim();
+  const name = String(review?.author || "Google user").trim();
+  const dateLabel = String(review?.relativeTime || "").trim();
+  return (
+    <article className="flex w-[min(280px,78vw)] shrink-0 flex-col rounded-2xl bg-white p-4 text-left shadow-[0_12px_40px_rgba(0,0,0,0.28)] sm:w-[260px]">
+      <div className="flex items-start gap-3">
+        <ReviewerAvatar review={review} index={index} className="h-10 w-10 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-sans text-sm font-semibold text-zinc-900">{name}</p>
+          {dateLabel ? <p className="text-[11px] text-zinc-500">{dateLabel}</p> : null}
+        </div>
+      </div>
+      <div className="mt-2">
+        <StarRow rating={review?.rating ?? 5} className="text-[#fbbc04]" size="sm" />
+      </div>
+      <p className="mt-2 line-clamp-4 font-sans text-[13px] leading-snug text-zinc-700">
+        {text || "Great experience."}
+      </p>
+    </article>
+  );
+}
 
 const PLACEHOLDER_TESTIMONIALS = [
   {
@@ -406,6 +518,7 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [googlePlace, setGooglePlace] = useState(null);
   const servicesStatsRef = useRef(null);
   const servicesStatsAnimRafRef = useRef(null);
   const [statFoodVariant, setStatFoodVariant] = useState(0);
@@ -418,6 +531,16 @@ export default function Home() {
       .then(setData)
       .catch((err) => setError(err.message || "Failed to load restaurant info"))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/google-reviews")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (payload && !payload.error) setGooglePlace(payload);
+        else if (payload?.reviews?.length || payload?.rating != null) setGooglePlace(payload);
+      })
+      .catch(() => {});
   }, []);
 
   const restaurant = data?.restaurant;
@@ -471,9 +594,13 @@ export default function Home() {
     );
   }, [restaurant?.testimonials]);
 
-  const featuredTestimonial = testimonialsSorted[0] ?? null;
+  const googleReviews = useMemo(() => {
+    const raw = googlePlace?.reviews;
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((r) => String(r?.text || "").trim());
+  }, [googlePlace]);
 
-  /** Slides for parallax testimonial carousel — all curated quotes from API, else demo set */
+  /** Slides for parallax testimonial carousel — curated API, else Google reviews, else demo */
   const testimonialParallaxSlides = useMemo(() => {
     const fromApi = testimonialsSorted
       .map((t) => ({
@@ -483,6 +610,12 @@ export default function Home() {
       }))
       .filter((t) => t.quote && t.name);
     if (fromApi.length > 0) return fromApi;
+    const fromGoogle = googleReviews.map((r, i) => ({
+      id: `g-${i}-${r.author}`,
+      quote: String(r.text || "").trim(),
+      name: String(r.author || "Google user").trim(),
+    })).filter((t) => t.quote);
+    if (fromGoogle.length > 0) return fromGoogle;
     return [
       {
         id: "demo-lorem",
@@ -496,7 +629,7 @@ export default function Home() {
         quote: p.quote,
       })),
     ];
-  }, [testimonialsSorted]);
+  }, [testimonialsSorted, googleReviews]);
 
   const specialItems = useMemo(() => {
     const lists =
@@ -896,133 +1029,91 @@ export default function Home() {
           aria-hidden
         />
 
-        {/* Mobile: bottom-left stack over hero video; md+ vertically centered (original) */}
-        <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--site-header-height))] w-full max-w-[1600px] flex-col justify-end items-start px-4 pt-3 pb-8 max-md:min-h-[calc(100svh-var(--site-header-height))] max-md:pb-[calc(3rem+var(--language-switcher-gutter)+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-4 md:min-h-[calc(100dvh-var(--site-header-height))] md:items-stretch md:justify-center md:pt-24 md:pb-14 lg:px-10 lg:pb-16 lg:pt-28">
-          <div className="w-full max-w-3xl">
-            <h1 className="font-sans text-[clamp(1.65rem,7.25vw,2.4rem)] font-bold leading-[1.04] tracking-tight text-white md:leading-[1.02] md:text-[clamp(2.5rem,5.5vw,5rem)]">
+        {/* Nina-style social proof over hero video; H1 kept for SEO */}
+        <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--site-header-height))] w-full max-w-[1600px] flex-col justify-end px-4 pt-3 pb-6 max-md:min-h-[calc(100svh-var(--site-header-height))] max-md:pb-[calc(1.5rem+var(--language-switcher-gutter)+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-4 md:min-h-[calc(100dvh-var(--site-header-height))] md:justify-center md:pb-10 md:pt-20 lg:px-10 lg:pb-12 lg:pt-24">
+          <div className="mx-auto flex w-full max-w-4xl flex-col items-center text-center">
+            {googlePlace?.rating != null ? (
+              <div className="mb-4 md:mb-6">
+                <GoogleRatingBadge
+                  rating={googlePlace.rating}
+                  userRatingCount={googlePlace.userRatingCount}
+                  reviews={googleReviews}
+                  href={googlePlace.googleMapsUri}
+                />
+              </div>
+            ) : null}
+
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.28em] text-white/75 sm:text-[11px]">
+              Almancil · Algarve · Near Faro
+            </p>
+
+            <h1 className="mt-2 font-sans text-[clamp(1.65rem,7.25vw,2.4rem)] font-bold leading-[1.04] tracking-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.55)] md:mt-3 md:leading-[1.02] md:text-[clamp(2.5rem,5.5vw,4.5rem)]">
               <span className="block">Thai &amp; Sushi Restaurant</span>
               <span className="block">
                 in <span className="text-accent">Almancil</span>, Algarve
               </span>
             </h1>
-            <p className="font-display mt-2 max-w-xl text-[11px] italic leading-snug text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:text-[12px] sm:leading-relaxed md:mt-8 md:text-[15px] lg:text-[16px]">
-              We only serve delicious dishes — fresh sushi, authentic Thai flavours, and a
-              welcoming dining experience near Faro.
+
+            <p className="font-display mt-3 max-w-2xl text-[12px] leading-snug text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:text-[13px] md:mt-5 md:text-[15px] lg:text-[16px]">
+              Fresh sushi, authentic Thai flavours, and a welcoming dining experience —
+              rated by guests on Google.
             </p>
-            <div className="mt-3 flex flex-col gap-4 md:mt-10 md:gap-0">
-              {/* Mobile: Menu + Reserve now side by side */}
-              <div className="flex w-full max-w-md gap-3 max-md:pr-[var(--language-switcher-gutter)] md:hidden">
+
+            <div className="mt-5 flex w-full max-w-md flex-col items-center gap-3 sm:mt-7 md:max-w-none md:flex-row md:justify-center md:gap-6">
+              <div className="flex w-full gap-3 max-md:pr-0 md:w-auto">
                 <Link
                   href="/menu"
-                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm border-2 border-white/45 bg-white/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition-colors hover:border-accent/80 hover:bg-white/10 hover:text-accent sm:px-4 sm:text-[11px] sm:tracking-[0.2em]"
+                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm border-2 border-white/45 bg-white/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition-colors hover:border-accent/80 hover:bg-white/10 hover:text-accent sm:px-4 sm:text-[11px] md:flex-none md:min-w-[140px]"
                 >
                   Menu
                 </Link>
                 <Link
                   href="/book"
-                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm bg-accent px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-4 sm:text-[11px] sm:tracking-[0.2em]"
+                  className="inline-flex flex-1 touch-manipulation items-center justify-center rounded-sm bg-accent px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-4 sm:text-[11px] md:flex-none md:min-w-[160px] md:px-10 md:py-3.5 md:tracking-[0.24em]"
                 >
                   Reserve now
                 </Link>
               </div>
-              {/* md+: single Reserve + optional video (matches original layout) */}
-              <div className="hidden flex-col gap-8 md:flex md:flex-row md:items-center md:gap-10 lg:gap-12">
-                <Link
-                  href="/book"
-                  className="inline-flex w-max items-center justify-center rounded-sm bg-accent px-10 py-3.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white shadow-lg transition-colors hover:bg-accent-hover sm:px-14 sm:py-4"
-                >
-                  Reserve now
-                </Link>
-                {promoVideoUrl ? (
-                  <a
-                    href={promoVideoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-4 text-white"
-                  >
-                    {PlayCircle}
-                    <span className="text-[17px] font-medium tracking-wide">Watch Video</span>
-                  </a>
-                ) : null}
-              </div>
-            </div>
-            {promoVideoUrl ? (
-              <div className="mt-3 max-md:pr-[var(--language-switcher-gutter)] md:hidden">
+              {promoVideoUrl ? (
                 <a
                   href={promoVideoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group inline-flex items-center gap-3 text-white"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-accent bg-accent shadow-lg sm:h-14 sm:w-14">
-                    <svg className="ml-0.5 h-5 w-5 text-wood-950 sm:ml-1 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
+                  {PlayCircle}
                   <span className="text-[15px] font-medium tracking-wide sm:text-[17px]">Watch Video</span>
                 </a>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* Featured testimonial — dark luxury band (first curated quote from API, right under hero) */}
-      <section
-        className="relative border-y border-white/[0.06] bg-[#0a0908] py-16 text-center md:py-20 lg:py-24"
-        aria-label="Featured testimonial"
-      >
-        <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(197,157,95,0.06),transparent_55%)]"
-          aria-hidden
-        />
-        <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
-          {loading ? (
-            <p className="text-[15px] text-white/35">Loading…</p>
-          ) : (
-            (() => {
-              const t = featuredTestimonial || DEFAULT_TESTIMONIAL_FALLBACK;
-              const quote = String(t.quote ?? "").trim();
-              const name = String(t.reviewer_name ?? "").trim();
-              return (
-                <>
-                  <div className="mb-8 flex justify-center" aria-hidden>
-                    <span
-                      className="font-display text-[4.25rem] leading-none text-transparent sm:text-[5rem]"
-                      style={{ WebkitTextStroke: "1px rgba(197, 157, 95, 0.92)" }}
-                    >
-                      “
-                    </span>
-                  </div>
-                  <blockquote className="mx-auto">
-                    <p className="font-display text-[clamp(1.125rem,2.8vw,1.5rem)] italic leading-[1.65] text-white/95">
-                      &ldquo;{quote}&rdquo;
-                    </p>
-                    {name ? (
-                      <footer className="mt-8 font-sans text-[11px] font-semibold uppercase tracking-[0.32em] text-accent">
-                        {name}
-                      </footer>
-                    ) : null}
-                  </blockquote>
-                  <div
-                    className="mx-auto mt-14 flex max-w-md items-center justify-center gap-4"
-                    aria-hidden
+          {googleReviews.length > 0 ? (
+            <div className="mt-6 w-full md:mt-10">
+              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0">
+                {googleReviews.slice(0, 4).map((review, index) => (
+                  <GoogleReviewCard key={`${review.author}-${index}`} review={review} index={index} />
+                ))}
+              </div>
+              {googlePlace?.googleMapsUri ? (
+                <p className="mt-3 text-center text-[10px] text-white/50 sm:text-[11px]">
+                  Reviews from{" "}
+                  <a
+                    href={googlePlace.googleMapsUri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline decoration-white/30 underline-offset-2 hover:text-white/80"
                   >
-                    <span className="h-px flex-1 bg-accent/35" />
-                    <span className="text-[15px] leading-none text-accent/90">✦</span>
-                    <span className="h-px flex-1 bg-accent/35" />
-                  </div>
-                </>
-              );
-            })()
-          )}
-          {!loading && error ? (
-            <p className="mt-6 text-[14px] text-red-400/90">{error}</p>
+                    Google
+                  </a>
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </section>
 
-      {/* Our story — dark split layout (layered images + copy), directly after testimonial */}
+      {/* Our story — dark split layout (layered images + copy) */}
       {!loading && !error && (
         <section
           id="our-story"

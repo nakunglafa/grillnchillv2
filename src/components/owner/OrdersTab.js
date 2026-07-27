@@ -304,14 +304,14 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                   <button
                     type="button"
                     onClick={() =>
-                      printOrderKitchenReceipt({
+                      void printOrderKitchenReceipt({
                         ...order,
                         restaurant_id: order.restaurant_id ?? restaurantId,
                       })
                     }
                     className="absolute right-3 top-3 z-10 flex h-9 w-9 touch-manipulation items-center justify-center rounded-lg border border-white/35 bg-white/15 text-white shadow-md hover:bg-white/25"
-                    title="Print receipt (80 mm thermal — choose Epson TM-m30 in print dialog)"
-                    aria-label="Print order receipt"
+                    title="Reprint kitchen ticket (print agent)"
+                    aria-label="Reprint kitchen ticket"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path
