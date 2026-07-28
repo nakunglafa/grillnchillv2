@@ -8,7 +8,11 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CookieConsentGate } from "@/components/CookieConsentGate";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
-import { getDefaultRestaurantId } from "@/lib/restaurants";
+import {
+  CONFIGURED_RESTAURANTS,
+  getDefaultRestaurantId,
+  locationPath,
+} from "@/lib/restaurants";
 import {
   getDefaultShareImage,
   mergeWebsiteContent,
@@ -132,9 +136,13 @@ function buildSiteMetadata(shareImageUrl) {
     },
     icons: {
       icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
         { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-        { url: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       ],
+      shortcut: [{ url: "/favicon-96x96.png", type: "image/png" }],
       apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     },
   };
@@ -241,44 +249,35 @@ export default async function RootLayout({ children }) {
       >
         <GoogleAnalytics initialConsent={initialConsent} />
         <Script
-          id="restaurant-schema"
+          id="organization-schema"
           type="application/ld+json"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "Restaurant",
-              name: restaurantName,
-              image: schemaImage || restaurantMeta?.logo_url || undefined,
-              address: restaurantMeta?.address
-                ? {
-                    "@type": "PostalAddress",
-                    streetAddress: restaurantMeta.address,
-                    addressCountry: "PT",
-                  }
-                : undefined,
+              "@type": "Organization",
+              name: BRAND_NAME,
               url: SITE_URL,
-              telephone: restaurantMeta?.phone || undefined,
-              servesCuisine: restaurantMeta?.cuisine
-                ? [restaurantMeta.cuisine]
-                : ["Nepali", "Portuguese", "Indian"],
-              priceRange: "$$",
-              openingHoursSpecification: [
-                {
-                  "@type": "OpeningHoursSpecification",
-                  dayOfWeek: [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                  ],
-                  opens: "12:00",
-                  closes: "23:00",
-                },
-              ],
+              logo: schemaImage || restaurantMeta?.logo_url || undefined,
+              sameAs: [
+                socialLinks?.instagram,
+                socialLinks?.facebook,
+                socialLinks?.x,
+                socialLinks?.tripadvisor,
+              ].filter(Boolean),
+              department: CONFIGURED_RESTAURANTS.map((r) => ({
+                "@type": r.venueType === "bakery" ? "Bakery" : "Restaurant",
+                name: r.label,
+                url: `${SITE_URL}${locationPath(r)}`,
+                address: r.addressFallback
+                  ? {
+                      "@type": "PostalAddress",
+                      streetAddress: r.addressFallback,
+                      addressLocality: "Lisbon",
+                      addressCountry: "PT",
+                    }
+                  : undefined,
+              })),
             }),
           }}
         />

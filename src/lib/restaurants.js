@@ -72,7 +72,7 @@ const SEO_BY_SLUG = {
 const AREA_BY_SLUG = {
   "praca-do-chile": ["Praça do Chile", "Arroios", "Almirante Reis", "Lisbon"],
   intendente: ["Intendente", "Martim Moniz", "Anjos", "Lisbon"],
-  bakery: ["Bakery", "Intendente", "Anjos", "Lisbon"],
+  bakery: ["Praça do Chile", "Arroios", "Almirante Reis", "Lisbon"],
 };
 
 function placeIdForIndex(index) {

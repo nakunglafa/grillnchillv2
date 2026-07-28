@@ -17,7 +17,7 @@ self.addEventListener("activate", (event) => {
  * @returns {{ title: string; body: string; tag: string; data: Record<string, unknown> }}
  */
 function pickPushContent(raw) {
-  let title = "Thai n Maki";
+  let title = "Grill N Chill";
   let body = "New order or reservation";
   let tag = "owner-push";
   /** @type {Record<string, unknown>} */
@@ -66,7 +66,7 @@ function showPickedNotification(picked) {
     body: picked.body,
     tag: picked.tag,
     icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    badge: "/favicon-96x96.png",
     data: picked.data,
     requireInteraction: true,
     vibrate: [200, 80, 200, 80, 200],
@@ -75,7 +75,7 @@ function showPickedNotification(picked) {
 
 self.addEventListener("push", (event) => {
   const fallbackPicked = () => ({
-    title: "Thai n Maki",
+    title: "Grill N Chill",
     body: "New order or reservation",
     tag: "owner-push",
     data: { url: "/owner" },
@@ -101,7 +101,7 @@ self.addEventListener("push", (event) => {
         } catch {
           const b = String(text);
           picked = {
-            title: "Thai n Maki",
+            title: "Grill N Chill",
             body: b.length > 180 ? `${b.slice(0, 177)}…` : b,
             tag: "owner-push",
             data: { url: "/owner" },

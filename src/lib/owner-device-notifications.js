@@ -250,7 +250,7 @@ export async function tryShowOwnerDeviceNotification({ title, body, tag, url }) 
         body,
         tag: `owner-${tag}`,
         icon: "/favicon.ico",
-        badge: "/favicon.ico",
+        badge: "/favicon-96x96.png",
         data: { url: path },
         requireInteraction: true,
         vibrate: [200, 80, 200, 80, 200],

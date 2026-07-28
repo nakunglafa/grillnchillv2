@@ -1,7 +1,28 @@
 import { notFound } from "next/navigation";
-import { getRestaurantBySlug, LOCATION_SLUGS, menuPath, locationPath } from "@/lib/restaurants";
+import {
+  getRestaurantBySlug,
+  LOCATION_SLUGS,
+  menuPath,
+  locationPath,
+} from "@/lib/restaurants";
 import { getRestaurant } from "@/lib/api";
 import { LocationMenuClient } from "@/components/LocationMenuClient";
+import {
+  getFeatureImage,
+  mergeWebsiteContent,
+} from "@/lib/website-content";
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
+const BRAND =
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX?.trim() ||
+  "Grill N Chill";
+
+function absUrl(pathOrUrl) {
+  if (!pathOrUrl) return undefined;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  return `${SITE_URL}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+}
 
 export function generateStaticParams() {
   return LOCATION_SLUGS.map((slug) => ({ slug }));
@@ -12,19 +33,57 @@ export async function generateMetadata({ params }) {
   const catalog = getRestaurantBySlug(slug);
   if (!catalog) return { title: "Menu" };
 
+  const path = menuPath(catalog);
+  const canonical = `${SITE_URL}${path}`;
+
   try {
     const data = await getRestaurant(catalog.id);
     const api = data?.restaurant ?? data?.data ?? data;
     const name = api?.name || catalog.label;
+    const title = `Menu — ${name}`;
+    const description = `Browse the live menu at ${name}. Order online from Grill N Chill in Lisbon.`;
+    const content = mergeWebsiteContent(
+      catalog.id,
+      data?.website_content ?? api?.website_content ?? null
+    );
+    const image = absUrl(
+      getFeatureImage(content) || api?.logo_url || api?.logoUrl || undefined
+    );
+
     return {
-      title: `Menu | ${name}`,
-      description: `Browse the live menu at ${name}. Order online from Grill N Chill.`,
-      alternates: { canonical: menuPath(catalog) },
+      title,
+      description,
+      alternates: { canonical: path },
+      openGraph: {
+        title,
+        description,
+        url: canonical,
+        siteName: BRAND,
+        type: "website",
+        images: image ? [{ url: image }] : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: image ? [image] : undefined,
+      },
     };
   } catch {
+    const title = `Menu — ${catalog.label}`;
+    const description = `Browse the menu at ${catalog.label}. Order online from Grill N Chill.`;
     return {
-      title: `Menu | ${catalog.label}`,
-      alternates: { canonical: menuPath(catalog) },
+      title,
+      description,
+      alternates: { canonical: path },
+      openGraph: {
+        title,
+        description,
+        url: canonical,
+        siteName: BRAND,
+        type: "website",
+      },
+      twitter: { card: "summary", title, description },
     };
   }
 }
