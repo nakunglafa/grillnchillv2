@@ -1,11 +1,11 @@
 {
-  "name": "thainmaki.pt",
+  "name": "grillnchill.pt",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3006",
+    "dev": "next dev -p 3004",
     "build": "next build",
-    "start": "next start -p 3006",
+    "start": "next start -p 3004",
     "lint": "eslint"
   },
   "dependencies": {
@@ -17,7 +17,8 @@
     "next-auth": "^4.24.13",
     "pusher-js": "^8.4.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-easy-crop": "^6.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

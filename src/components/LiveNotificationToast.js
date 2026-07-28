@@ -22,7 +22,7 @@ function getRestaurantIdFromPath() {
 
 function ownerDashboardPath(detail) {
   const rid = detail?.restaurant_id ?? detail?.restaurant?.id ?? getRestaurantIdFromPath();
-  return rid != null && rid !== "" ? `/owner/dashboard/${rid}` : "/owner";
+  return rid != null && rid !== "" ? `/owner/dashboard/${rid}` : "/owner/dashboard";
 }
 
 /** API may send handled_by as a string or as a nested user object */
@@ -416,7 +416,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       let itemId = entity?.id ?? inner?.id ?? detail?.id ?? entity?.order_id ?? inner?.order_id ?? detail?.order_id ?? entity?.reservation_id ?? inner?.reservation_id ?? detail?.reservation_id ?? entity?.table_order_id ?? inner?.table_order_id ?? detail?.table_order_id ?? entity?.booking_id ?? inner?.booking_id ?? detail?.booking_id ?? detail?.data?.id ?? detail?.data?.order_id ?? detail?.data?.reservation_id;
 
       if (!restaurantId) {
-        restaurantId = getRestaurantIdFromPath() ?? process.env.NEXT_PUBLIC_RESTAURANT_ID;
+        restaurantId = getRestaurantIdFromPath() ?? process.env.NEXT_PUBLIC_RESTAURANT_ID1;
       }
 
       if (!restaurantId || itemId == null || itemId === "") {

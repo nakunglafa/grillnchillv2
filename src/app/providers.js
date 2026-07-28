@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { OrderingHoursProvider } from "@/context/OrderingHoursContext";
+import { RestaurantProvider } from "@/context/RestaurantContext";
 import { RealTimeNotificationProvider } from "@/context/RealTimeNotificationContext";
 import { LiveNotificationToast } from "@/components/LiveNotificationToast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -18,17 +19,19 @@ export function Providers({ children }) {
     <SessionProvider>
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <AuthProvider>
-          <PwaOwnerLaunchResume />
-          <OrderingHoursProvider>
-            <CartProvider>
-              <RealTimeNotificationProvider>
-                <PwaServiceWorkerRegister />
-                {children}
-                <LiveNotificationToast />
-              </RealTimeNotificationProvider>
-              <CartFloatingButton />
-            </CartProvider>
-          </OrderingHoursProvider>
+          <RestaurantProvider>
+            <PwaOwnerLaunchResume />
+            <OrderingHoursProvider>
+              <CartProvider>
+                <RealTimeNotificationProvider>
+                  <PwaServiceWorkerRegister />
+                  {children}
+                  <LiveNotificationToast />
+                </RealTimeNotificationProvider>
+                <CartFloatingButton />
+              </CartProvider>
+            </OrderingHoursProvider>
+          </RestaurantProvider>
         </AuthProvider>
       </GoogleOAuthProvider>
     </SessionProvider>

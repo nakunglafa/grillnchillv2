@@ -15,7 +15,10 @@ export function CartFloatingButton() {
 
   if (totalItems === 0) return null;
 
-  const onMenu = pathname === "/menu" || pathname?.startsWith("/menu/");
+  const onMenu =
+    pathname === "/menu" ||
+    pathname?.startsWith("/menu/") ||
+    Boolean(pathname?.match(/^\/[^/]+\/menu\/?$/));
   // Lift above the fixed mobile search bar on /menu (z-50, ~5.5–6.5rem tall)
   const positionClass = onMenu
     ? "fixed bottom-24 right-4 z-[60] flex items-center gap-3 rounded-xl px-5 py-3 font-medium shadow-lg transition lg:bottom-8 lg:right-8"

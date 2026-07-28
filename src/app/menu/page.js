@@ -1,22 +1,24 @@
-import { getRestaurant } from "@/lib/api";
-import { MenuClient } from "@/components/MenuClient";
+"use client";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useRestaurant } from "@/context/RestaurantContext";
+import { getSlugForId, getDefaultLocationSlug, menuPath } from "@/lib/restaurants";
 
-export default async function MenuPage() {
-  const data = await getRestaurant(RESTAURANT_ID);
-  const restaurant = data?.restaurant ?? data?.data ?? null;
-  const menusRaw = restaurant?.menus ?? data?.menus ?? [];
-  const menus = Array.isArray(menusRaw) ? menusRaw : menusRaw ? [menusRaw] : [];
-  const specialMenuListsRaw = restaurant?.special_menu_lists ?? data?.special_menu_lists ?? [];
-  const specialMenuLists = Array.isArray(specialMenuListsRaw)
-    ? specialMenuListsRaw
-    : specialMenuListsRaw
-      ? [specialMenuListsRaw]
-      : [];
+/** Legacy flat /menu → /{slug}/menu for the active (or default) location. */
+export default function MenuRedirectPage() {
+  const router = useRouter();
+  const { activeRestaurantId, hydrated } = useRestaurant();
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const slug = getSlugForId(activeRestaurantId) || getDefaultLocationSlug();
+    router.replace(slug ? menuPath(slug) : "/");
+  }, [hydrated, activeRestaurantId, router]);
 
   return (
-    <MenuClient restaurant={restaurant} menus={menus} specialMenuLists={specialMenuLists} />
+    <div className="flex min-h-[40vh] items-center justify-center bg-[#0a0908] text-white/70">
+      Opening menu…
+    </div>
   );
 }
-

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import { MenuImageCropModal } from "@/components/owner/MenuImageCropModal";
+import { MAX_MENU_IMAGE_PICK_BYTES } from "@/lib/menu-image-crop";
 
 /** Max image size for logo (e.g. restaurant logo): 500 KB */
 export const MAX_IMAGE_BYTES = 500 * 1024;
 
-/** Max image size for menu category/item per API doc: 2 MB */
+/** Max image size for menu category/item per API doc: 2 MB (after crop) */
 export const MAX_MENU_IMAGE_BYTES = 2 * 1024 * 1024;
 
 /**
@@ -23,16 +25,10 @@ export function validateImageSize(file, maxBytes = MAX_IMAGE_BYTES) {
 }
 
 /**
- * Image upload with drag-and-drop, 500 KB max, and optional file input.
- * @param {string} id - Input id for label
- * @param {string} label - Label text
- * @param {File | undefined} value - Current file (for showing "New image: name")
- * @param {(file: File | undefined) => void} onChange - Called with file or undefined
- * @param {(message: string) => void} onError - Called when file too large or invalid
- * @param {string} [className] - Wrapper class
- * @param {string} [accept] - Accept attribute (default "image/*")
- * @param {string} [dropHint] - Hint text (default "Drop image or click to choose (max 500 KB)")
- * @param {number} [maxBytes] - Max file size in bytes (default MAX_IMAGE_BYTES)
+ * Image upload with drag-and-drop.
+ * When enableCrop is true (menu builder): pick up to 20 MB → crop/recenter modal → JPEG ≤ maxBytes.
+ *
+ * @param {boolean} [enableCrop] - Open Soul & Sip–style crop modal before onChange
  */
 export function ImageUploadDropzone({
   id,
@@ -44,9 +40,30 @@ export function ImageUploadDropzone({
   accept = "image/*",
   dropHint = "Drop image or click to choose (max 500 KB)",
   maxBytes = MAX_IMAGE_BYTES,
+  enableCrop = false,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+  const [cropFileName, setCropFileName] = useState("menu-image.jpg");
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+    };
+  }, [cropSrc]);
+
+  function clearInput() {
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function closeCrop() {
+    setCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    clearInput();
+  }
 
   const handleFile = (file) => {
     if (!file) {
@@ -57,6 +74,24 @@ export function ImageUploadDropzone({
       onError("Please select an image file (JPEG, PNG, JPG, GIF, or SVG).");
       return;
     }
+
+    if (enableCrop) {
+      if (file.type === "image/svg+xml") {
+        onError("SVG cannot be cropped. Use JPEG, PNG, GIF, or WebP.");
+        clearInput();
+        return;
+      }
+      const pickErr = validateImageSize(file, MAX_MENU_IMAGE_PICK_BYTES);
+      if (pickErr) {
+        onError(pickErr);
+        clearInput();
+        return;
+      }
+      setCropFileName(file.name || "menu-image.jpg");
+      setCropSrc(URL.createObjectURL(file));
+      return;
+    }
+
     const err = validateImageSize(file, maxBytes);
     if (err) {
       onError(err);
@@ -68,7 +103,7 @@ export function ImageUploadDropzone({
   const handleChange = (e) => {
     const file = e.target.files?.[0];
     handleFile(file ?? undefined);
-    e.target.value = "";
+    if (!enableCrop) e.target.value = "";
   };
 
   const handleDrop = (e) => {
@@ -88,10 +123,25 @@ export function ImageUploadDropzone({
     if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false);
   };
 
+  function handleCropConfirm(file) {
+    const err = validateImageSize(file, maxBytes);
+    if (err) {
+      onError(err);
+      closeCrop();
+      return;
+    }
+    closeCrop();
+    onChange(file);
+  }
+
+  const hint = enableCrop
+    ? "Drop or click — crop to square; large photos are resized automatically."
+    : dropHint;
+
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label htmlFor={id} className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {label}
         </label>
       )}
@@ -109,11 +159,12 @@ export function ImageUploadDropzone({
           }
         }}
         className={`
-          min-h-[80px] rounded-lg border-2 border-dashed px-3 py-4 text-center text-sm cursor-pointer
-          transition-colors flex flex-col items-center justify-center gap-1
-          ${isDragOver
-            ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 dark:border-emerald-400"
-            : "border-zinc-300 bg-zinc-50/50 dark:border-zinc-600 dark:bg-zinc-800/50"
+          flex min-h-[80px] cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-4 text-center text-sm
+          transition-colors
+          ${
+            isDragOver
+              ? "border-emerald-500 bg-emerald-50/50 dark:border-emerald-400 dark:bg-emerald-900/20"
+              : "border-zinc-300 bg-zinc-50/50 dark:border-zinc-600 dark:bg-zinc-800/50"
           }
         `}
       >
@@ -121,15 +172,30 @@ export function ImageUploadDropzone({
           ref={inputRef}
           id={id}
           type="file"
-          accept={accept}
+          accept={
+            enableCrop
+              ? "image/jpeg,image/png,image/jpg,image/gif,image/webp"
+              : accept
+          }
           onChange={handleChange}
           className="sr-only"
         />
-        <span className="text-zinc-600 dark:text-zinc-400">{dropHint}</span>
+        <span className="text-zinc-600 dark:text-zinc-400">{hint}</span>
         {value instanceof File && (
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">{value.name}</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">{value.name}</span>
         )}
       </div>
+
+      {enableCrop ? (
+        <MenuImageCropModal
+          key={cropSrc ?? "closed"}
+          isOpen={Boolean(cropSrc)}
+          imageSrc={cropSrc}
+          fileName={cropFileName}
+          onCancel={closeCrop}
+          onConfirm={handleCropConfirm}
+        />
+      ) : null}
     </div>
   );
 }

@@ -61,13 +61,27 @@ function OwnerLayoutInner({ children }) {
   if (loading) {
     return (
       <div className="owner-theme notranslate flex min-h-screen items-center justify-center" translate="no">
-        <p className="text-owner-charcoal">Loading...</p>
+        <p className="text-owner-charcoal">Loading owner dashboard…</p>
       </div>
     );
   }
 
-  if (!isAuthenticated || !isOwner(user)) {
-    return null;
+  if (!isAuthenticated) {
+    return (
+      <div className="owner-theme notranslate flex min-h-screen flex-col items-center justify-center gap-2 px-4" translate="no">
+        <p className="text-owner-charcoal">Redirecting to login…</p>
+        <p className="text-sm text-owner-muted">Owner access requires an owner account.</p>
+      </div>
+    );
+  }
+
+  if (!isOwner(user)) {
+    return (
+      <div className="owner-theme notranslate flex min-h-screen flex-col items-center justify-center gap-2 px-4" translate="no">
+        <p className="text-owner-charcoal">Redirecting…</p>
+        <p className="text-sm text-owner-muted">This account does not have owner access.</p>
+      </div>
+    );
   }
 
   return (
@@ -78,22 +92,25 @@ function OwnerLayoutInner({ children }) {
           still have the widget active. This ensures the dashboard always
           stays in English. */}
       <div className="owner-theme notranslate min-h-screen" translate="no">
-        <header className="sticky top-0 z-40 h-[60px] border-b border-owner-walnut/20 bg-owner-walnut">
-          <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
+        <header
+          className="sticky top-0 z-40 border-b border-owner-walnut/20 bg-owner-walnut"
+          style={{ height: "var(--owner-header-height)" }}
+        >
+          <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-3 sm:px-4">
             <Link
               href={ownerPrimaryDashboardHref()}
-              className="touch-manipulation min-h-[44px] inline-flex items-center gap-2 text-lg md:text-base font-semibold text-owner-nav"
+              className="touch-manipulation inline-flex h-8 items-center gap-1.5 text-sm font-semibold text-owner-nav"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-owner-nav">
+              <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-owner-nav">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
               Owner Dashboard
             </Link>
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               href="/"
-              className="touch-manipulation min-h-[44px] hidden sm:inline-flex items-center rounded-lg px-4 py-2.5 text-base md:text-sm font-medium text-owner-nav hover:bg-white/10 transition-colors"
+              className="touch-manipulation hidden h-8 items-center rounded-md px-2.5 text-xs font-medium text-owner-nav hover:bg-white/10 transition-colors sm:inline-flex"
             >
                 Back to site
               </Link>
@@ -102,30 +119,30 @@ function OwnerLayoutInner({ children }) {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 rounded-full border border-owner-nav/30 bg-owner-walnut p-1 pr-2 sm:pr-3 text-sm font-medium text-owner-nav shadow-sm hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-owner-action focus:ring-offset-2 focus:ring-offset-owner-walnut transition-colors"
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-owner-nav/30 bg-owner-walnut p-0.5 pr-2 text-xs font-medium text-owner-nav shadow-sm hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-owner-action focus:ring-offset-1 focus:ring-offset-owner-walnut transition-colors"
                   aria-expanded={isDropdownOpen}
                   aria-haspopup="true"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-owner-success/90 text-owner-nav font-bold">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-owner-success/90 text-xs font-bold text-owner-nav">
                     {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'O'}
                   </div>
-                  <span className="hidden sm:block max-w-[120px] truncate">{user?.name || user?.email}</span>
-                  <svg className="h-4 w-4 text-owner-nav" viewBox="0 0 20 20" fill="currentColor">
+                  <span className="hidden sm:block max-w-[100px] truncate">{user?.name || user?.email}</span>
+                  <svg className="h-3.5 w-3.5 text-owner-nav" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-owner-card shadow-owner-card ring-1 ring-owner-border z-50">
-                    <div className="px-4 py-3 border-b border-owner-border">
-                      <p className="text-sm text-owner-muted">Signed in as</p>
-                      <p className="truncate text-sm font-medium text-owner-charcoal">{user?.email}</p>
-                      {user?.name && <p className="truncate text-xs text-owner-muted mt-0.5">{user.name}</p>}
+                  <div className="absolute right-0 mt-1.5 w-52 origin-top-right rounded-md bg-owner-card shadow-owner-card ring-1 ring-owner-border z-50">
+                    <div className="px-3 py-2 border-b border-owner-border">
+                      <p className="text-xs text-owner-muted">Signed in as</p>
+                      <p className="truncate text-xs font-medium text-owner-charcoal">{user?.email}</p>
+                      {user?.name && <p className="truncate text-[11px] text-owner-muted mt-0.5">{user.name}</p>}
                     </div>
                     <div className="py-1">
                       <Link
                         href="/"
-                        className="block sm:hidden px-4 py-2 text-sm text-owner-charcoal hover:bg-owner-paper"
+                        className="block sm:hidden px-3 py-1.5 text-xs text-owner-charcoal hover:bg-owner-paper"
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         Back to site
@@ -135,7 +152,7 @@ function OwnerLayoutInner({ children }) {
                           setIsDropdownOpen(false);
                           logout();
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                        className="block w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                       >
                         Sign out
                       </button>

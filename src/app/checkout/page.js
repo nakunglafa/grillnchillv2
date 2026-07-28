@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useOrderingHours } from "@/context/OrderingHoursContext";
+import { useRestaurant } from "@/context/RestaurantContext";
 import { DEFAULT_RESTAURANT_TIMEZONE, isRestaurantOpenForOrdering } from "@/lib/opening-hours";
 import {
   getRestaurantPaymentOptions,
@@ -18,7 +19,6 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
 import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "9";
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 /** Card checkout is off unless this env is exactly "true" (pause Stripe without removing keys). */
 const STRIPE_CHECKOUT_ENABLED =
@@ -84,6 +84,8 @@ function buildDeliveryAddress(street, city, postalCode) {
 export default function CheckoutPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth();
   const { items, totalAmount, clearCart, hydrate, orderType, setOrderType } = useCart();
+  const { activeRestaurantId } = useRestaurant();
+  const RESTAURANT_ID = activeRestaurantId;
   const isDelivery = orderType === "delivery";
   const { openingSlots } = useOrderingHours();
   const orderingClosedNow =
@@ -122,6 +124,11 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    if (!RESTAURANT_ID) {
+      setLoading(false);
+      return undefined;
+    }
+    setLoading(true);
     getRestaurantPaymentOptions(RESTAURANT_ID)
       .then((opts) => {
         setPaymentOptions({
@@ -133,7 +140,7 @@ export default function CheckoutPage() {
         setPaymentOptions({ stripe: STRIPE_CHECKOUT_ENABLED, pickup: true })
       )
       .finally(() => setLoading(false));
-  }, []);
+  }, [RESTAURANT_ID]);
 
   useEffect(() => {
     if (user) {

@@ -1,8 +1,7 @@
 export async function generateMetadata() {
-  const title =
-    "My Reservations | Thai Maki";
+  const title = "My Reservations | Grill N Chill";
   const description =
-    "View and manage your Thai Maki reservations in Almancil, including upcoming and past bookings.";
+    "View and manage your Grill N Chill reservations, including upcoming and past bookings.";
 
   return {
     title,
@@ -10,14 +9,13 @@ export async function generateMetadata() {
     alternates: {
       canonical: "/reservations",
     },
-      robots: {
-        index: false,
-        follow: true,
-      },
+    robots: {
+      index: false,
+      follow: true,
+    },
   };
 }
 
 export default function ReservationsLayout({ children }) {
   return children;
 }
-

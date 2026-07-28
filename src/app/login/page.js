@@ -10,15 +10,30 @@ import { getMyRestaurants } from "@/lib/api";
 import { isOwner } from "@/lib/owner-utils";
 import { toArray } from "@/lib/owner-utils";
 import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
+import { getConfiguredRestaurantIds, isConfiguredRestaurantId } from "@/lib/restaurants";
 
 async function redirectAfterLogin(router, searchParams, user, token) {
+  const redirectParam = searchParams.get("redirect") || "";
+
   if (isOwner(user)) {
+    // Honor explicit owner redirects (overview, select, or a restaurant dashboard).
+    if (redirectParam.startsWith("/owner")) {
+      router.push(redirectParam);
+      router.refresh();
+      return;
+    }
+
     if (token) {
       try {
         const res = await getMyRestaurants(token);
         const restaurants = toArray(res);
-        if (restaurants.length > 0) {
-          router.push(`/owner/dashboard/${restaurants[0].id}`);
+        const configuredIds = getConfiguredRestaurantIds();
+        const preferred =
+          restaurants.find((r) => isConfiguredRestaurantId(r.id)) ||
+          (configuredIds.length === 0 ? restaurants[0] : null);
+
+        if (preferred?.id) {
+          router.push(`/owner/dashboard/${preferred.id}`);
         } else {
           router.push(ownerPrimaryDashboardHref());
         }
@@ -29,8 +44,7 @@ async function redirectAfterLogin(router, searchParams, user, token) {
       router.push(ownerPrimaryDashboardHref());
     }
   } else {
-    const redirect = searchParams.get("redirect") || "/";
-    router.push(redirect);
+    router.push(redirectParam || "/");
   }
   router.refresh();
 }

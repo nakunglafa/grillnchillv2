@@ -8,6 +8,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CookieConsentGate } from "@/components/CookieConsentGate";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
+import { getDefaultRestaurantId } from "@/lib/restaurants";
 import {
   getDefaultShareImage,
   mergeWebsiteContent,
@@ -38,8 +39,12 @@ function isServerUnreachable(err) {
   return true;
 }
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://thainmaki.pt").replace(/\/$/, "");
+const RESTAURANT_ID = String(getDefaultRestaurantId() ?? "2");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
+const BRAND_NAME =
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX?.trim() ||
+  "Grill N Chill";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -53,27 +58,20 @@ const playfair = Playfair_Display({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteTitle =
-  "Thai Maki | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
+const siteTitle = `${BRAND_NAME} | Restaurants in Lisbon`;
 const siteDescription =
-  "Thai Maki is a Thai and sushi restaurant in Almancil, near Faro, Algarve. Enjoy fresh sushi, authentic Thai food, and easy online table booking.";
+  "Grill N Chill — Nepali, Portuguese and Indian cuisine across Lisbon. Order online, browse menus, and book a table at Praça do Chile, Intendente, or our bakery café.";
 const siteKeywords = [
-  "Thai Maki",
-  "Thai restaurant Almancil",
-  "Thai restaurant Faro",
-  "Thai restaurant Algarve",
-  "sushi restaurant Almancil",
-  "sushi restaurant Faro",
-  "sushi restaurant Algarve",
-  "Thai restaurant near me",
-  "sushi restaurant near me",
-  "Thai food near me",
-  "sushi near me",
-  "Thai food Algarve",
-  "book restaurant table Almancil",
-  "restaurant menu Almancil",
-  "rodizio Almancil",
-  "all you can eat lunch Almancil",
+  "Grill N Chill",
+  "Grill N Chill Lisbon",
+  "restaurant Praça do Chile",
+  "restaurant Intendente",
+  "bakery Lisbon",
+  "Nepali restaurant Lisbon",
+  "Portuguese cuisine Lisbon",
+  "Indian restaurant Lisbon",
+  "book restaurant table Lisbon",
+  "restaurant menu Lisbon",
 ];
 
 function buildSiteMetadata(shareImageUrl) {
@@ -83,7 +81,7 @@ function buildSiteMetadata(shareImageUrl) {
           url: shareImageUrl,
           width: 1200,
           height: 630,
-          alt: "Thai Maki — Thai and sushi restaurant in Almancil, Algarve",
+          alt: `${BRAND_NAME} — restaurants in Lisbon`,
         },
       ]
     : [];
@@ -92,11 +90,11 @@ function buildSiteMetadata(shareImageUrl) {
     metadataBase: new URL(SITE_URL),
     title: {
       default: siteTitle,
-      template: "%s | Thai Maki",
+      template: `%s | ${BRAND_NAME}`,
     },
     description: siteDescription,
     keywords: siteKeywords,
-    applicationName: "Thai Maki",
+    applicationName: BRAND_NAME,
     category: "restaurant",
     alternates: {
       canonical: "/",
@@ -105,7 +103,7 @@ function buildSiteMetadata(shareImageUrl) {
       title: siteTitle,
       description: siteDescription,
       url: SITE_URL,
-      siteName: "Thai Maki",
+      siteName: BRAND_NAME,
       locale: "en_GB",
       type: "website",
       ...(ogImages.length ? { images: ogImages } : {}),
@@ -129,7 +127,7 @@ function buildSiteMetadata(shareImageUrl) {
     },
     appleWebApp: {
       capable: true,
-      title: process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() || "Thai Maki",
+      title: BRAND_NAME,
       statusBarStyle: "black-translucent",
     },
     icons: {
@@ -261,7 +259,9 @@ export default async function RootLayout({ children }) {
                 : undefined,
               url: SITE_URL,
               telephone: restaurantMeta?.phone || undefined,
-              servesCuisine: restaurantMeta?.cuisine ? [restaurantMeta.cuisine] : ["Thai", "Japanese", "Sushi"],
+              servesCuisine: restaurantMeta?.cuisine
+                ? [restaurantMeta.cuisine]
+                : ["Nepali", "Portuguese", "Indian"],
               priceRange: "$$",
               openingHoursSpecification: [
                 {

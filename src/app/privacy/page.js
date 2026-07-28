@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 
 const RESTAURANT_NAME =
-  process.env.NEXT_PUBLIC_RESTAURANT_NAME || "this restaurant";
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME ||
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX ||
+  "Grill N Chill";
 const PLATFORM_PRIVACY_URL = "https://restaurant.digitallisbon.pt/privacy";
 const PLATFORM_CONTROLLER = "Krishna Bahadur Thapa";
 const PLATFORM_CONTACT = "[email protected]";

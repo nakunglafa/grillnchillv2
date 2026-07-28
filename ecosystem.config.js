@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "lusiqueiraburger.pt",
+      name: "grillnchill.pt",
       script: "node_modules/next/dist/bin/next",
-      args: "start",
+      args: "start -p 3004",
       cwd: __dirname,
       instances: 1,
       autorestart: true,

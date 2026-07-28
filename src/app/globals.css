@@ -31,25 +31,32 @@
 
   /* Soft Professional – Owner Dashboard (low-eye-strain, WCAG AA) */
   --owner-paper: #F5F2ED;
-  --owner-walnut: #2D241E;
+  --owner-walnut: #2A0F14;
   --owner-charcoal: #2C2C2C;
   --owner-card: #FFFFFF;
   --owner-success: #7DA87B;
-  --owner-action: #8D6E63;
-  --owner-action-hover: #7A5F54;
+  --owner-action: #7A3A42;
+  --owner-action-hover: #632F36;
   --owner-nav-text: #F5F2ED;
   --owner-muted: #5C5C5C;
-  --owner-border: rgba(45, 36, 30, 0.12);
-  --owner-card-shadow: 0 1px 3px rgba(45, 36, 30, 0.06), 0 4px 12px rgba(45, 36, 30, 0.04);
-  /* Match Header overlay bar (h-16 / sm:h-17) — hero height subtracts this so first screen fits */
-  --site-header-height: 4rem;
+  --owner-border: rgba(42, 15, 20, 0.14);
+  --owner-card-shadow: 0 1px 3px rgba(42, 15, 20, 0.06), 0 4px 12px rgba(42, 15, 20, 0.04);
+  --owner-header-height: 48px;
+
+  /* Public header — dark maroon chrome (Soul & Sip layout, Grill N Chill look) */
+  --site-header-bg: rgba(42, 15, 20, 0.72);
+  --site-header-bg-solid: rgba(42, 15, 20, 0.94);
+  --site-header-fg: #f5f2ed;
+  --site-header-muted: rgba(245, 242, 237, 0.72);
+  --site-header-border: rgba(245, 242, 237, 0.14);
+  --site-header-height: 3.5rem;
   /* Fixed LanguageSwitcher (bottom-right) — hero/mobile CTAs stay clear */
   --language-switcher-gutter: 4.5rem;
 }
 
 @media (min-width: 640px) {
   :root {
-    --site-header-height: 4.25rem;
+    --site-header-height: 4rem;
   }
 }
 
@@ -128,6 +135,8 @@ body {
 .owner-theme {
   background-color: var(--owner-paper) !important;
   color: var(--owner-charcoal);
+  font-size: 0.9375rem;
+  line-height: 1.45;
 }
 .owner-theme .owner-theme-bg {
   background-color: var(--owner-paper) !important;

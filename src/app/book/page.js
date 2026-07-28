@@ -6,8 +6,7 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { getRestaurant, createReservation, getAvailability, submitGdprConsent } from "@/lib/api";
 import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "5";
+import { useRestaurant } from "@/context/RestaurantContext";
 
 /** Left column visual — match homepage hero; override with NEXT_PUBLIC_BOOK_PAGE_IMAGE */
 const BOOK_PAGE_IMAGE =
@@ -142,6 +141,8 @@ function getBookingParallaxImageFromRestaurant(restaurant) {
     restaurant?.content_json ??
     null;
   const src =
+    content?.hero_main_image_url ??
+    content?.heroMainImage ??
     content?.parallax_reserve_bg_url ??
     content?.parallaxReserveBg ??
     "";
@@ -202,6 +203,8 @@ function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
 
 export default function BookPage() {
   const { user, token, isAuthenticated } = useAuth();
+  const { activeRestaurantId } = useRestaurant();
+  const RESTAURANT_ID = activeRestaurantId;
   const [restaurant, setRestaurant] = useState(null);
   const [openingSlots, setOpeningSlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,6 +245,9 @@ export default function BookPage() {
   }
 
   useEffect(() => {
+    if (!RESTAURANT_ID) return undefined;
+    setLoading(true);
+    setLoadError(false);
     getRestaurant(RESTAURANT_ID)
       .then((data) => {
         const restaurantData = data?.restaurant
@@ -268,7 +274,7 @@ export default function BookPage() {
         setLoadError(true);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [RESTAURANT_ID]);
 
   // Default date to today (client-only)
   useEffect(() => {
@@ -322,7 +328,7 @@ export default function BookPage() {
         setAvailabilitySlots([]);
       })
       .finally(() => setAvailabilityLoading(false));
-  }, [reservation_date, party_size]);
+  }, [reservation_date, party_size, RESTAURANT_ID]);
 
   useEffect(() => {
     if (user) {

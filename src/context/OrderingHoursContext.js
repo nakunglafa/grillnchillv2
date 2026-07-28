@@ -2,13 +2,12 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getRestaurant } from "@/lib/api";
+import { useRestaurant } from "@/context/RestaurantContext";
 import {
   DEFAULT_RESTAURANT_TIMEZONE,
   extractOpeningSlotsFromRestaurantPayload,
   isRestaurantOpenForOrdering,
 } from "@/lib/opening-hours";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
 
 const OrderingHoursContext = createContext(null);
 
@@ -17,12 +16,18 @@ const OrderingHoursContext = createContext(null);
  */
 
 export function OrderingHoursProvider({ children }) {
+  const { activeRestaurantId } = useRestaurant();
   const [openingSlots, setOpeningSlots] = useState(null);
   const [tick, setTick] = useState(() => Date.now());
 
   useEffect(() => {
+    if (!activeRestaurantId) {
+      setOpeningSlots([]);
+      return undefined;
+    }
     let cancelled = false;
-    getRestaurant(RESTAURANT_ID)
+    setOpeningSlots(null);
+    getRestaurant(activeRestaurantId)
       .then((data) => {
         if (cancelled) return;
         const slots = extractOpeningSlotsFromRestaurantPayload(data);
@@ -34,7 +39,7 @@ export function OrderingHoursProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeRestaurantId]);
 
   useEffect(() => {
     const id = window.setInterval(() => setTick(Date.now()), 60_000);

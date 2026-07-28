@@ -1,30 +1,23 @@
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://thainmaki.pt").replace(/\/$/, "");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 
 export default function Head() {
-  const title = "Reserve a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
+  const title = "Reserve a Table | Grill N Chill Lisbon";
   const description =
-    "Reserve your table at Thai Maki in Almancil near Faro, Algarve. Ideal for users searching thai or sushi restaurant near me.";
-  const canonical = `${SITE_URL}/book`;
-
+    "Reserve your table at Grill N Chill in Lisbon. Choose Praça do Chile, Intendente, or bakery café.";
   return (
     <>
       <title>{title}</title>
       <meta name="description" content={description} />
+      <link rel="canonical" href={`${SITE_URL}/book`} />
       <meta
         name="keywords"
-        content="book table Thai Maki, thai restaurant Faro, thai restaurant Almancil, thai restaurant Algarve, sushi restaurant Faro, sushi restaurant Almancil, sushi restaurant Algarve, thai restaurant near me, sushi restaurant near me"
+        content="book table Grill N Chill, restaurant Lisbon, reserve table Praça do Chile, Intendente"
       />
-      <link rel="canonical" href={canonical} />
-      <meta property="og:type" content="website" />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
-      <meta property="og:url" content={canonical} />
-      <meta property="og:site_name" content="Thai Maki" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
-      <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+      <meta property="og:url" content={`${SITE_URL}/book`} />
+      <meta property="og:site_name" content="Grill N Chill" />
+      <meta property="og:type" content="website" />
     </>
   );
 }
-

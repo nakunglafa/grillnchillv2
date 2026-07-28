@@ -6,14 +6,15 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
+import { useRestaurant } from "@/context/RestaurantContext";
 import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
 import { submitGdprConsent } from "@/lib/api";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "5";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register: registerUser } = useAuth();
+  const { activeRestaurantId } = useRestaurant();
+  const RESTAURANT_ID = activeRestaurantId;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

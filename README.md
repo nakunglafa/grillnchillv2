@@ -1,45 +1,32 @@
-# Restaurant Web (Next.js)
+# Grill N Chill (Next.js)
 
-Frontend for a single restaurant powered by the Restaurant API. Built with **Next.js (App Router)** and **JSX**.
+Multi-location frontend for **Grill N Chill**, powered by the Digitallisbon Restaurant API. Built from the thainmaki.pt storefront with location switching for restaurant IDs 2, 3, and 4.
 
 ## Configuration
 
-Set up your `.env.local` file:
+Copy `.env.example` to `.env` / `.env.local`:
 
 ```env
-# Base URL for the API
 NEXT_PUBLIC_API_URL=https://restaurant.digitallisbon.pt/api
-
-# The ID of your specific restaurant in the database
-NEXT_PUBLIC_RESTAURANT_ID=9
+NEXT_PUBLIC_RESTAURANT_ID1=2
+NEXT_PUBLIC_RESTAURANT_ID2=3
+NEXT_PUBLIC_RESTAURANT_ID3=4
+NEXT_PUBLIC_RESTAURANT_NAME_PREFIX=Grill N Chill
+NEXT_PUBLIC_SITE_URL=https://grillnchill.pt
 ```
 
 ## Setup
 
 ```bash
-cd restaurant-web
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3004](http://localhost:3004).
 
 ## Features
 
-This application acts as the customer-facing website for **Restaurant ID 9** (or whichever ID you set in `.env.local`).
-
-- **Public:** Landing page with restaurant info (name, cuisine, description, address).
-- **Authenticated:** Profile, reservations list, create a reservation (`/book`).
-- **API client** in `src/lib/api.js` connects to the provided API endpoints.
-- **Auth context** in `src/context/AuthContext.js` handles user sessions (`localStorage`).
-
-## Routes
-
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page showing the restaurant's details |
-| `/book` | Make a reservation for the restaurant (requires login) |
-| `/login` | Log into a customer account |
-| `/register` | Register a new customer account |
-| `/profile` | View and edit user profile (authenticated) |
-| `/reservations` | List of the user's reservations (authenticated) |
+- **Location hub** on `/` — pick Praça do Chile, Intendente, or Bakery
+- **Menu / book / checkout** scoped to the active location
+- **Owner dashboard** overview across all configured venues
+- Auth, Stripe, Pusher, and web push from the Digitallisbon platform

@@ -655,6 +655,7 @@ export function MenuTab({ restaurantId, token }) {
                       onError={showToast}
                       className="mt-0.5"
                       maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
                       accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
                       dropHint="Drop or click (max 2MB)"
                     />
@@ -751,6 +752,7 @@ export function MenuTab({ restaurantId, token }) {
                         onError={showToast}
                         className="mt-0.5"
                         maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
                         accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
                         dropHint="Drop or click (max 2MB)"
                       />
@@ -1002,6 +1004,7 @@ export function MenuTab({ restaurantId, token }) {
                 onError={showToast}
                 className="mt-0.5"
                 maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
                 accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
                 dropHint="Drop or click (max 2MB)"
               />
@@ -1090,6 +1093,7 @@ export function MenuTab({ restaurantId, token }) {
                 onError={showToast}
                 className="mt-0.5"
                 maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
                 accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
                 dropHint="Drop or click (max 2MB)"
               />
@@ -1610,6 +1614,7 @@ function CategorySection({
               onError={onImageError}
               className="mt-1"
               maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
               accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
               dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
             />
@@ -1700,7 +1705,7 @@ function CategorySection({
               <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
                 Drag items to reorder in this list, or onto another category to move them.
               </p>
-              <ul className="mb-4 space-y-3">
+              <ul className="mb-4 divide-y divide-owner-border">
               {items.map((item, itemIndex) => {
                 const editData = formData[`edit-item-${item.id}`] ?? item;
                 const isRowDropTarget =
@@ -1715,11 +1720,11 @@ function CategorySection({
                     onDragOver={(e) => handleItemRowDragOver(e, item)}
                     onDragLeave={(e) => handleItemRowDragLeave(e, item.id)}
                     onDrop={(e) => handleItemRowDrop(e, item, itemIndex)}
-                    className={`rounded-lg border border-owner-border bg-owner-paper/40 p-3 transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                    className={`py-3 transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                       !isEditingItem ? "cursor-grab active:cursor-grabbing" : ""
-                    } ${isEditingItem ? "bg-owner-card shadow-lg ring-2 ring-owner-action/30" : ""} ${
+                    } ${isEditingItem ? "rounded-md bg-owner-paper/60 ring-1 ring-owner-action/25" : ""} ${
                       draggingItemId === item.id ? "opacity-50" : ""
-                    } ${isRowDropTarget && !isEditingItem ? "ring-2 ring-inset ring-emerald-500" : ""}`}
+                    } ${isRowDropTarget && !isEditingItem ? "rounded-md ring-2 ring-inset ring-emerald-500" : ""}`}
                   >
                     <div
                       className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
@@ -1783,8 +1788,8 @@ function CategorySection({
                           rows={2}
                           className="w-full rounded-md border border-owner-border px-2.5 py-1.5 text-xs bg-owner-card text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
                         />
-                        <div className="rounded-md border border-owner-border p-2.5 bg-owner-card">
-                          <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="space-y-2 border-t border-owner-border pt-2.5">
+                          <div className="mb-1 flex items-center justify-between gap-2">
                             <p className="text-[10px] font-medium text-owner-muted uppercase tracking-wide">Variants</p>
                             <button
                               type="button"
@@ -1917,6 +1922,7 @@ function CategorySection({
                           onError={onImageError}
                           className="mt-1"
                           maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
                           accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
                           dropHint="Drop image or click (max 2 MB)."
                         />
@@ -2132,11 +2138,11 @@ function CategorySection({
                 );
               })}
               </ul>
-              <div className="overflow-hidden rounded-xl border border-dashed border-owner-border/70 bg-owner-paper/40 transition-[box-shadow,border-color] duration-300 hover:border-owner-action/40">
+              <div className="overflow-hidden border-t border-owner-border/80 pt-2">
                 <button
                   type="button"
                   onClick={() => setAddItemOpen((o) => !o)}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-owner-paper/60"
+                  className="flex w-full items-center justify-between gap-2 py-2.5 text-left touch-manipulation hover:bg-owner-paper/40"
                   aria-expanded={addItemOpen}
                 >
                   <span className="text-xs font-semibold uppercase tracking-wide text-owner-charcoal">
@@ -2177,7 +2183,7 @@ function CategorySection({
                 // Validation or API error already handled by parent
               }
             }}
-            className="flex flex-col gap-3 border-t border-owner-border px-3 pb-3 pt-2"
+            className="flex flex-col gap-3 border-t border-owner-border pb-1 pt-2"
           >
             <div className="flex flex-wrap gap-2">
               <input
@@ -2209,8 +2215,8 @@ function CategorySection({
                 className="w-24 rounded-md border border-owner-border px-2.5 py-1.5 text-sm bg-owner-paper text-owner-charcoal outline-none focus:ring-1 focus:ring-owner-action"
               />
             </div>
-            <div className="rounded-md border border-owner-border p-2.5 bg-owner-paper/50">
-              <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="space-y-2 border-t border-owner-border pt-2.5">
+              <div className="mb-1 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-medium text-owner-muted uppercase tracking-wide">Variants (optional)</p>
                 <button
                   type="button"
@@ -2355,6 +2361,7 @@ function CategorySection({
               onError={onImageError}
               className="mt-0.5"
               maxBytes={MAX_MENU_IMAGE_BYTES}
+                      enableCrop
               accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
               dropHint="Drop image or click (max 2 MB)."
             />

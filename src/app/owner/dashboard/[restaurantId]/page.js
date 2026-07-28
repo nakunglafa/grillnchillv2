@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import {
   getMyRestaurants,
@@ -102,7 +102,7 @@ const TABS = [
   },
   {
     id: "website-content",
-    label: "Website content",
+    label: "Page content",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
         <rect x="3" y="3" width="18" height="14" rx="2" />
@@ -166,8 +166,23 @@ function mergeCachedBroadcastLines(ordersList, cacheRef) {
 }
 
 export default function OwnerDashboardRestaurantPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-owner-muted">
+          Loading dashboard…
+        </div>
+      }
+    >
+      <OwnerDashboardRestaurantPageInner />
+    </Suspense>
+  );
+}
+
+function OwnerDashboardRestaurantPageInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const restaurantId = params.restaurantId;
   const { token, isAuthenticated, loading: authLoading } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
@@ -176,7 +191,10 @@ export default function OwnerDashboardRestaurantPage() {
   const [tables, setTables] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [menus, setMenus] = useState([]);
-  const [activeTab, setActiveTab] = useState("orders");
+  const initialTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(() =>
+    TABS.some((t) => t.id === initialTab) ? initialTab : "orders"
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // Track if we've already fetched to avoid infinite loops
@@ -346,33 +364,33 @@ export default function OwnerDashboardRestaurantPage() {
         </div>
       )}
 
-      {/* Desktop sidebar: sticky below owner header (60px), full viewport height */}
-      <aside className="hidden md:flex md:flex-col sticky top-[60px] z-20 shrink-0 w-60 lg:w-64 h-[calc(100vh-60px)] overflow-y-auto border-r border-owner-border bg-owner-card shadow-[1px_0_4px_rgba(45,36,30,0.04)]">
-          <div className="px-4 pt-5 pb-4 border-b border-owner-border/50">
+      {/* Desktop sidebar: sticky below owner header, full viewport height */}
+      <aside className="hidden md:flex md:flex-col sticky top-[var(--owner-header-height)] z-20 shrink-0 w-52 lg:w-56 h-[calc(100vh-var(--owner-header-height))] overflow-y-auto border-r border-owner-border bg-owner-card shadow-[1px_0_4px_rgba(42,15,20,0.04)]">
+          <div className="px-3 pt-3 pb-3 border-b border-owner-border/50">
             {restaurants.length > 1 && (
             <Link
               href="/owner/dashboard/select"
               aria-label="Switch restaurant"
-              className="touch-manipulation inline-flex h-9 items-center gap-1.5 -ml-2 rounded-lg px-2 text-xs font-semibold uppercase tracking-wider text-owner-muted hover:bg-owner-paper hover:text-owner-charcoal"
+              className="touch-manipulation inline-flex h-8 items-center gap-1.5 -ml-1 rounded-md px-1.5 text-[11px] font-semibold uppercase tracking-wider text-owner-muted hover:bg-owner-paper hover:text-owner-charcoal"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M19 12H5" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
               Restaurants
             </Link>
             )}
-            <p className={`text-[10px] font-semibold uppercase tracking-widest text-owner-muted ${restaurants.length > 1 ? "mt-3" : ""}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-widest text-owner-muted ${restaurants.length > 1 ? "mt-2" : ""}`}>
               Managing
             </p>
-            <p className="mt-1 text-lg font-bold leading-tight text-owner-charcoal wrap-break-word">
+            <p className="mt-0.5 text-sm font-bold leading-tight text-owner-charcoal wrap-break-word">
               {restaurant?.name ?? `Restaurant #${restaurantId}`}
             </p>
             {restaurants.length > 1 && (
               <select
                 value={restaurantId}
                 onChange={handleRestaurantChange}
-                className="touch-manipulation mt-3 h-10 w-full rounded-lg border border-owner-border bg-owner-card px-3 text-sm text-owner-charcoal"
+                className="touch-manipulation mt-2 h-8 w-full rounded-md border border-owner-border bg-owner-card px-2 text-xs text-owner-charcoal"
               >
                 {restaurants.map((r) => (
                   <option key={r.id} value={r.id} className="bg-owner-card text-owner-charcoal">
@@ -382,7 +400,7 @@ export default function OwnerDashboardRestaurantPage() {
               </select>
             )}
           </div>
-          <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Dashboard sections">
+          <nav className="flex flex-1 flex-col gap-0.5 px-2 py-3" aria-label="Dashboard sections">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               const hasBadge = tab.id === "notifications" && unreadCount > 0;
@@ -392,7 +410,7 @@ export default function OwnerDashboardRestaurantPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`${tabButtonBase} owner-tab-button-transition h-11 w-full justify-start gap-3 rounded-lg px-3 text-sm font-semibold ${
+                  className={`${tabButtonBase} owner-tab-button-transition h-9 w-full justify-start gap-2.5 rounded-md px-2.5 text-xs font-semibold ${
                     isActive
                       ? "bg-owner-action text-white shadow"
                       : "text-owner-charcoal hover:bg-owner-paper"
@@ -559,7 +577,7 @@ export default function OwnerDashboardRestaurantPage() {
       {/* Mobile: fixed bottom nav */}
       <nav
         aria-label="Dashboard sections"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-2 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-1 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav"
       >
         {TABS.filter((tab) => tab.id === "orders" || tab.id === "reservations").map((tab) => {
           const isActive = activeTab === tab.id && !isMobileMenuOpen;
@@ -573,7 +591,7 @@ export default function OwnerDashboardRestaurantPage() {
               }}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
-              className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-14 min-w-[72px] items-center justify-center gap-1 rounded-lg px-1 ${
+              className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-12 min-w-[64px] items-center justify-center gap-0.5 rounded-lg px-1 ${
                 isActive ? "bg-owner-action text-white shadow" : "text-owner-nav hover:bg-white/10"
               }`}
             >
@@ -588,7 +606,7 @@ export default function OwnerDashboardRestaurantPage() {
           type="button"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="More Settings"
-          className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-14 min-w-[72px] items-center justify-center gap-1 rounded-lg px-1 transition-all ${
+          className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-12 min-w-[64px] items-center justify-center gap-0.5 rounded-lg px-1 transition-all ${
             !["orders", "reservations", "notifications"].includes(activeTab) || isMobileMenuOpen ? "bg-owner-action text-white shadow" : "text-owner-nav hover:bg-white/10"
           }`}
         >
@@ -617,7 +635,7 @@ export default function OwnerDashboardRestaurantPage() {
               }}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
-              className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-14 min-w-[72px] items-center justify-center gap-1 rounded-lg px-1 ${
+              className={`${tabButtonBase} owner-tab-button-transition flex flex-col h-12 min-w-[64px] items-center justify-center gap-0.5 rounded-lg px-1 ${
                 isActive ? "bg-owner-action text-white shadow" : "text-owner-nav hover:bg-white/10"
               }`}
             >

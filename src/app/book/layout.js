@@ -1,54 +1,36 @@
 import { getRestaurant } from "@/lib/api";
+import { getDefaultRestaurantId } from "@/lib/restaurants";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID || "1";
+const RESTAURANT_ID = String(getDefaultRestaurantId() ?? "2");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
+const BRAND =
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
+  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX?.trim() ||
+  "Grill N Chill";
 
 export async function generateMetadata() {
   try {
     const data = await getRestaurant(RESTAURANT_ID);
     const restaurant = data?.restaurant ?? data?.data ?? data;
-
-    const name = restaurant?.name || "Thai Maki";
-    const address = restaurant?.address || "Almancil, Algarve";
-    const phone = restaurant?.phone || "+351 920 311 793";
-
-    const title =
-      "Reserve a Table | Thai and Sushi Restaurant in Almancil, Faro, Algarve";
-
-    const description =
-      `Reserve a sua mesa em ${name}, ${address}. ` +
-      "Enjoy Thai and sushi dining with easy online booking for lunch and dinner in Almancil near Faro, Algarve. Great choice for people searching Thai or sushi restaurant near me. Contact us at " +
-      phone +
-      " or reserve online.";
-
+    const name = restaurant?.name || BRAND;
+    const title = `Reserve a Table | ${name}`;
+    const description = `Book a table at ${name}. Easy online reservations for Grill N Chill in Lisbon.`;
     return {
       title,
       description,
-      alternates: {
-        canonical: "/book",
-      },
+      alternates: { canonical: "/book" },
       openGraph: {
         title,
         description,
-        url: "/book",
+        url: `${SITE_URL}/book`,
+        siteName: BRAND,
         type: "website",
-        siteName: "Thai Maki",
-      },
-      robots: {
-        index: true,
-        follow: true,
       },
     };
   } catch {
-    const fallbackTitle = "Reserve a Table | Thai Restaurant in Almancil, Faro, Algarve";
-    const fallbackDescription =
-      "Book your table at Thai Maki, a Thai and sushi restaurant in Almancil near Faro, Algarve.";
-
     return {
-      title: fallbackTitle,
-      description: fallbackDescription,
-      alternates: {
-        canonical: "/book",
-      },
+      title: `Reserve a Table | ${BRAND}`,
+      description: `Book your table at Grill N Chill in Lisbon.`,
     };
   }
 }
@@ -56,4 +38,3 @@ export async function generateMetadata() {
 export default function BookLayout({ children }) {
   return children;
 }
-
