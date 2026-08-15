@@ -262,6 +262,26 @@ body {
   }
 }
 
+/* Homepage hero carousel – slide copy enter */
+@keyframes home-hero-slide-copy {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.home-hero-slide-copy {
+  animation: home-hero-slide-copy 0.45s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-slide-copy {
+    animation: none;
+  }
+}
+
 /* Glass utility for client UI */
 .glass {
   background: var(--glass-bg);

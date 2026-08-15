@@ -3,7 +3,7 @@ import { getRestaurantBySlug, locationPath, menuPath } from "@/lib/restaurants";
 import { getBranchCopy } from "@/lib/branch-copy";
 import { fetchGooglePlaceReviews, getRestaurant } from "@/lib/api";
 import { DEFAULT_LOCALE, isLocale, localizedPath } from "@/lib/i18n";
-import { mergeWebsiteContent } from "@/lib/website-content";
+import { extractWebsiteContentFromPayload, mergeWebsiteContent } from "@/lib/website-content";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 
@@ -36,7 +36,7 @@ export async function GET(_request, { params }) {
     phone = restaurant?.phone || null;
     const content = mergeWebsiteContent(
       catalog.id,
-      data?.website_content ?? restaurant?.website_content ?? null
+      extractWebsiteContentFromPayload(data)
     );
     if (content?.google_place_id) placeId = content.google_place_id;
   } catch {

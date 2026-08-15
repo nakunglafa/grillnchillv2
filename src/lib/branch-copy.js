@@ -2,7 +2,7 @@ import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 
 /**
  * Per-branch marketing + SEO copy for Portuguese locals and Lisbon tourists.
- * Locales: en, pt, fr, de, nl, es
+ * Locales: en, pt, ne, fr, de, nl, es
  */
 
 const SHARED_CUISINES = ["Nepali", "Indian", "Portuguese", "Grill"];
@@ -15,6 +15,13 @@ const BRANCH = {
         "Book birthday parties, private events and large tables at Grill N Chill Praça do Chile. Nepali, Indian and Portuguese food with excellent Google reviews. Takeaway and reservations in Lisbon.",
       keywords: [
         "Grill N Chill Praça do Chile",
+        "best Nepali restaurant Lisbon",
+        "top Nepali restaurant Lisbon",
+        "best Indian restaurant Lisbon",
+        "Nepali restaurant Arroios",
+        "Indian restaurant Alameda",
+        "Nepali restaurant near me",
+        "Indian restaurant near me",
         "birthday party restaurant Lisbon",
         "private events Lisbon",
         "Nepali restaurant Lisbon",
@@ -46,6 +53,24 @@ const BRANCH = {
         "A Praça do Chile é o nosso espaço de referência para celebrações — aniversários, eventos privados e grandes grupos — com pratos nepaleses, indianos e portugueses muito bem avaliados no Google.",
       knowsAbout: ["Eventos privados", "Aniversários", "Reservas de grupo", "Cozinha nepalesa", "Cozinha indiana", "Cozinha portuguesa"],
       venueLabel: "Eventos e restaurante",
+    },
+    ne: {
+      seoTitle: "ग्रिल एन चिल प्रासा दो चिले | कार्यक्रम, पार्टी र रेस्टुरेन्ट लिस्बन",
+      seoDescription:
+        "ग्रिल एन चिल प्रासा दो चिलेमा जन्मदिन, निजी कार्यक्रम र ठूला टेबल बुक गर्नुहोस्। नेपाली, भारतीय र पोर्चुगाली खाना — लिस्बनमा टेकअवे र आरक्षण।",
+      keywords: [
+        "ग्रिल एन चिल प्रासा दो चिले",
+        "नेपाली रेस्टुरेन्ट लिस्बन",
+        "जन्मदिन पार्टी लिस्बन",
+        "निजी कार्यक्रम लिस्बन",
+        "भारतीय खाना लिस्बन",
+        "टेकअवे प्रासा दो चिले",
+      ],
+      headline: "लिस्बनमा कार्यक्रम, पार्टी र ठूला बुकिङ",
+      intro:
+        "प्रासा दो चिले हाम्रो उत्सवको मुख्य स्थान हो — जन्मदिन, निजी जमघट र ठूला बुकिङ — नेपाली, भारतीय र पोर्चुगाली परिकारसहित।",
+      knowsAbout: ["निजी कार्यक्रम", "जन्मदिन पार्टी", "समूह बुकिङ", "नेपाली खाना", "भारतीय खाना", "पोर्चुगाली खाना"],
+      venueLabel: "कार्यक्रम र रेस्टुरेन्ट",
     },
     fr: {
       seoTitle: "Grill N Chill Praça do Chile | Événements et restaurant à Lisbonne",
@@ -99,6 +124,10 @@ const BRANCH = {
         "Fine dining with a live grill at Grill N Chill Intendente. Nepali, Indian and Portuguese flavours for locals and tourists near Largo do Intendente. Book a table or order takeaway.",
       keywords: [
         "Grill N Chill Intendente",
+        "best Nepali restaurant Lisbon",
+        "top Indian restaurant Lisbon",
+        "Nepali restaurant near me",
+        "Indian restaurant near me",
         "fine dining Lisbon",
         "live grill Lisbon",
         "restaurant Intendente",
@@ -121,6 +150,23 @@ const BRANCH = {
         "O Intendente é a nossa sala de live grill — pratos refinados nepaleses, indianos e portugueses para lisboetas e visitantes do bairro.",
       knowsAbout: ["Live grill", "Fine dining", "Cozinha nepalesa", "Cozinha indiana", "Cozinha portuguesa"],
       venueLabel: "Fine dining · live grill",
+    },
+    ne: {
+      seoTitle: "ग्रिल एन चिल इन्टेन्डेन्टे | फाइन डाइनिङ लाइभ ग्रिल लिस्बन",
+      seoDescription:
+        "ग्रिल एन चिल इन्टेन्डेन्टेमा लाइभ ग्रिलसहितको फाइन डाइनिङ। लार्गो दो इन्टेन्डेन्टे नजिक नेपाली, भारतीय र पोर्चुगाली स्वाद। टेबल बुक गर्नुहोस् वा टेकअवे अर्डर गर्नुहोस्।",
+      keywords: [
+        "ग्रिल एन चिल इन्टेन्डेन्टे",
+        "फाइन डाइनिङ लिस्बन",
+        "लाइभ ग्रिल लिस्बन",
+        "नेपाली रेस्टुरेन्ट इन्टेन्डेन्टे",
+        "भारतीय खाना लिस्बन",
+      ],
+      headline: "लाइभ ग्रिलसहितको फाइन डाइनिङ",
+      intro:
+        "इन्टेन्डेन्टे हाम्रो लाइभ-ग्रिल डाइनिङ रुम हो — लिस्बनका स्थानीय र यात्रीहरूका लागि नेपाली, भारतीय र पोर्चुगाली परिकार।",
+      knowsAbout: ["लाइभ ग्रिल", "फाइन डाइनिङ", "नेपाली खाना", "भारतीय खाना", "पोर्चुगाली खाना"],
+      venueLabel: "फाइन डाइनिङ · लाइभ ग्रिल",
     },
     fr: {
       seoTitle: "Grill N Chill Intendente | Fine dining & grill vivant Lisbonne",
@@ -222,6 +268,25 @@ const BRANCH = {
         "A The Bakery by Grill N Chill serve bolos e doces perto de Alameda, Arroios e Praça do Chile — compre prontos ou encomende um bolo personalizado para levantamento em Lisboa.",
       knowsAbout: ["Bolos", "Bolos personalizados", "Bolos de aniversário", "Pastéis", "Sobremesas", "Café", "Alameda", "Arroios"],
       venueLabel: "Padaria e café",
+    },
+    ne: {
+      seoTitle: "केक लिस्बन | कस्टम केक आलामेदा र अरोइओस | Grill N Chill Bakery",
+      seoDescription:
+        "आलामेदा, अरोइओस र प्रासा दो चिले नजिक कस्टम केक अर्डर गर्नुहोस् वा तयार केक किन्नुहोस्। The Bakery by Grill N Chill — लिस्बनमा पिकअप, जन्मदिनका केक र पेस्ट्री।",
+      keywords: [
+        "केक लिस्बन",
+        "कस्टम केक लिस्बन",
+        "केक आलामेदा",
+        "केक अरोइओस",
+        "जन्मदिन केक लिस्बन",
+        "बेकरी प्रासा दो चिले",
+        "Bakery Grill N Chill",
+      ],
+      headline: "तयार केक किन्नुहोस् वा कस्टम अर्डर गर्नुहोस्",
+      intro:
+        "The Bakery by Grill N Chill ले आलामेदा, अरोइओस र प्रासा दो चिले नजिक केक र मिठाई दिन्छ — तयार मिठाई किन्नुहोस् वा लिस्बनमा पिकअपका लागि कस्टम केक अर्डर गर्नुहोस्।",
+      knowsAbout: ["केक", "कस्टम केक", "जन्मदिन केक", "पेस्ट्री", "मिठाई", "कफी", "आलामेदा", "अरोइओस"],
+      venueLabel: "बेकरी र क्याफे",
     },
     fr: {
       seoTitle: "Gâteaux Lisbonne | Sur mesure Alameda & Arroios | Grill N Chill Bakery",

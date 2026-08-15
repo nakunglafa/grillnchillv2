@@ -27,6 +27,11 @@ const ORDER_CAKE_SEO = {
     description:
       "Encomende um bolo personalizado para levantamento perto de Alameda, Arroios e Praça do Chile. Escolha sabor e tamanho na The Bakery by Grill N Chill — bolos de aniversário em Lisboa.",
   },
+  ne: {
+    title: "कस्टम केक अर्डर लिस्बन | आलामेदा र अरोइओस पिकअप",
+    description:
+      "आलामेदा, अरोइओस र प्रासा दो चिले नजिक पिकअपका लागि कस्टम केक अर्डर गर्नुहोस्। The Bakery by Grill N Chill मा स्वाद र साइज छान्नुहोस् — लिस्बनका जन्मदिन र उत्सवका केक।",
+  },
   fr: {
     title: "Commander un gâteau personnalisé Lisbonne | Alameda & Arroios",
     description:

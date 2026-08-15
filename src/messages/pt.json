@@ -10,11 +10,12 @@
                 "orders":  "As minhas encomendas"
             },
     "home":  {
-                 "eyebrow":  "Lisboa",
-                 "supporting":  "Dois restaurantes em Lisboa para almoço e jantar, mais uma pastelaria — escolha um espaço para takeaway, ver o menu ou reservar mesa.",
+                 "eyebrow":  "Nepalês · Indiano · Lisboa",
+                 "supporting":  "Um dos melhores restaurantes nepaleses e indianos em Lisboa — perto de Alameda, Arroios e Praça do Chile. Reserve mesa, peça takeaway ou encontre comida nepalesa e indiana perto de si.",
+                 "heroTagline":  "Melhor restaurante nepalês e indiano em Lisboa",
                  "ctaLocations":  "As nossas localizações",
-                 "locationsTitle":  "As nossas localizações",
-                 "locationsIntro":  "Praça do Chile é conhecida por eventos e grandes reservas. Intendente é fine dining com live grill. A Bakery é bolos e doces.",
+                 "locationsTitle":  "Restaurantes nepalês e indiano em Lisboa",
+                 "locationsIntro":  "Praça do Chile (Arroios / Alameda) para eventos e grandes reservas. Intendente para fine dining com live grill. Bakery para bolos perto de Alameda e Arroios. Comida nepalesa, indiana e portuguesa bem avaliada.",
                  "openLocation":  "Abrir localização"
              },
     "checkout":  {

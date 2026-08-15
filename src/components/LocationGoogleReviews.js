@@ -100,7 +100,7 @@ export function LocationGoogleReviews({ slug, venueName }) {
         {reviews.length > 0 ? (
           <div
             ref={scrollerRef}
-            className="mt-8 flex gap-4 overflow-x-auto pb-2 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="scrollbar-hide mt-8 flex gap-4 overflow-x-auto pb-2 scroll-smooth"
           >
             {reviews.slice(0, 8).map((review, index) => (
               <GoogleReviewCard key={`${review.author}-${index}`} review={review} index={index} />

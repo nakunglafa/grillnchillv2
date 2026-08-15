@@ -1,12 +1,13 @@
 import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import en from "@/messages/en.json";
 import pt from "@/messages/pt.json";
+import ne from "@/messages/ne.json";
 import fr from "@/messages/fr.json";
 import de from "@/messages/de.json";
 import nl from "@/messages/nl.json";
 import es from "@/messages/es.json";
 
-const MAP = { en, pt, fr, de, nl, es };
+const MAP = { en, pt, ne, fr, de, nl, es };
 
 export function getMessages(locale) {
   const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;

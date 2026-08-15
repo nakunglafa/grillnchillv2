@@ -12,11 +12,12 @@
     "orders": "My Orders"
   },
   "home": {
-    "eyebrow": "Lisbon",
-    "supporting": "Two Lisbon restaurants for lunch and dinner, plus a bakery café — pick a location to order takeaway, browse the menu, reserve a table, or order a cake.",
+    "eyebrow": "Nepali · Indian · Lisbon",
+    "supporting": "Top Nepali and Indian restaurant in Lisbon — near Alameda, Arroios and Praça do Chile. Book a table, order takeaway, or find the best Nepali and Indian food near you.",
+    "heroTagline": "Best Nepali & Indian restaurant in Lisbon",
     "ctaLocations": "Our locations",
-    "locationsTitle": "Our locations",
-    "locationsIntro": "Praça do Chile is known for events and big bookings. Intendente is fine dining with a live grill. Bakery is cakes to shop or order custom.",
+    "locationsTitle": "Nepali & Indian restaurants in Lisbon",
+    "locationsIntro": "Praça do Chile (Arroios / Alameda) for events and big bookings. Intendente for fine dining with live grill. Bakery for cakes near Alameda and Arroios. Highly rated Nepali, Indian and Portuguese food.",
     "openLocation": "Open location"
   },
   "checkout": {

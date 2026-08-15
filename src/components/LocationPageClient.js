@@ -176,8 +176,9 @@ export function LocationPageClient({
     venueLabelOverride || catalog.venueLabel || (isBakery ? "Bakery & café" : "Restaurant");
   const heroImage =
     featureImage ||
-    process.env.NEXT_PUBLIC_HERO_COLLAGE_MAIN ||
-    "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1600&q=80";
+    logoUrl ||
+    (process.env.NEXT_PUBLIC_HERO_COLLAGE_MAIN || "").trim() ||
+    "";
   const introText =
     positioningIntro ||
     t(
@@ -202,13 +203,20 @@ export function LocationPageClient({
       <Header variant="marketing" />
 
       <section className="relative isolate overflow-hidden border-b border-white/10">
+        {heroImage ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-70"
+            style={{ backgroundImage: `url(${heroImage})` }}
+            aria-hidden
+          />
+        ) : (
+          <div
+            className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(197,157,95,0.18),transparent_55%)]"
+            aria-hidden
+          />
+        )}
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-40"
-          style={{ backgroundImage: `url(${heroImage})` }}
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 bg-linear-to-b from-[color:var(--site-header-bg-solid)] via-[#0a0908]/85 to-[#0a0908]"
+          className="absolute inset-0 bg-linear-to-b from-[color:var(--site-header-bg-solid)]/55 via-[#0a0908]/50 to-[#0a0908]"
           aria-hidden
         />
         <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">

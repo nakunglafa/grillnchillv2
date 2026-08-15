@@ -11,6 +11,12 @@ import { getRestaurant, createReservation, getAvailability, submitGdprConsent } 
 import { GdprConsent, buildGdprConsentPayload } from "@/components/GdprConsent";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { cakeOrderPath, getSlugForId, isBakeryRestaurant } from "@/lib/restaurants";
+import {
+  extractWebsiteContentFromPayload,
+  getBookPageImage,
+  mergeWebsiteContent,
+  resolveMediaUrl,
+} from "@/lib/website-content";
 
 /** Left column visual — match homepage hero; override with NEXT_PUBLIC_BOOK_PAGE_IMAGE */
 const BOOK_PAGE_IMAGE =
@@ -176,20 +182,20 @@ function buildDateOptions(days = 7, openingSlots) {
 
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-function getBookingParallaxImageFromRestaurant(restaurant) {
-  const content =
-    restaurant?.website_content ??
-    restaurant?.content_json ??
-    null;
-  const src =
-    content?.book_page_image_url ??
-    content?.bookPageImage ??
-    content?.hero_main_image_url ??
-    content?.heroMainImage ??
-    content?.parallax_reserve_bg_url ??
-    content?.parallaxReserveBg ??
-    "";
-  return typeof src === "string" && src.trim() ? src.trim() : "";
+function getBookingParallaxImageFromRestaurant(restaurant, restaurantId) {
+  const raw = extractWebsiteContentFromPayload({
+    restaurant,
+    website_content: restaurant?.website_content,
+    content_json: restaurant?.content_json,
+  });
+  const content = mergeWebsiteContent(restaurantId, raw);
+  const logo = resolveMediaUrl(restaurant?.logo_url || restaurant?.logoUrl || "");
+  return (
+    getBookPageImage(content, logo) ||
+    resolveMediaUrl(BOOK_PAGE_IMAGE) ||
+    logo ||
+    ""
+  );
 }
 
 function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
@@ -207,7 +213,12 @@ function BookPageImageColumn({ alt = "Restaurant", src = BOOK_PAGE_IMAGE }) {
 
   return (
     <div className="relative aspect-5/3 max-h-[240px] w-full shrink-0 overflow-hidden rounded-sm border border-white/10 sm:aspect-2/1 sm:max-h-[280px] lg:aspect-auto lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:self-stretch">
-      {!imageLoaded || imageFailed || !hasImageSrc ? (
+      {!hasImageSrc || imageFailed ? (
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_40%_30%,rgba(197,157,95,0.2),transparent_55%),linear-gradient(160deg,#1a1510_0%,#0a0908_100%)]"
+          aria-hidden
+        />
+      ) : !imageLoaded ? (
         <div className="absolute inset-0 animate-pulse bg-white/10" aria-hidden />
       ) : null}
       {hasImageSrc ? (
@@ -279,8 +290,8 @@ export default function BookPage() {
   /** 1 = date/time/guests, 2 = contact & confirm */
   const [bookStep, setBookStep] = useState(1);
   const bookingParallaxImage = useMemo(
-    () => getBookingParallaxImageFromRestaurant(restaurant) || BOOK_PAGE_IMAGE || "",
-    [restaurant]
+    () => getBookingParallaxImageFromRestaurant(restaurant, RESTAURANT_ID),
+    [restaurant, RESTAURANT_ID]
   );
 
   function handleReservationDateChange(nextDate) {

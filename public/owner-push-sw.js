@@ -12,6 +12,11 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+/** Required for Chromium installability — network passthrough, no offline cache. */
+self.addEventListener("fetch", (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 /**
  * @param {unknown} raw
  * @returns {{ title: string; body: string; tag: string; data: Record<string, unknown> }}
@@ -65,7 +70,7 @@ function showPickedNotification(picked) {
   return self.registration.showNotification(picked.title, {
     body: picked.body,
     tag: picked.tag,
-    icon: "/favicon.ico",
+    icon: "/web-app-manifest-192x192.png",
     badge: "/favicon-96x96.png",
     data: picked.data,
     requireInteraction: true,

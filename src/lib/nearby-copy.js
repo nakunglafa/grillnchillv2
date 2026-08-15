@@ -11,6 +11,7 @@ const NEARBY = {
       blurb: {
         en: "The square that gives the restaurant its name — cafés and tram lines at the doorstep.",
         pt: "A praça que dá nome ao restaurante — cafés e elétricos à porta.",
+        ne: "रेस्टुरेन्टको नाम दिने चोक — ढोकामै क्याफे र ट्राम लाइन।",
         fr: "La place qui donne son nom au restaurant — cafés et tramways au pied de la porte.",
         de: "Der Platz, der dem Restaurant den Namen gibt — Cafés und Straßenbahnen vor der Tür.",
         nl: "Het plein dat het restaurant zijn naam geeft — cafés en trams voor de deur.",
@@ -23,6 +24,7 @@ const NEARBY = {
       blurb: {
         en: "A main artery of eastern Lisbon, a short stroll for a post-dinner walk.",
         pt: "Uma via principal do leste de Lisboa — ideal para um passeio após o jantar.",
+        ne: "पूर्वी लिस्बनको मुख्य सडक — खानापछि छोटो हिँड्ने ठाउँ।",
         fr: "Une artère principale de l’est de Lisbonne — parfaite pour une promenade après le dîner.",
         de: "Eine Hauptader im Osten Lissabons — ideal für einen Spaziergang nach dem Essen.",
         nl: "Een hoofdader in oostelijk Lissabon — ideaal voor een wandeling na het eten.",
@@ -35,6 +37,7 @@ const NEARBY = {
       blurb: {
         en: "Neighbourhood streets, local shops and easy metro access nearby.",
         pt: "Ruas de bairro, comércio local e metro perto.",
+        ne: "छिमेकी गल्ली, स्थानीय पसल र नजिकै मेट्रो पहुँच।",
         fr: "Rues de quartier, commerces locaux et métro à proximité.",
         de: "Nachbarschaftsstraßen, lokale Läden und Metro in der Nähe.",
         nl: "Buurtstraten, lokale winkels en metro in de buurt.",
@@ -49,6 +52,7 @@ const NEARBY = {
       blurb: {
         en: "The lively square at the heart of Intendente — murals, bars and late evenings.",
         pt: "A praça animada no coração do Intendente — murais, bares e noites longas.",
+        ne: "इन्टेन्डेन्टेको मुटुमा रहेको जीवन्त चोक — भित्ते चित्र, बार र लामो साँझ।",
         fr: "La place animée au cœur d’Intendente — fresques, bars et soirées prolongées.",
         de: "Der lebendige Platz im Herzen von Intendente — Murals, Bars und lange Abende.",
         nl: "Het levendige plein in het hart van Intendente — muurschilderingen, bars en late avonden.",
@@ -61,6 +65,7 @@ const NEARBY = {
       blurb: {
         en: "Multicultural square and tram hub a short walk downhill.",
         pt: "Praça multicultural e nó de elétricos a poucos minutos a descer.",
+        ne: "बहुसांस्कृतिक चोक र ट्राम केन्द्र — तलतिर छोटो पैदल दूरी।",
         fr: "Place multiculturelle et hub de tramways à quelques minutes en descendant.",
         de: "Multikultureller Platz und Straßenbahnknoten — kurz bergab.",
         nl: "Multicultureel plein en tramknooppunt — een kort stukje bergaf.",
@@ -73,6 +78,7 @@ const NEARBY = {
       blurb: {
         en: "One of Lisbon’s classic viewpoints, a climb away for sunset views.",
         pt: "Um dos miradouros clássicos de Lisboa — vale a subida ao pôr do sol.",
+        ne: "लिस्बनका क्लासिक दृश्यावलोकन स्थल — सूर्यास्त हेर्न थोरै उकालो।",
         fr: "Un des belvédères classiques de Lisbonne — une montée pour le coucher de soleil.",
         de: "Einer der klassischen Aussichtspunkte Lissabons — ein Aufstieg für den Sonnenuntergang.",
         nl: "Een van Lissabons klassieke uitzichtpunten — een klim voor zonsondergang.",
@@ -87,6 +93,7 @@ const NEARBY = {
       blurb: {
         en: "The square outside the bakery — trams, cafés and the main Grill N Chill restaurant nearby.",
         pt: "A praça à porta da pastelaria — elétricos, cafés e o restaurante Grill N Chill perto.",
+        ne: "बेकरी बाहिरको चोक — ट्राम, क्याफे र नजिकै मुख्य ग्रिल एन चिल रेस्टुरेन्ट।",
         fr: "La place devant la boulangerie — tramways, cafés et le restaurant Grill N Chill tout près.",
         de: "Der Platz vor der Bäckerei — Straßenbahnen, Cafés und das Grill-N-Chill-Restaurant in der Nähe.",
         nl: "Het plein voor de bakkerij — trams, cafés en het Grill N Chill-restaurant dichtbij.",
@@ -99,6 +106,7 @@ const NEARBY = {
       blurb: {
         en: "A short walk toward Alameda metro — convenient for cake pickup after work or study.",
         pt: "A poucos minutos do metro Alameda — ideal para levantar bolos depois do trabalho ou aulas.",
+        ne: "आलामेदा मेट्रोतिर छोटो पैदल — काम वा पढाइपछि केक लिन सजिलो।",
         fr: "À quelques minutes du métro Alameda — pratique pour récupérer un gâteau.",
         de: "Nur wenige Minuten zur Metro Alameda — ideal zur Kuchenabholung.",
         nl: "Op loopafstand van metro Alameda — handig om een taart op te halen.",
@@ -111,6 +119,7 @@ const NEARBY = {
       blurb: {
         en: "Quiet residential streets and local shops just around the corner — cakes for Arroios neighbours.",
         pt: "Ruas residenciais tranquilas e comércio local à volta da esquina — bolos para vizinhos de Arroios.",
+        ne: "शान्त आवासीय गल्ली र कुनामै स्थानीय पसल — अरोइओस छिमेकीहरूका लागि केक।",
         fr: "Rues résidentielles calmes et commerces locaux au coin de la rue — gâteaux pour Arroios.",
         de: "Ruhige Wohnstraßen und lokale Läden gleich um die Ecke — Kuchen für Arroios.",
         nl: "Rustige woonwijken en lokale winkels om de hoek — taarten voor Arroios.",

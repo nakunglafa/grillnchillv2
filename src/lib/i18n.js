@@ -1,10 +1,11 @@
 /** Supported public locales — English is default / x-default. */
-export const LOCALES = ["en", "pt", "fr", "de", "nl", "es"];
+export const LOCALES = ["en", "pt", "ne", "fr", "de", "nl", "es"];
 export const DEFAULT_LOCALE = "en";
 
 export const LOCALE_LABELS = {
   en: "English",
   pt: "Português",
+  ne: "नेपाली",
   fr: "Français",
   de: "Deutsch",
   nl: "Nederlands",

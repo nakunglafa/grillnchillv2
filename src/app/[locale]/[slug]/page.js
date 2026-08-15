@@ -11,6 +11,8 @@ import { LocationPageClient } from "@/components/LocationPageClient";
 import {
   getFeatureImage,
   mergeWebsiteContent,
+  extractWebsiteContentFromPayload,
+  resolveMediaUrl,
 } from "@/lib/website-content";
 import { getBranchCopy } from "@/lib/branch-copy";
 import { buildHrefLangAlternates, isLocale, DEFAULT_LOCALE } from "@/lib/i18n";
@@ -25,6 +27,7 @@ const BRAND =
 const OG_LOCALE = {
   en: "en_GB",
   pt: "pt_PT",
+  ne: "ne_NP",
   fr: "fr_FR",
   de: "de_DE",
   nl: "nl_NL",
@@ -85,10 +88,12 @@ export async function generateMetadata({ params }) {
     const description = copy?.seoDescription || fallbackDescription;
     const content = mergeWebsiteContent(
       catalog.id,
-      data?.website_content ?? api?.website_content ?? null
+      extractWebsiteContentFromPayload(data)
     );
     const image = absUrl(
-      getFeatureImage(content) || api?.logo_url || api?.logoUrl || undefined
+      getFeatureImage(content) ||
+        resolveMediaUrl(api?.logo_url || api?.logoUrl) ||
+        undefined
     );
 
     return {
@@ -262,23 +267,27 @@ export default async function LocationPage({ params }) {
   let restaurant = null;
   let openingSlots = [];
   let menus = [];
-  let websiteContentRaw = null;
+  let apiPayload = null;
 
   try {
     const data = await getRestaurant(catalog.id);
+    apiPayload = data;
     restaurant = data?.restaurant ?? data?.data ?? null;
     openingSlots = data?.opening_hours?.opening_slots ?? [];
     const menusRaw = restaurant?.menus ?? data?.menus ?? [];
     menus = Array.isArray(menusRaw) ? menusRaw : menusRaw ? [menusRaw] : [];
-    websiteContentRaw =
-      data?.website_content ?? restaurant?.website_content ?? null;
   } catch {
     restaurant = null;
+    apiPayload = null;
   }
 
   const aggregateRating = await loadPlaceRating(catalog.id);
+  const websiteContentRaw = extractWebsiteContentFromPayload(apiPayload);
   const pageContent = mergeWebsiteContent(catalog.id, websiteContentRaw);
-  const featureImage = getFeatureImage(pageContent);
+  const logoUrl = resolveMediaUrl(
+    restaurant?.logo_url || restaurant?.logoUrl || catalog.logoUrl || ""
+  );
+  const featureImage = getFeatureImage(pageContent, logoUrl);
   const favorites = buildLocationFavorites(menus);
   const otherLocations = LOCATION_SLUGS.filter((s) => s !== slug).map((s) =>
     getRestaurantBySlug(s)

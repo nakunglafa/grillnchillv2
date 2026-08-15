@@ -8,8 +8,10 @@ import {
 import { getRestaurant } from "@/lib/api";
 import { LocationMenuClient } from "@/components/LocationMenuClient";
 import {
+  extractWebsiteContentFromPayload,
   getFeatureImage,
   mergeWebsiteContent,
+  resolveMediaUrl,
 } from "@/lib/website-content";
 import { buildHrefLangAlternates, DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getBranchCopy } from "@/lib/branch-copy";
@@ -51,10 +53,12 @@ export async function generateMetadata({ params }) {
       `Browse the live menu at ${name}. Order takeaway online from Grill N Chill in Lisbon.`;
     const content = mergeWebsiteContent(
       catalog.id,
-      data?.website_content ?? api?.website_content ?? null
+      extractWebsiteContentFromPayload(data)
     );
     const image = absUrl(
-      getFeatureImage(content) || api?.logo_url || api?.logoUrl || undefined
+      getFeatureImage(content) ||
+        resolveMediaUrl(api?.logo_url || api?.logoUrl) ||
+        undefined
     );
 
     return {

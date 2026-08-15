@@ -249,7 +249,7 @@ export async function tryShowOwnerDeviceNotification({ title, body, tag, url }) 
       await reg.showNotification(title, {
         body,
         tag: `owner-${tag}`,
-        icon: "/favicon.ico",
+        icon: "/web-app-manifest-192x192.png",
         badge: "/favicon-96x96.png",
         data: { url: path },
         requireInteraction: true,

@@ -13,7 +13,7 @@ export default function manifest() {
     display_override: ["standalone", "minimal-ui", "browser"],
     orientation: "portrait-primary",
     background_color: "#0a0908",
-    theme_color: "#2A0F14",
+    theme_color: "#241e19",
     categories: ["food", "business"],
     icons: [
       {
@@ -23,19 +23,19 @@ export default function manifest() {
         purpose: "any",
       },
       {
-        src: "/web-app-manifest-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "maskable",
-      },
-      {
         src: "/web-app-manifest-512x512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/web-app-manifest-512x512.png",
+        src: "/web-app-manifest-192x192-maskable.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/web-app-manifest-512x512-maskable.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

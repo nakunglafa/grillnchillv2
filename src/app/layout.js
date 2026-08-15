@@ -12,6 +12,7 @@ import {
   locationPath,
 } from "@/lib/restaurants";
 import {
+  extractWebsiteContentFromPayload,
   getDefaultShareImage,
   mergeWebsiteContent,
   pickShareImage,
@@ -64,26 +65,34 @@ const playfair = Playfair_Display({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteTitle = `${BRAND_NAME} | Restaurants in Lisbon`;
+const siteTitle = `Best Nepali & Indian Restaurant Lisbon | ${BRAND_NAME} Alameda Arroios`;
 const siteDescription =
-  "Grill N Chill — Nepali, Portuguese and Indian cuisine across Lisbon. Order online, browse menus, and book a table at Praça do Chile, Intendente, or our bakery café.";
+  "Top Nepali restaurant in Lisbon and favourite Indian restaurant near Alameda, Arroios and Praça do Chile. Grill N Chill — book a table, order takeaway, or find the best Nepali and Indian food near you.";
 const siteKeywords = [
+  "best Nepali restaurant Lisbon",
+  "top Nepali restaurant Lisbon",
+  "Nepali restaurant near me",
+  "best Indian restaurant Lisbon",
+  "top Indian restaurant Lisbon",
+  "Indian restaurant near me",
+  "Nepali restaurant Alameda",
+  "Indian restaurant Arroios",
+  "Nepali restaurant Arroios",
+  "Indian restaurant Alameda",
+  "Nepali Indian restaurant Lisbon",
   "Grill N Chill",
   "Grill N Chill Lisbon",
   "restaurant Praça do Chile",
   "restaurant Intendente",
+  "नेपाली रेस्टुरेन्ट लिस्बन",
+  "उत्कृष्ट नेपाली रेस्टुरेन्ट लिस्बन",
+  "melhor restaurante nepalês Lisboa",
+  "restaurante indiano Lisboa",
   "bakery Lisbon",
   "cake Lisbon",
   "custom cake Lisbon",
   "cake Alameda Lisbon",
   "cakes Arroios",
-  "bolos Lisboa",
-  "bolo personalizado Lisboa",
-  "Nepali restaurant Lisbon",
-  "Portuguese cuisine Lisbon",
-  "Indian restaurant Lisbon",
-  "book restaurant table Lisbon",
-  "restaurant menu Lisbon",
 ];
 
 function buildSiteMetadata(shareImageUrl) {
@@ -162,7 +171,7 @@ export async function generateMetadata() {
     const rest = data?.restaurant ?? data?.data ?? data;
     const websiteContent = mergeWebsiteContent(
       rest?.id ?? RESTAURANT_ID,
-      data?.website_content ?? rest?.website_content ?? null
+      extractWebsiteContentFromPayload(data)
     );
     const shareImageUrl =
       pickShareImage(websiteContent, rest?.logo_url) ||
@@ -224,7 +233,7 @@ export default async function RootLayout({ children }) {
     }
     const websiteContent = mergeWebsiteContent(
       rest?.id ?? RESTAURANT_ID,
-      data?.website_content ?? rest?.website_content ?? null
+      extractWebsiteContentFromPayload(data)
     );
     schemaImage =
       pickShareImage(websiteContent, rest?.logo_url) ||
@@ -289,7 +298,24 @@ export default async function RootLayout({ children }) {
               "@type": "Organization",
               name: BRAND_NAME,
               url: SITE_URL,
+              description: siteDescription,
               logo: schemaImage || restaurantMeta?.logo_url || undefined,
+              knowsAbout: [
+                "Nepali cuisine",
+                "Indian cuisine",
+                "Portuguese cuisine",
+                "Best Nepali restaurant Lisbon",
+                "Indian restaurant Lisbon",
+                "Alameda",
+                "Arroios",
+              ],
+              areaServed: [
+                { "@type": "City", name: "Lisbon" },
+                { "@type": "Place", name: "Alameda" },
+                { "@type": "Place", name: "Arroios" },
+                { "@type": "Place", name: "Praça do Chile" },
+                { "@type": "Place", name: "Intendente" },
+              ],
               sameAs: [
                 socialLinks?.instagram,
                 socialLinks?.facebook,
@@ -300,6 +326,10 @@ export default async function RootLayout({ children }) {
                 "@type": r.venueType === "bakery" ? "Bakery" : "Restaurant",
                 name: r.label,
                 url: `${SITE_URL}${locationPath(r, htmlLang)}`,
+                servesCuisine:
+                  r.venueType === "bakery"
+                    ? ["Bakery", "Café", "Pastries"]
+                    : ["Nepali", "Indian", "Portuguese", "Grill"],
                 address: r.addressFallback
                   ? {
                       "@type": "PostalAddress",
