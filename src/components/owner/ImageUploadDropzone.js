@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { MenuImageCropModal } from "@/components/owner/MenuImageCropModal";
-import { MAX_MENU_IMAGE_PICK_BYTES } from "@/lib/menu-image-crop";
+import { MAX_MENU_IMAGE_PICK_BYTES, MENU_IMAGE_JPEG_QUALITY } from "@/lib/menu-image-crop";
 
 /** Max image size for logo (e.g. restaurant logo): 500 KB */
 export const MAX_IMAGE_BYTES = 500 * 1024;
@@ -26,9 +26,16 @@ export function validateImageSize(file, maxBytes = MAX_IMAGE_BYTES) {
 
 /**
  * Image upload with drag-and-drop.
- * When enableCrop is true (menu builder): pick up to 20 MB → crop/recenter modal → JPEG ≤ maxBytes.
+ * When enableCrop is true: pick up to 20 MB → crop modal → JPEG ≤ maxBytes.
  *
- * @param {boolean} [enableCrop] - Open Soul & Sip–style crop modal before onChange
+ * @param {boolean} [enableCrop]
+ * @param {number} [cropAspect]
+ * @param {number} [cropOutputWidth]
+ * @param {number} [cropOutputHeight]
+ * @param {number} [cropQuality]
+ * @param {string} [cropTitle]
+ * @param {string} [cropDescription]
+ * @param {string} [dropHintWhenCrop]
  */
 export function ImageUploadDropzone({
   id,
@@ -41,10 +48,17 @@ export function ImageUploadDropzone({
   dropHint = "Drop image or click to choose (max 500 KB)",
   maxBytes = MAX_IMAGE_BYTES,
   enableCrop = false,
+  cropAspect = 1,
+  cropOutputWidth,
+  cropOutputHeight,
+  cropQuality = MENU_IMAGE_JPEG_QUALITY,
+  cropTitle,
+  cropDescription,
+  dropHintWhenCrop,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [cropSrc, setCropSrc] = useState(null);
-  const [cropFileName, setCropFileName] = useState("menu-image.jpg");
+  const [cropFileName, setCropFileName] = useState("image.jpg");
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -87,7 +101,7 @@ export function ImageUploadDropzone({
         clearInput();
         return;
       }
-      setCropFileName(file.name || "menu-image.jpg");
+      setCropFileName(file.name || "image.jpg");
       setCropSrc(URL.createObjectURL(file));
       return;
     }
@@ -135,7 +149,10 @@ export function ImageUploadDropzone({
   }
 
   const hint = enableCrop
-    ? "Drop or click — crop to square; large photos are resized automatically."
+    ? dropHintWhenCrop ||
+      (cropAspect === 1
+        ? "Drop or click — crop to square; large photos are resized automatically."
+        : "Drop or click — crop and compress; large photos are resized automatically.")
     : dropHint;
 
   return (
@@ -194,6 +211,12 @@ export function ImageUploadDropzone({
           fileName={cropFileName}
           onCancel={closeCrop}
           onConfirm={handleCropConfirm}
+          aspect={cropAspect}
+          outputWidth={cropOutputWidth}
+          outputHeight={cropOutputHeight}
+          quality={cropQuality}
+          title={cropTitle}
+          description={cropDescription}
         />
       ) : null}
     </div>

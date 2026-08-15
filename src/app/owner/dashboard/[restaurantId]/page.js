@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense, useMemo } from "react";
 import Link from "next/link";
 import {
   getMyRestaurants,
@@ -29,6 +29,7 @@ import { NotificationsTab } from "@/components/owner/NotificationsTab";
 import { AboutTab } from "@/components/owner/AboutTab";
 import { ownerPrimaryDashboardHref } from "@/lib/owner-dashboard-path";
 import { useRealTimeNotifications } from "@/context/RealTimeNotificationContext";
+import { isBakeryRestaurant } from "@/lib/restaurants";
 
 const iconClass = "text-owner-success";
 const iconSize = 18;
@@ -184,6 +185,18 @@ function OwnerDashboardRestaurantPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const restaurantId = params.restaurantId;
+  const isBakery = isBakeryRestaurant(restaurantId);
+  const visibleTabs = useMemo(
+    () =>
+      TABS.map((tab) => {
+        if (tab.id === "orders" && isBakery) return { ...tab, label: "Cake orders" };
+        return tab;
+      }).filter((tab) => {
+        if (isBakery && tab.id === "reservations") return false;
+        return true;
+      }),
+    [isBakery]
+  );
   const { token, isAuthenticated, loading: authLoading } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
@@ -192,9 +205,12 @@ function OwnerDashboardRestaurantPageInner() {
   const [reservations, setReservations] = useState([]);
   const [menus, setMenus] = useState([]);
   const initialTab = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(() =>
-    TABS.some((t) => t.id === initialTab) ? initialTab : "orders"
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    if (isBakery && initialTab === "reservations") return "orders";
+    return visibleTabs.some((t) => t.id === initialTab) ? initialTab : "orders";
+  });
+  const effectiveTab =
+    isBakery && activeTab === "reservations" ? "orders" : activeTab;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // Track if we've already fetched to avoid infinite loops
@@ -225,14 +241,17 @@ function OwnerDashboardRestaurantPageInner() {
     if (!restaurantId || !token) return;
     setError("");
     setLoading(true);
-    Promise.all([
+    const tasks = [
       getMyRestaurants(token),
       getRestaurantById(restaurantId, token, true).catch(() => null),
       getRestaurantOrders(token, restaurantId),
       getRestaurantTables(token, restaurantId),
-      getOwnerRestaurantReservations(token, restaurantId),
+      isBakery
+        ? Promise.resolve([])
+        : getOwnerRestaurantReservations(token, restaurantId),
       getMenusForRestaurant(token, restaurantId),
-    ])
+    ];
+    Promise.all(tasks)
       .then(([restRes, restDetailRes, oRes, tRes, rRes, mRes]) => {
         const restList = toArray(restRes);
         setRestaurants(restList);
@@ -240,7 +259,7 @@ function OwnerDashboardRestaurantPageInner() {
         setRestaurant(restDetail || restList.find((r) => String(r.id) === String(restaurantId)));
         setOrders(mergeCachedBroadcastLines(toArray(oRes), broadcastOrderLinesRef));
         setTables(toArray(tRes));
-        setReservations(toArray(rRes));
+        setReservations(isBakery ? [] : toArray(rRes));
         setMenus(toArray(mRes));
       })
       .catch((err) => {
@@ -250,7 +269,7 @@ function OwnerDashboardRestaurantPageInner() {
         setLoading(false);
         setHasLoaded(true);
       });
-  }, [restaurantId, token]);
+  }, [restaurantId, token, isBakery]);
 
   useEffect(() => {
     broadcastOrderLinesRef.current = new Map();
@@ -401,8 +420,8 @@ function OwnerDashboardRestaurantPageInner() {
             )}
           </div>
           <nav className="flex flex-1 flex-col gap-0.5 px-2 py-3" aria-label="Dashboard sections">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
+            {visibleTabs.map((tab) => {
+              const isActive = effectiveTab === tab.id;
               const hasBadge = tab.id === "notifications" && unreadCount > 0;
               return (
                 <button
@@ -442,16 +461,17 @@ function OwnerDashboardRestaurantPageInner() {
               </button>
             </div>
           )}
-          <div key={activeTab} className="owner-animate-tab">
-          {activeTab === "orders" && (
+          <div key={effectiveTab} className="owner-animate-tab">
+          {effectiveTab === "orders" && (
             <OrdersTab
               orders={orders}
               restaurantId={restaurantId}
               token={token}
               onRefresh={loadData}
+              isBakery={isBakery}
             />
           )}
-          {activeTab === "menu" && (
+          {effectiveTab === "menu" && (
             <MenuTab
               menus={menus}
               restaurantId={restaurantId}
@@ -459,13 +479,13 @@ function OwnerDashboardRestaurantPageInner() {
               onRefresh={loadData}
             />
           )}
-          {activeTab === "special-menus" && (
+          {effectiveTab === "special-menus" && (
             <SpecialMenusTab
               restaurantId={restaurantId}
               token={token}
             />
           )}
-          {activeTab === "tables" && (
+          {effectiveTab === "tables" && (
             <TablesTab
               tables={tables}
               restaurantId={restaurantId}
@@ -473,7 +493,7 @@ function OwnerDashboardRestaurantPageInner() {
               onRefresh={loadData}
             />
           )}
-          {activeTab === "reservations" && (
+          {effectiveTab === "reservations" && (
             <ReservationsTab
               reservations={reservations}
               restaurantId={restaurantId}
@@ -481,10 +501,10 @@ function OwnerDashboardRestaurantPageInner() {
               onRefresh={loadData}
             />
           )}
-          {activeTab === "notifications" && (
+          {effectiveTab === "notifications" && (
             <NotificationsTab />
           )}
-          {activeTab === "settings" && (
+          {effectiveTab === "settings" && (
             <SettingsTab
               restaurant={restaurant}
               restaurantId={restaurantId}
@@ -497,9 +517,10 @@ function OwnerDashboardRestaurantPageInner() {
               }}
               keepScreenOn={keepScreenOn}
               onKeepScreenOnChange={setKeepScreenOn}
+              isBakery={isBakery}
             />
           )}
-          {activeTab === "testimonials" && (
+          {effectiveTab === "testimonials" && (
             <TestimonialsTab
               restaurantId={restaurantId}
               token={token}
@@ -511,13 +532,13 @@ function OwnerDashboardRestaurantPageInner() {
               }}
             />
           )}
-          {activeTab === "website-content" && (
+          {effectiveTab === "website-content" && (
             <WebsiteContentTab restaurantId={restaurantId} token={token} />
           )}
-          {activeTab === "gallery" && (
+          {effectiveTab === "gallery" && (
             <GalleryTab restaurantId={restaurantId} token={token} />
           )}
-          {activeTab === "about" && (
+          {effectiveTab === "about" && (
             <AboutTab />
           )}
           </div>
@@ -551,7 +572,7 @@ function OwnerDashboardRestaurantPageInner() {
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {TABS.filter((tab) => tab.id !== "orders" && tab.id !== "reservations" && tab.id !== "notifications").map((tab) => (
+              {visibleTabs.filter((tab) => tab.id !== "orders" && tab.id !== "reservations" && tab.id !== "notifications").map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
@@ -560,7 +581,7 @@ function OwnerDashboardRestaurantPageInner() {
                     setIsMobileMenuOpen(false);
                   }}
                   className={`owner-tab-button-transition flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-center transition-transform active:scale-[0.97] ${
-                    activeTab === tab.id 
+                    effectiveTab === tab.id 
                       ? "bg-owner-action/10 border-owner-action/30 text-owner-action" 
                       : "border-owner-border bg-owner-paper text-owner-charcoal hover:border-owner-action/50"
                   }`}
@@ -579,8 +600,8 @@ function OwnerDashboardRestaurantPageInner() {
         aria-label="Dashboard sections"
         className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-owner-walnut/20 bg-owner-walnut/95 py-1 pb-[env(safe-area-inset-bottom)] backdrop-blur text-owner-nav"
       >
-        {TABS.filter((tab) => tab.id === "orders" || tab.id === "reservations").map((tab) => {
-          const isActive = activeTab === tab.id && !isMobileMenuOpen;
+        {visibleTabs.filter((tab) => tab.id === "orders" || tab.id === "reservations").map((tab) => {
+          const isActive = effectiveTab === tab.id && !isMobileMenuOpen;
           return (
             <button
               key={tab.id}
@@ -611,7 +632,7 @@ function OwnerDashboardRestaurantPageInner() {
           }`}
         >
           <span className="shrink-0">
-            {TABS.find(t => t.id === "settings")?.icon || (
+            {visibleTabs.find(t => t.id === "settings")?.icon || (
               <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -622,8 +643,8 @@ function OwnerDashboardRestaurantPageInner() {
         </button>
 
         {/* Notifications button on the far right */}
-        {TABS.filter((tab) => tab.id === "notifications").map((tab) => {
-          const isActive = activeTab === tab.id && !isMobileMenuOpen;
+        {visibleTabs.filter((tab) => tab.id === "notifications").map((tab) => {
+          const isActive = effectiveTab === tab.id && !isMobileMenuOpen;
           const hasBadge = unreadCount > 0;
           return (
             <button

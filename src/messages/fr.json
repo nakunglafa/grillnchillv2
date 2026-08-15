@@ -1,0 +1,90 @@
+{
+    "nav":  {
+                "home":  "Accueil",
+                "locations":  "Adresses",
+                "menu":  "Menu",
+                "reserve":  "Réserver",
+                "takeaway":  "À emporter",
+                "cart":  "Panier",
+                "login":  "Connexion",
+                "orders":  "Mes commandes"
+            },
+    "home":  {
+                 "eyebrow":  "Lisbonne",
+                 "supporting":  "Deux restaurants à Lisbonne pour le déjeuner et le dîner, plus une boulangerie-café — choisissez une adresse pour commander, voir le menu ou réserver.",
+                 "ctaLocations":  "Nos adresses",
+                 "locationsTitle":  "Nos adresses",
+                 "locationsIntro":  "Praça do Chile est connue pour les événements et grandes réservations. Intendente propose une expérience fine dining avec grill live. La Bakery, ce sont gâteaux et douceurs.",
+                 "openLocation":  "Voir l’adresse"
+             },
+    "checkout":  {
+                     "title":  "Paiement",
+                     "takeawayOnly":  "À emporter uniquement",
+                     "when":  "Quand",
+                     "asap":  "Dès que possible",
+                     "schedule":  "Planifier",
+                     "placeOrder":  "Commander",
+                     "scheduleOrder":  "Planifier à emporter"
+                 },
+    "menu":  {
+                 "closedBannerTitle":  "Cuisine fermée pour l’à emporter immédiat",
+                 "closedBannerBody":  "Vous pouvez encore ajouter des articles et planifier une commande pour plus tard."
+             },
+    "common":  {
+                   "addressSoon":  "Adresse bientôt",
+                   "closed":  "Fermé",
+                   "prev":  "Préc.",
+                   "next":  "Suiv."
+               },
+    "days":  {
+                 "monday":  "Lundi",
+                 "tuesday":  "Mardi",
+                 "wednesday":  "Mercredi",
+                 "thursday":  "Jeudi",
+                 "friday":  "Vendredi",
+                 "saturday":  "Samedi",
+                 "sunday":  "Dimanche"
+             },
+    "location":  {
+                     "viewMenu":  "Voir le menu complet",
+                     "bookVisit":  "Réserver une visite",
+                     "reserveTable":  "Réserver une table",
+                     "allLocations":  "Toutes les adresses",
+                     "historyFallback":  "Notre histoire",
+                     "testimonialsTitle":  "Témoignages",
+                     "testimonialsIntro":  "Les mots de nos clients.",
+                     "detailsTitle":  "Informations",
+                     "address":  "Adresse",
+                     "phone":  "Téléphone",
+                     "email":  "Email",
+                     "hours":  "Horaires",
+                     "hoursSoon":  "Horaires bientôt disponibles.",
+                     "nearbyTitle":  "Près de {name}",
+                     "nearbyIntro":  "Lieux à découvrir à quelques pas de {venue}.",
+                     "openInMaps":  "Ouvrir dans Maps →",
+                     "eventsEyebrow":  "Praça do Chile",
+                     "eventsTitle":  "Événements privés et groupes",
+                     "eventsBody":  "Organisez déjeuners ou dîners au Grill N Chill Praça do Chile — anniversaires, repas d’équipe et salles privées. Appelez-nous ou réservez en ligne.",
+                     "callEnquire":  "Appeler",
+                     "emailUs":  "Nous écrire",
+                     "eventEmailSubject":  "Demande d’événement privé — Praça do Chile",
+                     "otherLocations":  "Autres adresses",
+                     "menuArrow":  "Menu →",
+                     "visitBakery":  "Visiter la boulangerie",
+                     "reserveYourTable":  "Réservez votre table",
+                     "visitBakeryBody":  "Passez pour un café et des pâtisseries, ou consultez d’abord le menu.",
+                     "reserveBody":  "Réservez le déjeuner ou le dîner dans ce Grill N Chill.",
+                     "bookShort":  "Réserver",
+                     "reserveShort":  "Réserver",
+                     "reviewsTitle":  "Ce que disent les clients",
+                     "favoritesTitle":  "Favoris chez {venue}",
+                     "favoritesIntro":  "Un aperçu des premières catégories du menu — ouvrez le menu complet pour commander.",
+                     "fullMenu":  "Menu complet →",
+                     "guest":  "Client",
+                     "bakeryFallbackIntro":  "Café et boulangerie — café, pâtisseries et en-cas à Lisbonne.",
+                     "restaurantFallbackIntro":  "Restaurant déjeuner et dîner à Lisbonne — grill, assiettes à partager et menu complet.",
+                     "everyDay":  "Tous les jours",
+                     "openDays":  "{count} jours par semaine",
+                     "hoursRange":  "{open} – {close}"
+                 }
+}

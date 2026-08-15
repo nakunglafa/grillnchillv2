@@ -72,11 +72,30 @@ export function RealTimeNotificationProvider({ children }) {
       });
     };
 
+    const orderPayloadRichness = (d) => {
+      const items = d?.items ?? d?.order_items ?? d?.orderItems ?? d?.lines ?? [];
+      const itemCount = Array.isArray(items) ? items.length : 0;
+      let score = itemCount * 10;
+      if (d?.delivery_instructions || d?.notes) score += 5;
+      if (d?.customer_name || d?.user?.name) score += 2;
+      if (d?.total_amount != null || d?.total != null) score += 2;
+      if (d && typeof d === "object") score += Math.min(Object.keys(d).length, 20);
+      return score;
+    };
+
     const handleNewOrder = (e) => {
       const detail = e.detail ?? {};
       const key = getOrderKey(detail);
+      const richness = orderPayloadRichness(detail);
       setNotifications((prev) => {
-        if (prev.some((n) => n.type === "order" && n.dedupeKey === key)) return prev;
+        const existingIdx = prev.findIndex((n) => n.type === "order" && n.dedupeKey === key);
+        if (existingIdx >= 0) {
+          const existing = prev[existingIdx];
+          if (orderPayloadRichness(existing.detail) >= richness) return prev;
+          const next = [...prev];
+          next[existingIdx] = { ...existing, detail };
+          return next;
+        }
         const id = `ord-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         return [{ id, dedupeKey: key, type: "order", detail, read: false, createdAt: new Date().toISOString() }, ...prev];
       });
@@ -213,10 +232,21 @@ export function RealTimeNotificationProvider({ children }) {
 
     /** Dedupe: same order can arrive from user + restaurant channels */
     const recentOrderKeys = new Map();
+    const recentOrderRichness = new Map();
     const getOrderKey = (d) => {
       const id = d?.id ?? d?.order_id ?? d?.table_order_id ?? d?.data?.id ?? d?.data?.order_id ?? d?.order?.id;
       if (id != null && id !== "") return `order-${id}`;
       return `order-${d?.restaurant_id ?? ""}-${Date.now()}`;
+    };
+    const orderPayloadRichness = (d) => {
+      const items = d?.items ?? d?.order_items ?? d?.orderItems ?? d?.lines ?? [];
+      const itemCount = Array.isArray(items) ? items.length : 0;
+      let score = itemCount * 10;
+      if (d?.delivery_instructions || d?.notes) score += 5;
+      if (d?.customer_name || d?.user?.name) score += 2;
+      if (d?.total_amount != null || d?.total != null) score += 2;
+      if (d && typeof d === "object") score += Math.min(Object.keys(d).length, 20);
+      return score;
     };
     const dispatchOrder = (payload, channelRestaurantId) => {
       // Laravel broadcasts new.order with { order: {...} }; also support { data: { order } }
@@ -227,25 +257,86 @@ export function RealTimeNotificationProvider({ children }) {
         detail.restaurant_id = channelRestaurantId;
       }
       const key = getOrderKey(detail);
+      const richness = orderPayloadRichness(detail);
       const now = Date.now();
       if (recentOrderKeys.has(key) && now - recentOrderKeys.get(key) < DEDUPE_MS) {
-        return;
+        const prevRichness = recentOrderRichness.get(key) ?? 0;
+        // Sparse status payloads must not block a fuller new-order event.
+        if (richness <= prevRichness) return;
       }
       recentOrderKeys.set(key, now);
-      setTimeout(() => recentOrderKeys.delete(key), DEDUPE_MS);
+      recentOrderRichness.set(key, Math.max(recentOrderRichness.get(key) ?? 0, richness));
+      setTimeout(() => {
+        recentOrderKeys.delete(key);
+        recentOrderRichness.delete(key);
+      }, DEDUPE_MS);
       window.dispatchEvent(new CustomEvent(EVENTS.NEW_ORDER, { detail }));
     };
 
     const dispatchOrderUpdated = (payload) => {
-      const detail = payload?.data ?? payload ?? {};
+      const raw = payload?.data ?? payload ?? {};
+      const detail =
+        typeof raw === "object" && raw !== null
+          ? {
+              ...raw,
+              id: raw.id ?? raw.order_id ?? raw.table_order_id,
+              order_id: raw.order_id ?? raw.id ?? raw.table_order_id,
+              status: raw.status ?? raw.order_status,
+              order_status: raw.order_status ?? raw.status,
+              restaurant_id: raw.restaurant_id,
+            }
+          : {};
       window.dispatchEvent(new CustomEvent(EVENTS.ORDER_UPDATED, { detail }));
+    };
+
+    /** True for brand-new order alerts only — not status/update notifications. */
+    const isNewOrderNotificationType = (typeRaw) => {
+      const type = (typeRaw ?? "").toString();
+      if (!type) return false;
+      const t = type.toLowerCase().replace(/\\/g, "/");
+      if (
+        t.includes("customerorderupdate") ||
+        t.includes("orderstatus") ||
+        t.includes("statusupdated") ||
+        t.includes("order_update") ||
+        t.includes("orderupdated") ||
+        (t.includes("update") && t.includes("order"))
+      ) {
+        return false;
+      }
+      return (
+        t === "neworder" ||
+        t.endsWith("/neworder") ||
+        t.endsWith(".neworder") ||
+        t.includes("newordernotification") ||
+        t.includes("ordercreated") ||
+        t.includes("orderplaced") ||
+        t.includes("new.order") ||
+        t.includes("foodordercreated") ||
+        t.includes("tableordercreated")
+      );
+    };
+
+    const isOrderUpdatedNotificationType = (typeRaw) => {
+      const type = (typeRaw ?? "").toString();
+      if (!type) return false;
+      const t = type.toLowerCase().replace(/\\/g, "/");
+      return (
+        t.includes("customerorderupdate") ||
+        t.includes("orderstatus") ||
+        t.includes("statusupdated") ||
+        t.includes("orderupdated") ||
+        (t.includes("update") && t.includes("order"))
+      );
     };
 
     const handleNotification = (n) => {
       const type = (n?.type ?? "").toString();
-      if (type === "NewReservation" || type?.toLowerCase().includes("reservation")) {
+      if (isOrderUpdatedNotificationType(type)) {
+        dispatchOrderUpdated(n?.data ?? n);
+      } else if (type === "NewReservation" || type?.toLowerCase().includes("reservation")) {
         dispatchReservation(n);
-      } else if (type?.toLowerCase().includes("order")) {
+      } else if (isNewOrderNotificationType(type)) {
         dispatchOrder(n);
       }
     };
@@ -253,9 +344,11 @@ export function RealTimeNotificationProvider({ children }) {
     const handleLaravelNotification = (e) => {
       const notif = e?.notification ?? e?.data ?? e;
       const type = (notif?.type ?? notif?.data?.type ?? "").toString();
-      if (type === "NewReservation" || type?.toLowerCase().includes("reservation")) {
+      if (isOrderUpdatedNotificationType(type)) {
+        dispatchOrderUpdated(notif?.data ?? notif);
+      } else if (type === "NewReservation" || type?.toLowerCase().includes("reservation")) {
         dispatchReservation(notif);
-      } else if (type?.toLowerCase().includes("order")) {
+      } else if (isNewOrderNotificationType(type)) {
         dispatchOrder(notif);
       }
     };

@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useOrderingHours } from "@/context/OrderingHoursContext";
 import { formatCurrencyEURZero as formatPrice } from "@/lib/format-currency";
+import { useLocalizedPath } from "@/lib/use-locale";
 
 const DRAWER_TRANSITION_MS = 300;
 
 export function CartDrawer({ open, onClose }) {
-  const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate, orderType, setOrderType } = useCart();
+  const lp = useLocalizedPath();
+  const { items, totalItems, totalAmount, removeItem, updateQuantity, hydrate } = useCart();
   const { orderingAccepting, openingSlots } = useOrderingHours();
-  const checkoutBlocked =
+  const closedNow =
     Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
   const [isExiting, setIsExiting] = useState(false);
   const timeoutRef = useRef(null);
@@ -129,58 +131,28 @@ export function CartDrawer({ open, onClose }) {
             ))}
           </ul>
           )}
-          {checkoutBlocked && items.length > 0 && (
+          {closedNow && items.length > 0 && (
             <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-950">
-              Ordering is only available during opening hours. You can review your cart, but checkout is paused until we open.
+              Kitchen is closed for ASAP takeaway — schedule your pickup for later at checkout.
             </p>
           )}
         </div>
         {items.length > 0 && (
           <div className="shrink-0 border-t border-white/20 bg-wood-100/80 p-4">
-            <div className="mb-3">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-wood-600">Order type</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOrderType("pickup")}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    orderType === "pickup"
-                      ? "bg-accent text-wood-950"
-                      : "border border-wood-400/40 bg-white/40 text-wood-800 hover:bg-white/60"
-                  }`}
-                >
-                  Pickup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderType("delivery")}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    orderType === "delivery"
-                      ? "bg-accent text-wood-950"
-                      : "border border-wood-400/40 bg-white/40 text-wood-800 hover:bg-white/60"
-                  }`}
-                >
-                  Delivery
-                </button>
-              </div>
-            </div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-wood-600">
+              Takeaway pickup only
+            </p>
             <div className="mb-4 flex justify-between text-lg font-semibold text-wood-900">
               <span>Total</span>
               <span>{formatPrice(totalAmount)}</span>
             </div>
-            {checkoutBlocked ? (
-              <span className="block w-full cursor-not-allowed rounded-xl bg-wood-400/50 py-3 text-center font-medium text-wood-700">
-                Checkout unavailable (closed)
-              </span>
-            ) : (
-              <Link
-                href="/checkout"
-                onClick={handleClose}
-                className="block w-full rounded-xl bg-accent py-3 text-center font-medium text-wood-950 hover:bg-accent-hover transition-colors"
-              >
-                Proceed to Checkout
-              </Link>
-            )}
+            <Link
+              href={lp("/checkout")}
+              onClick={handleClose}
+              className="block w-full rounded-xl bg-accent py-3 text-center font-medium text-wood-950 hover:bg-accent-hover transition-colors"
+            >
+              {closedNow ? "Schedule takeaway" : "Proceed to Checkout"}
+            </Link>
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLocalizedPath } from "@/lib/use-locale";
 
 const COOKIE_NAME = "cookie_consent";
 const STORAGE_KEY = "cookie_consent";
@@ -54,6 +55,7 @@ function persistConsent(value) {
  * tab; localStorage wins because it survives where cookies might not.
  */
 export function CookieConsentGate({ initialConsent = null }) {
+  const lp = useLocalizedPath();
   const [consent, setConsent] = useState(
     isValidConsent(initialConsent) ? initialConsent : null
   );
@@ -144,7 +146,7 @@ export function CookieConsentGate({ initialConsent = null }) {
         <p className="mt-3 text-xs leading-relaxed text-white/55">
           By continuing you agree to our use of essential cookies and to our{" "}
           <Link
-            href="/privacy"
+            href={lp("/privacy")}
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-accent underline-offset-2 hover:underline"

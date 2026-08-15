@@ -1,0 +1,90 @@
+{
+    "nav":  {
+                "home":  "Início",
+                "locations":  "Localizações",
+                "menu":  "Menu",
+                "reserve":  "Reservar",
+                "takeaway":  "Takeaway",
+                "cart":  "Carrinho",
+                "login":  "Entrar",
+                "orders":  "As minhas encomendas"
+            },
+    "home":  {
+                 "eyebrow":  "Lisboa",
+                 "supporting":  "Dois restaurantes em Lisboa para almoço e jantar, mais uma pastelaria — escolha um espaço para takeaway, ver o menu ou reservar mesa.",
+                 "ctaLocations":  "As nossas localizações",
+                 "locationsTitle":  "As nossas localizações",
+                 "locationsIntro":  "Praça do Chile é conhecida por eventos e grandes reservas. Intendente é fine dining com live grill. A Bakery é bolos e doces.",
+                 "openLocation":  "Abrir localização"
+             },
+    "checkout":  {
+                     "title":  "Checkout",
+                     "takeawayOnly":  "Apenas takeaway",
+                     "when":  "Quando",
+                     "asap":  "Assim que possível",
+                     "schedule":  "Agendar",
+                     "placeOrder":  "Fazer encomenda",
+                     "scheduleOrder":  "Agendar takeaway"
+                 },
+    "menu":  {
+                 "closedBannerTitle":  "Cozinha fechada para takeaway imediato",
+                 "closedBannerBody":  "Pode adicionar itens e agendar takeaway para mais tarde durante o horário de abertura."
+             },
+    "common":  {
+                   "addressSoon":  "Morada em breve",
+                   "closed":  "Fechado",
+                   "prev":  "Ant.",
+                   "next":  "Seg."
+               },
+    "days":  {
+                 "monday":  "Segunda-feira",
+                 "tuesday":  "Terça-feira",
+                 "wednesday":  "Quarta-feira",
+                 "thursday":  "Quinta-feira",
+                 "friday":  "Sexta-feira",
+                 "saturday":  "Sábado",
+                 "sunday":  "Domingo"
+             },
+    "location":  {
+                     "viewMenu":  "Ver menu completo",
+                     "bookVisit":  "Marcar visita",
+                     "reserveTable":  "Reservar mesa",
+                     "allLocations":  "Todas as localizações",
+                     "historyFallback":  "A nossa história",
+                     "testimonialsTitle":  "Testemunhos",
+                     "testimonialsIntro":  "Palavras de quem já esteve connosco.",
+                     "detailsTitle":  "Detalhes",
+                     "address":  "Morada",
+                     "phone":  "Telefone",
+                     "email":  "Email",
+                     "hours":  "Horário",
+                     "hoursSoon":  "Horário em breve.",
+                     "nearbyTitle":  "Perto de {name}",
+                     "nearbyIntro":  "Pontos de interesse a uma curta caminhada de {venue}.",
+                     "openInMaps":  "Abrir no Maps →",
+                     "eventsEyebrow":  "Praça do Chile",
+                     "eventsTitle":  "Eventos privados e grupos",
+                     "eventsBody":  "Organize almoços ou jantares no Grill N Chill Praça do Chile — aniversários, refeições de equipa e jantares privados. Ligue para planear ou reserve mesa online.",
+                     "callEnquire":  "Ligar para informar",
+                     "emailUs":  "Enviar email",
+                     "eventEmailSubject":  "Pedido de evento privado — Praça do Chile",
+                     "otherLocations":  "Outras localizações",
+                     "menuArrow":  "Menu →",
+                     "visitBakery":  "Visitar a pastelaria",
+                     "reserveYourTable":  "Reserve a sua mesa",
+                     "visitBakeryBody":  "Passe para um café e pastelaria fresca, ou veja o menu primeiro.",
+                     "reserveBody":  "Reserve almoço ou jantar neste Grill N Chill.",
+                     "bookShort":  "Marcar",
+                     "reserveShort":  "Reservar",
+                     "reviewsTitle":  "O que dizem os clientes",
+                     "favoritesTitle":  "Favoritos em {venue}",
+                     "favoritesIntro":  "Uma amostra das primeiras categorias do menu — abra o menu completo para encomendar.",
+                     "fullMenu":  "Menu completo →",
+                     "guest":  "Cliente",
+                     "bakeryFallbackIntro":  "Café e pastelaria perto de Alameda, Arroios e Praça do Chile — bolos, pastéis e café. Compre prontos ou encomende um bolo personalizado para levantamento em Lisboa.",
+                     "restaurantFallbackIntro":  "Restaurante de almoço e jantar em Lisboa — grelhados, partilha e menu completo.",
+                     "everyDay":  "Todos os dias",
+                     "openDays":  "{count} dias por semana",
+                     "hoursRange":  "{open} – {close}"
+                 }
+}

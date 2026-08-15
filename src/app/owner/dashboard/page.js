@@ -9,7 +9,7 @@ import {
   getRestaurantOrders,
   getOwnerRestaurantReservations,
 } from "@/lib/api";
-import { getConfiguredRestaurantIds } from "@/lib/restaurants";
+import { getConfiguredRestaurantIds, isBakeryRestaurant } from "@/lib/restaurants";
 import { toArray } from "@/lib/owner-utils";
 import { useOwnerRefresh } from "@/context/OwnerRefreshContext";
 
@@ -292,6 +292,7 @@ export default function OwnerDashboardPage() {
               const revenue = (orders || []).reduce((sum, o) => sum + getOrderTotal(o), 0);
               const latestOrder = (orders || [])[0];
               const latestReservation = (reservations || [])[0];
+              const bakery = isBakeryRestaurant(restaurant?.id);
               return (
                 <section key={restaurant.id} className="owner-card rounded-lg p-4 flex flex-col justify-between">
                   <div>
@@ -309,17 +310,19 @@ export default function OwnerDashboardPage() {
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs text-owner-muted">
-                      Recent orders:{" "}
+                      {bakery ? "Cake orders" : "Recent orders"}:{" "}
                       <span className="font-semibold text-owner-charcoal">
                         {(orders || []).length}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-xs text-owner-muted">
-                      Recent bookings:{" "}
-                      <span className="font-semibold text-owner-charcoal">
-                        {(reservations || []).length}
-                      </span>
-                    </p>
+                    {!bakery ? (
+                      <p className="mt-0.5 text-xs text-owner-muted">
+                        Recent bookings:{" "}
+                        <span className="font-semibold text-owner-charcoal">
+                          {(reservations || []).length}
+                        </span>
+                      </p>
+                    ) : null}
                     {latestOrder && (
                       <p className="mt-1.5 text-[11px] text-owner-muted">
                         Last order:{" "}
@@ -328,12 +331,12 @@ export default function OwnerDashboardPage() {
                         ).toLocaleString()}
                       </p>
                     )}
-                    {latestReservation && (
+                    {!bakery && latestReservation ? (
                       <p className="mt-0.5 text-[11px] text-owner-muted">
                         Last booking:{" "}
                         {(getReservationDate(latestReservation) || new Date(0)).toLocaleString()}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Link
@@ -346,7 +349,7 @@ export default function OwnerDashboardPage() {
                       href={`/owner/dashboard/${restaurant.id}?tab=orders`}
                       className="inline-flex items-center justify-center rounded-md border border-owner-border px-2.5 py-2 text-[11px] font-medium text-owner-charcoal hover:bg-owner-paper"
                     >
-                      Orders
+                      {bakery ? "Cake orders" : "Orders"}
                     </Link>
                   </div>
                 </section>

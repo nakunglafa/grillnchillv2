@@ -1,13 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { FooterCookiePrefsButton } from "@/components/FooterCookiePrefsButton";
+import { useLocalizedPath } from "@/lib/use-locale";
 
 /**
  * Minimal centered footer — brand, social row, copyright.
  */
 export function Footer({ restaurantName = "Restaurant", socialLinks }) {
+  const lp = useLocalizedPath();
   const year = new Date().getFullYear();
   const brand = restaurantName.trim().toUpperCase();
-
   const items = [
     { label: "Facebook", href: socialLinks?.facebook?.trim() || null },
     { label: "Instagram", href: socialLinks?.instagram?.trim() || null },
@@ -52,7 +55,7 @@ export function Footer({ restaurantName = "Restaurant", socialLinks }) {
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
           <Link
-            href="/privacy"
+            href={lp("/privacy")}
             className="transition-colors hover:text-white/80"
           >
             Privacy

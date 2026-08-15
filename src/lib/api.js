@@ -100,6 +100,17 @@ export async function getRestaurantReviews(id) {
 }
 
 /**
+ * Public: Google rating + reviews from Laravel (API key stays on Laravel).
+ * POST /restaurants/{id}/google-place
+ */
+export async function fetchGooglePlaceReviews(restaurantId) {
+  return apiFetch(`/restaurants/${restaurantId}/google-place`, {
+    method: "POST",
+    body: JSON.stringify({ force: false }),
+  });
+}
+
+/**
  * Get available reservation time slots for a date and party size.
  * GET /restaurants/{id}/availability?date=Y-m-d&party_size=N
  * Returns { available_slots: string[] } (e.g. ["12:00", "12:30", "13:00"])
@@ -364,6 +375,32 @@ export async function deleteMenu(token, menuId) {
   return apiFetch(`/owner/menus/${menuId}`, { method: "DELETE", token });
 }
 
+/**
+ * Owner: send a menu PDF to Laravel (Gemini). Returns { categories: [...] }.
+ * POST /owner/restaurants/{restaurantId}/menus/parse-pdf
+ */
+export async function parseMenuPdf(token, restaurantId, file) {
+  const body = new FormData();
+  body.append("pdf", file);
+  return apiFetch(`/owner/restaurants/${restaurantId}/menus/parse-pdf`, {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+/**
+ * Owner: create categories/items from an edited draft. Skips duplicate names.
+ * POST /owner/menus/{menuId}/import
+ */
+export async function importMenuDraft(token, menuId, draft) {
+  return apiFetch(`/owner/menus/${menuId}/import`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(draft),
+  });
+}
+
 // Categories
 export async function getCategoriesForMenu(token, menuId) {
   return apiFetch(`/owner/menus/${menuId}/categories`, { token });
@@ -579,6 +616,43 @@ export async function updateOpeningSlots(token, restaurantId, slotsData) {
     body: JSON.stringify(slotsData),
     token,
   });
+}
+
+/**
+ * Owner: ask Laravel to refresh Google Place details (key + cache live on Laravel).
+ * POST /owner/restaurants/{id}/google-place
+ */
+export async function fetchOwnerGooglePlace(token, restaurantId, placeId, force = true) {
+  return apiFetch(`/owner/restaurants/${restaurantId}/google-place`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ place_id: placeId || "", force: Boolean(force) }),
+  });
+}
+
+/**
+ * Owner: sync hours/address. Next applies slots; Google fetch is Laravel.
+ */
+export async function syncGooglePlaceHours(token, restaurantId, placeId) {
+  const res = await fetch("/api/owner/google-place-sync", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ restaurantId, placeId: placeId || "" }),
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    const err = new Error(data?.error || data?.message || res.statusText || "Google sync failed");
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
 }
 
 // Website content (owner)

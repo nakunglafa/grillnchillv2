@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
+import { getMessages, t } from "@/lib/messages";
+import { useLocale } from "@/lib/use-locale";
 
 function DishCard({ dish }) {
   return (
@@ -82,6 +84,8 @@ function CategoryCarousel({ category }) {
 }
 
 export function LocationCategoryFavorites({ categories, venueName, menuHref }) {
+  const locale = useLocale();
+  const messages = getMessages(locale);
   if (!categories?.length) return null;
 
   return (
@@ -90,17 +94,17 @@ export function LocationCategoryFavorites({ categories, venueName, menuHref }) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 id="favorites-heading" className="font-display text-2xl font-semibold sm:text-3xl">
-              Favourites at {venueName}
+              {t(messages, "location.favoritesTitle", { venue: venueName })}
             </h2>
             <p className="mt-2 max-w-xl text-sm text-white/60">
-              A taste of the first categories on the menu — open the full menu to order.
+              {t(messages, "location.favoritesIntro")}
             </p>
           </div>
           <Link
             href={menuHref}
             className="text-sm font-semibold text-accent hover:text-accent-hover"
           >
-            Full menu →
+            {t(messages, "location.fullMenu")}
           </Link>
         </div>
         <div className="mt-8 flex flex-col gap-2">

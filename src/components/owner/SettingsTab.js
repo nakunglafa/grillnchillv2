@@ -5,15 +5,20 @@ import {
   getRestaurantById,
   getRestaurantConfig,
   getRestaurantPaymentConfig,
+  getOwnerWebsiteContent,
   updateOwnerRestaurant,
+  updateOwnerWebsiteContent,
   updateRestaurantConfig,
   updateRestaurantPaymentConfig,
   updateOpeningSlots,
+  syncGooglePlaceHours,
 } from "@/lib/api";
 import { setKeepScreenOnPreference } from "@/hooks/useScreenWakeLock";
 import { ImageUploadDropzone } from "@/components/owner/ImageUploadDropzone";
 import { DeviceNotificationSettings } from "@/components/owner/DeviceNotificationSettings";
 import { PrintPreferencesSettings } from "@/components/owner/PrintPreferencesSettings";
+import { FONT_PAIRS, DEFAULT_PUBLIC_THEME, isHexColor, resolvePublicTheme, getFontPair } from "@/lib/site-theme";
+import { getEnvGooglePlaceIdForSlug, getRestaurantById as getCatalogRestaurant } from "@/lib/restaurants";
 
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
@@ -27,7 +32,53 @@ function generateTimeOptions() {
   return options;
 }
 
-export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRestaurantUpdate, keepScreenOn = false, onKeepScreenOnChange }) {
+function ThemeLivePreview({ themeForm, restaurantName }) {
+  const pair = getFontPair(themeForm?.fontPair);
+  const background = isHexColor(themeForm?.background) ? themeForm.background : DEFAULT_PUBLIC_THEME.background;
+  const foreground = isHexColor(themeForm?.foreground) ? themeForm.foreground : DEFAULT_PUBLIC_THEME.foreground;
+  const accent = isHexColor(themeForm?.accent) ? themeForm.accent : DEFAULT_PUBLIC_THEME.accent;
+  const heading = String(restaurantName || "Restaurant").trim() || "Restaurant";
+
+  return (
+    <div className="rounded-xl border border-owner-border bg-owner-paper p-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-owner-muted">Live preview</p>
+      <div
+        className="rounded-xl border border-black/5 p-5 shadow-sm"
+        style={{ backgroundColor: background, color: foreground }}
+      >
+        <p
+          className="text-[11px] font-semibold uppercase tracking-[0.22em]"
+          style={{ fontFamily: pair.body, color: accent }}
+        >
+          Sample
+        </p>
+        <h4 className="mt-2 text-2xl font-semibold tracking-tight" style={{ fontFamily: pair.heading, color: foreground }}>
+          {heading}
+        </h4>
+        <p className="mt-2 text-sm leading-relaxed" style={{ fontFamily: pair.body, color: foreground, opacity: 0.78 }}>
+          Welcome in — this is how headings, body text, and buttons will look on your public site.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span
+            className="inline-flex h-6 w-6 rounded-full ring-2 ring-black/5"
+            style={{ backgroundColor: accent }}
+            aria-hidden
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            className="inline-flex min-h-[40px] items-center justify-center rounded-full px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white"
+            style={{ backgroundColor: accent, fontFamily: pair.body }}
+          >
+            Reserve
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRestaurantUpdate, keepScreenOn = false, onKeepScreenOnChange, isBakery = false }) {
   const [config, setConfig] = useState(null);
   const [slotsByDay, setSlotsByDay] = useState(() =>
     DAYS.reduce((acc, d) => ({ ...acc, [d]: [] }), {})
@@ -61,6 +112,11 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
     stripe_enabled: true,
     pickup_enabled: true,
   });
+  const [googlePlaceId, setGooglePlaceId] = useState("");
+  const [googlePlaceSyncedAt, setGooglePlaceSyncedAt] = useState("");
+  const [websiteContentJson, setWebsiteContentJson] = useState({});
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [themeForm, setThemeForm] = useState(() => ({ ...DEFAULT_PUBLIC_THEME }));
   /** Auto-clear success after 5s */
   useEffect(() => {
     if (!success) return;
@@ -117,12 +173,35 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
       if (err?.status === 404) return { data: null, noConfig: true };
       throw err;
     });
+    const contentPromise = getOwnerWebsiteContent(token, restaurantId).catch(() => null);
 
-    Promise.all([configPromise, restPromise, paymentPromise])
-      .then(([configRes, restRes, paymentRes]) => {
+    Promise.all([configPromise, restPromise, paymentPromise, contentPromise])
+      .then(([configRes, restRes, paymentRes, contentRes]) => {
         const cfg = configRes?.data ?? configRes;
         const rest = restRes?.data ?? restRes ?? restRes?.restaurant ?? restRes;
         const pay = paymentRes?.data ?? paymentRes;
+        const savedContent =
+          contentRes?.content_json ??
+          contentRes?.data?.content_json ??
+          (contentRes?.data && typeof contentRes.data === "object" && !Array.isArray(contentRes.data)
+            ? contentRes.data
+            : null) ??
+          (contentRes && typeof contentRes === "object" && (contentRes.google_place_id || contentRes.googlePlaceId)
+            ? contentRes
+            : {});
+        if (savedContent && typeof savedContent === "object") {
+          setWebsiteContentJson(savedContent);
+          const fromContent = String(savedContent.google_place_id || savedContent.googlePlaceId || "").trim();
+          const catalog = getCatalogRestaurant(restaurantId);
+          const envFallback = catalog
+            ? getEnvGooglePlaceIdForSlug(catalog.slug) || catalog.googlePlaceId || ""
+            : "";
+          setGooglePlaceId(fromContent || String(envFallback || "").trim());
+          setGooglePlaceSyncedAt(
+            String(savedContent.google_place_synced_at || savedContent.googlePlaceSyncedAt || "").trim()
+          );
+          setThemeForm(resolvePublicTheme(savedContent));
+        }
 
         if (configRes?.noConfig || !cfg) {
           setSlotsByDay(apiSlotsToSlotsByDay([]));
@@ -309,6 +388,113 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
     setSuccess("Opening hours copied to all days.");
   };
 
+  const persistWebsiteContentPatch = async (patch) => {
+    let base = websiteContentJson;
+    try {
+      const fresh = await getOwnerWebsiteContent(token, restaurantId);
+      const saved =
+        fresh?.content_json ??
+        fresh?.data?.content_json ??
+        (fresh?.data && typeof fresh.data === "object" && !Array.isArray(fresh.data) ? fresh.data : null);
+      if (saved && typeof saved === "object") base = saved;
+    } catch {
+      // Keep in-memory copy if reload fails.
+    }
+    const nextContent = { ...base, ...patch };
+    await updateOwnerWebsiteContent(token, restaurantId, nextContent);
+    setWebsiteContentJson(nextContent);
+    return nextContent;
+  };
+
+  const persistGooglePlaceId = async (placeIdValue) => {
+    const trimmed = String(placeIdValue || "").trim();
+    const nextContent = await persistWebsiteContentPatch({
+      google_place_id: trimmed,
+      googlePlaceId: trimmed,
+    });
+    setGooglePlaceId(trimmed);
+    return nextContent;
+  };
+
+  const handleSaveTheme = async (e) => {
+    e.preventDefault();
+    if (!isHexColor(themeForm.accent) || !isHexColor(themeForm.background) || !isHexColor(themeForm.foreground)) {
+      setError("Theme colors must be 6-digit hex values, e.g. #c59d5f.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      await persistWebsiteContentPatch({
+        theme_accent: themeForm.accent,
+        themeAccent: themeForm.accent,
+        theme_background: themeForm.background,
+        themeBackground: themeForm.background,
+        theme_foreground: themeForm.foreground,
+        themeForeground: themeForm.foreground,
+        theme_font_pair: themeForm.fontPair,
+        themeFontPair: themeForm.fontPair,
+      });
+      setSuccess("Public site theme saved. Refresh the website to see colors and fonts.");
+    } catch (err) {
+      setError(err?.message || err?.data?.message || "Failed to save theme");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveGooglePlaceId = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      await persistGooglePlaceId(googlePlaceId);
+      setSuccess(
+        googlePlaceId.trim()
+          ? "Google Place ID saved. Sync hours from Google to fill the slots."
+          : "Google Place ID cleared."
+      );
+    } catch (err) {
+      setError(err?.message || err?.data?.message || "Failed to save Place ID");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSyncGoogleHours = async () => {
+    setSyncingGoogle(true);
+    setError("");
+    setSuccess("");
+    try {
+      const trimmed = googlePlaceId.trim();
+      if (trimmed) {
+        await persistGooglePlaceId(trimmed);
+      }
+      const res = await syncGooglePlaceHours(token, restaurantId, trimmed);
+      if (Array.isArray(res?.slots)) {
+        setSlotsByDay(apiSlotsToSlotsByDay(res.slots));
+      }
+      if (res?.placeId) setGooglePlaceId(res.placeId);
+      if (res?.syncedAt) setGooglePlaceSyncedAt(res.syncedAt);
+      if (res?.address) {
+        setEditRestaurant((prev) => ({ ...prev, address: res.address }));
+        onRestaurantUpdate?.({ address: res.address });
+      }
+      setWebsiteContentJson((prev) => ({
+        ...prev,
+        google_place_id: res?.placeId || trimmed,
+        google_place_synced_at: res?.syncedAt || prev.google_place_synced_at,
+      }));
+      setSuccess("Opening hours synced from Google.");
+    } catch (err) {
+      setError(err?.data?.error || err?.message || err?.data?.message || "Failed to sync from Google");
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
   const handleSavePayment = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -397,8 +583,9 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
 
   const navItems = [
     { id: "restaurant-details", label: "Restaurant details" },
+    { id: "public-theme", label: "Theme" },
     { id: "social-links", label: "Social links" },
-    { id: "reservation-rules", label: "Reservation rules" },
+    ...(isBakery ? [] : [{ id: "reservation-rules", label: "Reservation rules" }]),
     { id: "payment-gateways", label: "Payment gateways" },
     { id: "opening-hours", label: "Opening hours" },
     { id: "device", label: "Device" },
@@ -564,6 +751,66 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </form>
       </section>
 
+      <section id="public-theme" className={sectionClass}>
+        <h3 className={sectionTitleClass}>Public site theme</h3>
+        <p className={sectionDescClass}>
+          Colors and fonts for the customer website only. The owner dashboard stays the same for every restaurant.
+        </p>
+        <form onSubmit={handleSaveTheme} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { key: "accent", label: "Accent" },
+              { key: "background", label: "Background" },
+              { key: "foreground", label: "Text" },
+            ].map((field) => (
+              <label key={field.key} className="block">
+                <span className={labelClass}>{field.label}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={isHexColor(themeForm[field.key]) ? themeForm[field.key] : DEFAULT_PUBLIC_THEME[field.key]}
+                    onChange={(e) => setThemeForm((p) => ({ ...p, [field.key]: e.target.value }))}
+                    className="h-10 w-12 cursor-pointer rounded-md border border-owner-border bg-owner-paper p-1"
+                    aria-label={`${field.label} color`}
+                  />
+                  <input
+                    type="text"
+                    value={themeForm[field.key]}
+                    onChange={(e) => setThemeForm((p) => ({ ...p, [field.key]: e.target.value }))}
+                    className={inputClass}
+                    placeholder="#c59d5f"
+                    spellCheck={false}
+                  />
+                </div>
+              </label>
+            ))}
+          </div>
+          <label className="block">
+            <span className={labelClass}>Typography</span>
+            <select
+              value={themeForm.fontPair}
+              onChange={(e) => setThemeForm((p) => ({ ...p, fontPair: e.target.value }))}
+              className={inputClass}
+            >
+              {FONT_PAIRS.map((pair) => (
+                <option key={pair.id} value={pair.id}>
+                  {pair.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ThemeLivePreview
+            themeForm={themeForm}
+            restaurantName={editRestaurant.name || restaurant?.name || "Restaurant"}
+          />
+          <div className="flex justify-end">
+            <button type="submit" disabled={saving} className={btnPrimaryClass}>
+              {saving ? "Saving..." : "Save theme"}
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section id="social-links" className={sectionClass}>
         <h3 className={sectionTitleClass}>Social links</h3>
         <p className={sectionDescClass}>
@@ -641,6 +888,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         </form>
       </section>
 
+      {!isBakery ? (
       <section id="reservation-rules" className={sectionClass}>
         <h3 className={sectionTitleClass}>Reservation rules</h3>
         <form onSubmit={handleSaveConfig} className="grid gap-3 md:grid-cols-2">
@@ -673,6 +921,7 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
           </div>
         </form>
       </section>
+      ) : null}
 
       <section id="payment-gateways" className={sectionClass}>
         <h3 className={sectionTitleClass}>Payment gateways</h3>
@@ -732,6 +981,47 @@ export function SettingsTab({ restaurantId, token, restaurant, onRefresh, onRest
         <p className={sectionDescClass}>
           Set open and close times per day. Add multiple slots for split hours (e.g. lunch and dinner).
         </p>
+        <div className="mb-4 rounded-md border border-owner-border bg-owner-paper p-3">
+          <label className={labelClass} htmlFor="google-place-id">
+            Google Place ID
+          </label>
+          <p className="mb-2 text-xs text-owner-muted">
+            Saved on this restaurant’s website content. The Google API key stays on the Laravel server.
+          </p>
+          <form onSubmit={handleSaveGooglePlaceId} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              id="google-place-id"
+              type="text"
+              value={googlePlaceId}
+              onChange={(e) => setGooglePlaceId(e.target.value)}
+              placeholder="ChIJ…"
+              autoComplete="off"
+              className={`${inputClass} sm:flex-1`}
+            />
+            <button type="submit" disabled={saving || syncingGoogle} className={btnSecondaryClass}>
+              {saving ? "Saving..." : "Save Place ID"}
+            </button>
+            <button
+              type="button"
+              disabled={saving || syncingGoogle}
+              onClick={handleSyncGoogleHours}
+              className={btnPrimaryClass}
+            >
+              {syncingGoogle ? "Syncing..." : "Sync hours from Google"}
+            </button>
+          </form>
+          {googlePlaceSyncedAt ? (
+            <p className="mt-2 text-xs text-owner-muted">
+              Last Google sync:{" "}
+              {(() => {
+                const d = new Date(googlePlaceSyncedAt);
+                return Number.isNaN(d.getTime()) ? googlePlaceSyncedAt : d.toLocaleString();
+              })()}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-owner-muted">Not synced yet.</p>
+          )}
+        </div>
         <form onSubmit={handleSaveSlots} className="space-y-3">
           <div className="space-y-2">
             {DAYS.map((day) => (

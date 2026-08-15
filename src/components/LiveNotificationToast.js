@@ -12,6 +12,13 @@ import { EstimatedReadyMinutesForm } from "@/components/owner/EstimatedReadyMinu
 import { tryShowOwnerDeviceNotification } from "@/lib/owner-device-notifications";
 import { printOrderKitchenReceipt } from "@/lib/order-receipt-print";
 import { autoPrintNewOrderIfEnabled } from "@/lib/kitchen-print-agent";
+import {
+  parseCustomCakeFlavorSize,
+  parseCustomCakeSampleUrl,
+  stripCustomCakeSampleLine,
+} from "@/lib/cake-order";
+import { isBakeryRestaurant } from "@/lib/restaurants";
+import { deleteCakeSampleFile, resolveCakeSampleDisplayUrl } from "@/lib/cake-sample";
 
 /** Extract restaurant ID from /owner/dashboard/[id] path when on owner dashboard */
 function getRestaurantIdFromPath() {
@@ -363,6 +370,19 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
 
   const isReservation = type === "reservation";
   const isActionable = !success && !resolved;
+  const toastRestaurantId =
+    detail?.restaurant_id ?? detail?.restaurant?.id ?? getRestaurantIdFromPath();
+  const isBakeryToast = isBakeryRestaurant(toastRestaurantId);
+  const orderNotes = detail?.delivery_instructions || detail?.notes || "";
+  const sampleImageUrl =
+    type === "order" && String(orderNotes).includes("[Custom cake order]")
+      ? resolveCakeSampleDisplayUrl(parseCustomCakeSampleUrl(orderNotes))
+      : "";
+  const notesForDisplay = sampleImageUrl ? stripCustomCakeSampleLine(orderNotes) : orderNotes;
+  const cakeMeta =
+    type === "order" && String(orderNotes).includes("[Custom cake order]")
+      ? parseCustomCakeFlavorSize(orderNotes)
+      : { flavor: "", size: "" };
 
   const formatReadableDateTime = (value) => {
     if (!value) return "";
@@ -438,6 +458,10 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
           await updateOrderStatus(token, restaurantId, itemId, "confirmed", extra);
         } else {
           await updateOrderStatus(token, restaurantId, itemId, "rejected");
+          void deleteCakeSampleFile(
+            token,
+            detail?.delivery_instructions || detail?.notes || orderNotes || ""
+          );
         }
       }
 
@@ -525,7 +549,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
       </div>
 
       {detail && (
-        <div className="mt-3 max-h-32 overflow-y-auto rounded-xl border border-owner-border bg-owner-paper p-3 text-sm text-owner-charcoal">
+        <div className="mt-3 max-h-48 overflow-y-auto rounded-xl border border-owner-border bg-owner-paper p-3 text-sm text-owner-charcoal">
           {type === "reservation" && (
             <ul className="space-y-1">
               <li><strong className="text-owner-charcoal">Date:</strong> {getReservationDateTimeText(detail)}</li>
@@ -542,17 +566,53 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
               <li><strong className="text-owner-charcoal">Customer:</strong> <span className="notranslate" translate="no">{detail.customer_name || detail.user?.name || "—"}</span></li>
               {(() => {
                 const lines = getOrderLineItems(detail);
-                if (lines.length === 0) return null;
-                return (
-                  <li>
-                    <strong className="text-owner-charcoal">Items:</strong>{" "}
-                    <span className="notranslate" translate="no">
-                      {lines.map((i) => getLineItemDisplayName(i)).filter(Boolean).join(", ")}
-                    </span>
-                  </li>
-                );
+                if (lines.length > 0) {
+                  return (
+                    <li>
+                      <strong className="text-owner-charcoal">Items:</strong>{" "}
+                      <span className="notranslate" translate="no">
+                        {lines.map((i) => getLineItemDisplayName(i)).filter(Boolean).join(", ")}
+                      </span>
+                    </li>
+                  );
+                }
+                if (cakeMeta.flavor || cakeMeta.size) {
+                  return (
+                    <li>
+                      <strong className="text-owner-charcoal">Cake:</strong>{" "}
+                      {[cakeMeta.flavor, cakeMeta.size].filter(Boolean).join(" · ")}
+                    </li>
+                  );
+                }
+                return null;
               })()}
-              {(detail.delivery_instructions || detail.notes) && <li className="truncate"><strong className="text-owner-charcoal">Notes:</strong> {detail.delivery_instructions || detail.notes}</li>}
+              {notesForDisplay ? (
+                <li className="whitespace-pre-wrap break-words">
+                  <strong className="text-owner-charcoal">Notes:</strong> {notesForDisplay}
+                </li>
+              ) : null}
+              {sampleImageUrl ? (
+                <li className="pt-1">
+                  <strong className="text-owner-charcoal">Sample:</strong>
+                  <a
+                    href={sampleImageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 flex items-center gap-2 text-owner-action hover:underline"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sampleImageUrl}
+                      alt="Cake sample"
+                      className="h-14 w-14 rounded object-cover ring-1 ring-owner-border"
+                      onError={(e) => {
+                        e.currentTarget.parentElement?.remove();
+                      }}
+                    />
+                    <span className="text-xs font-medium">Open sample</span>
+                  </a>
+                </li>
+              ) : null}
             </ul>
           )}
         </div>
@@ -568,7 +628,7 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
 
       {isActionable && (
         <div className="mt-4 space-y-3">
-          {type === "order" && orderAcceptPicking ? (
+          {type === "order" && orderAcceptPicking && !isBakeryToast ? (
             <EstimatedReadyMinutesForm
               disabled={loading}
               onCancel={() => setOrderAcceptPicking(false)}
@@ -578,7 +638,11 @@ function LiveCardItem({ id, type, title, message, detail, resolved, onResolved, 
           ) : (
             <div className="flex gap-2">
               <button
-                onClick={() => (type === "order" ? setOrderAcceptPicking(true) : handleAction("confirmed"))}
+                onClick={() =>
+                  type === "order" && !isBakeryToast
+                    ? setOrderAcceptPicking(true)
+                    : handleAction("confirmed")
+                }
                 disabled={loading}
                 className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
               >

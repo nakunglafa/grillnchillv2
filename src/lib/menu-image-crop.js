@@ -1,13 +1,15 @@
 /**
- * Square-crop a menu photo to a fixed JPEG size for upload.
- * Port of office.soulandsip.com/lib/menu-image-crop.ts
+ * Crop / compress images for owner uploads (menu square + wide page-content).
  */
 
 export const MENU_IMAGE_OUTPUT_SIZE = 800;
 export const MENU_IMAGE_JPEG_QUALITY = 0.85;
 
-/** Max size when picking before crop (Soul & Sip office). */
+/** Max size when picking before crop. */
 export const MAX_MENU_IMAGE_PICK_BYTES = 20 * 1024 * 1024;
+
+/** Page-content post-crop max (~1.5 MB). */
+export const MAX_WEBSITE_CONTENT_IMAGE_BYTES = Math.round(1.5 * 1024 * 1024);
 
 function loadImageFromUrl(url) {
   return new Promise((resolve, reject) => {
@@ -26,7 +28,7 @@ function canvasToJpegFile(canvas, fileName, quality) {
           reject(new Error("Image crop failed."));
           return;
         }
-        const baseName = fileName.replace(/\.[^.]+$/, "") || "menu-image";
+        const baseName = fileName.replace(/\.[^.]+$/, "") || "image";
         resolve(
           new File([blob], `${baseName}.jpg`, {
             type: "image/jpeg",
@@ -41,21 +43,29 @@ function canvasToJpegFile(canvas, fileName, quality) {
 }
 
 /**
- * Crop imageSrc to pixelCrop, then resize to a square JPEG for menu upload.
+ * Crop imageSrc to pixelCrop, then resize to JPEG for upload.
  * @param {string} imageSrc
  * @param {{ x: number, y: number, width: number, height: number }} pixelCrop
  * @param {string} fileName
- * @param {{ outputSize?: number, quality?: number }} [options]
+ * @param {{
+ *   outputSize?: number,
+ *   outputWidth?: number,
+ *   outputHeight?: number,
+ *   quality?: number,
+ * }} [options]
  * @returns {Promise<File>}
  */
 export async function cropMenuImageToJpeg(imageSrc, pixelCrop, fileName, options = {}) {
-  const outputSize = options.outputSize ?? MENU_IMAGE_OUTPUT_SIZE;
   const quality = options.quality ?? MENU_IMAGE_JPEG_QUALITY;
+  const outputWidth =
+    options.outputWidth ?? options.outputSize ?? MENU_IMAGE_OUTPUT_SIZE;
+  const outputHeight =
+    options.outputHeight ?? options.outputSize ?? MENU_IMAGE_OUTPUT_SIZE;
 
   const image = await loadImageFromUrl(imageSrc);
   const canvas = document.createElement("canvas");
-  canvas.width = outputSize;
-  canvas.height = outputSize;
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -72,8 +82,8 @@ export async function cropMenuImageToJpeg(imageSrc, pixelCrop, fileName, options
     pixelCrop.height,
     0,
     0,
-    outputSize,
-    outputSize
+    outputWidth,
+    outputHeight
   );
 
   return canvasToJpegFile(canvas, fileName, quality);

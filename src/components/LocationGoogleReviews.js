@@ -1,22 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-function Stars({ rating }) {
-  if (rating == null) return null;
-  const full = Math.round(Number(rating));
-  return (
-    <span className="text-accent" aria-label={`${rating} out of 5 stars`}>
-      {"★".repeat(Math.min(5, Math.max(0, full)))}
-      <span className="text-white/25">{"★".repeat(Math.max(0, 5 - full))}</span>
-    </span>
-  );
-}
+import { GoogleRatingBadge, GoogleReviewCard } from "@/components/GoogleRatingUI";
+import { getMessages, t } from "@/lib/messages";
+import { useLocale } from "@/lib/use-locale";
 
 /**
- * Google reviews carousel for a branch slug (Soul & Sip / Nina-style social proof).
+ * Google reviews for a branch slug — Place ID resolved on Laravel via restaurant id.
  */
 export function LocationGoogleReviews({ slug, venueName }) {
+  const locale = useLocale();
+  const messages = getMessages(locale);
   const [data, setData] = useState(null);
   const scrollerRef = useRef(null);
 
@@ -67,83 +61,51 @@ export function LocationGoogleReviews({ slug, venueName }) {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Google</p>
             <h2 id="reviews-heading" className="mt-2 font-display text-2xl font-semibold sm:text-3xl">
-              What guests say
+              {t(messages, "location.reviewsTitle")}
             </h2>
+            {venueName ? <p className="mt-1 text-sm text-white/50">{venueName}</p> : null}
             {data.rating != null ? (
-              <p className="mt-2 text-sm text-white/65">
-                <Stars rating={data.rating} />{" "}
-                <span className="font-semibold text-white">{Number(data.rating).toFixed(1)}</span>
-                {data.userRatingCount != null ? (
-                  <span className="text-white/45"> · {data.userRatingCount} Google reviews</span>
-                ) : null}
-                {venueName ? <span className="text-white/45"> · {venueName}</span> : null}
-              </p>
+              <div className="mt-4">
+                <GoogleRatingBadge
+                  rating={data.rating}
+                  userRatingCount={data.userRatingCount}
+                  reviews={reviews}
+                  href={data.googleMapsUri}
+                />
+              </div>
             ) : null}
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => scrollBy(-1)}
-              className="rounded-md border border-white/20 px-3 py-1.5 text-sm text-white/80 hover:border-white/40"
-              aria-label="Previous reviews"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollBy(1)}
-              className="rounded-md border border-white/20 px-3 py-1.5 text-sm text-white/80 hover:border-white/40"
-              aria-label="Next reviews"
-            >
-              →
-            </button>
-          </div>
+          {reviews.length > 1 ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => scrollBy(-1)}
+                className="rounded-full border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/80 hover:border-white/40"
+                aria-label={t(messages, "common.prev")}
+              >
+                {t(messages, "common.prev")}
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollBy(1)}
+                className="rounded-full border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/80 hover:border-white/40"
+                aria-label={t(messages, "common.next")}
+              >
+                {t(messages, "common.next")}
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {reviews.length > 0 ? (
           <div
             ref={scrollerRef}
-            className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="mt-8 flex gap-4 overflow-x-auto pb-2 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {reviews.map((r, i) => (
-              <article
-                key={`${r.author}-${i}`}
-                className="w-[min(100%,18rem)] shrink-0 snap-start rounded-xl border border-white/10 bg-white/5 p-5"
-              >
-                <div className="flex items-center gap-3">
-                  {r.photoUri ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.photoUri} alt="" className="h-9 w-9 rounded-full object-cover" />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
-                      {(r.author || "G").slice(0, 1)}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{r.author}</p>
-                    <p className="text-xs text-white/45">{r.relativeTime || "Google review"}</p>
-                  </div>
-                </div>
-                <p className="mt-2 text-sm text-accent">
-                  <Stars rating={r.rating} />
-                </p>
-                <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-white/70">{r.text}</p>
-              </article>
+            {reviews.slice(0, 8).map((review, index) => (
+              <GoogleReviewCard key={`${review.author}-${index}`} review={review} index={index} />
             ))}
           </div>
-        ) : null}
-
-        {data.googleMapsUri ? (
-          <p className="mt-6">
-            <a
-              href={data.googleMapsUri}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-semibold text-accent hover:text-accent-hover"
-            >
-              See all Google reviews →
-            </a>
-          </p>
         ) : null}
       </div>
     </section>

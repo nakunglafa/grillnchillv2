@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cake sample uploads (runtime)
+/public/uploads/cake-samples/*
+!/public/uploads/cake-samples/.gitkeep
+/data/cake-samples/*
+!/data/cake-samples/.gitkeep
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

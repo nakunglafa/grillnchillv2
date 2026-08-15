@@ -2,7 +2,7 @@ import websiteContentDefaults from "@/data/website-content.json";
 
 /**
  * Normalize website_content for Grill N Chill public pages.
- * Kept fields: history/story + feature (hero) image.
+ * Kept fields: history/story + feature (hero) + booking page image.
  */
 export function normalizeWebsiteContent(content) {
   if (!content || typeof content !== "object") return {};
@@ -10,9 +10,16 @@ export function normalizeWebsiteContent(content) {
     storyTitle: content.story_title ?? content.storyTitle ?? "",
     storyText: content.story_text ?? content.storyText ?? "",
     heroMainImage: content.hero_main_image_url ?? content.heroMainImage ?? "",
+    bookPageImage: content.book_page_image_url ?? content.bookPageImage ?? "",
     // Legacy aliases still read for book/layout fallbacks
     parallaxReserveBg:
       content.parallax_reserve_bg_url ?? content.parallaxReserveBg ?? "",
+    googlePlaceId: content.google_place_id ?? content.googlePlaceId ?? "",
+    googlePlaceSyncedAt: content.google_place_synced_at ?? content.googlePlaceSyncedAt ?? "",
+    themeAccent: content.theme_accent ?? content.themeAccent ?? "",
+    themeBackground: content.theme_background ?? content.themeBackground ?? "",
+    themeForeground: content.theme_foreground ?? content.themeForeground ?? "",
+    themeFontPair: content.theme_font_pair ?? content.themeFontPair ?? "",
   };
 }
 

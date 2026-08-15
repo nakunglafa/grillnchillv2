@@ -3,7 +3,6 @@
 import { createContext, useContext, useReducer, useState, useCallback } from "react";
 
 const CART_KEY = "restaurant_cart";
-const ORDER_TYPE_KEY = "restaurant_order_type";
 
 function loadCart() {
   if (typeof window === "undefined") return [];
@@ -20,31 +19,6 @@ function saveCart(items) {
   try {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
   } catch (_) {}
-}
-
-function loadOrderType() {
-  if (typeof window === "undefined") return "pickup";
-  try {
-    const raw = localStorage.getItem(ORDER_TYPE_KEY);
-    if (raw === "delivery" || raw === "pickup") return raw;
-  } catch (_) {}
-  return "pickup";
-}
-
-function saveOrderType(orderType) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(ORDER_TYPE_KEY, orderType);
-  } catch (_) {}
-}
-
-function hasSavedOrderType() {
-  if (typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(ORDER_TYPE_KEY) != null;
-  } catch (_) {
-    return false;
-  }
 }
 
 function cartReducer(state, action) {
@@ -93,24 +67,19 @@ function cartReducer(state, action) {
 
 const CartContext = createContext(null);
 
+/** Takeaway / pickup only — delivery is not offered. */
 export function CartProvider({ children }) {
   const [items, dispatch] = useReducer(cartReducer, []);
   const [hydrated, setHydrated] = useState(false);
-  const [orderType, setOrderTypeState] = useState("pickup");
-  const [orderTypeChosen, setOrderTypeChosen] = useState(false);
+  const orderType = "pickup";
 
   const hydrate = useCallback(() => {
     dispatch({ type: "HYDRATE", payload: loadCart() });
-    setOrderTypeState(loadOrderType());
-    setOrderTypeChosen(hasSavedOrderType());
     setHydrated(true);
   }, []);
 
-  const setOrderType = useCallback((type) => {
-    const next = type === "delivery" ? "delivery" : "pickup";
-    setOrderTypeState(next);
-    setOrderTypeChosen(true);
-    saveOrderType(next);
+  const setOrderType = useCallback(() => {
+    // No-op: takeaway only
   }, []);
 
   const addItem = useCallback((item, quantity = 1) => {
@@ -140,7 +109,7 @@ export function CartProvider({ children }) {
     totalItems,
     totalAmount,
     orderType,
-    orderTypeChosen,
+    orderTypeChosen: true,
     setOrderType,
     addItem,
     removeItem,

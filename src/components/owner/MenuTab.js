@@ -5,6 +5,7 @@ import {
   getMenusForRestaurant,
   updateMenu,
   deleteMenu,
+  createMenuForRestaurant,
   getCategoriesForMenu,
   createCategoryForMenu,
   updateCategory,
@@ -19,6 +20,7 @@ import {
 import { toArray } from "@/lib/owner-utils";
 import { Toast } from "@/components/Toast";
 import { ImageUploadDropzone, MAX_MENU_IMAGE_BYTES } from "@/components/owner/ImageUploadDropzone";
+import { MenuPdfImport } from "@/components/owner/MenuPdfImport";
 
 /** Flatten API categories when they come as main[] with nested .children so all categories are in one list and findable by id. */
 function flattenCategories(arr) {
@@ -176,6 +178,7 @@ export function MenuTab({ restaurantId, token }) {
   const [openSubCatForm, setOpenSubCatForm] = useState(false);
   /** Mobile: null | 'picker' | 'select-menu' | 'main-category' | 'sub-category' */
   const [mobileSheet, setMobileSheet] = useState(null);
+  const pdfFileInputRef = useRef(null);
 
   const showToast = useCallback((message, type = "error") => {
     setToastMessage(message);
@@ -241,6 +244,27 @@ export function MenuTab({ restaurantId, token }) {
       return Array.isArray(arr) ? [...arr].sort(sortByOrder) : [];
     },
     [token]
+  );
+
+  const ensureMenuForImport = useCallback(
+    async (suggestedName) => {
+      if (selectedMenuId) {
+        const existing = menus.find((m) => String(m.id) === String(selectedMenuId));
+        if (existing?.id) return existing;
+      }
+      const name = String(suggestedName || "Menu").trim() || "Menu";
+      const res = await createMenuForRestaurant(token, restaurantId, {
+        name,
+        is_active: true,
+      });
+      const created = res?.data ?? res;
+      const menu = created?.id ? created : created?.data;
+      if (!menu?.id) throw new Error("Failed to create a menu for this import.");
+      setMenus((prev) => [menu, ...prev.filter((m) => String(m.id) !== String(menu.id))]);
+      setSelectedMenuId(menu.id);
+      return menu;
+    },
+    [menus, restaurantId, selectedMenuId, token]
   );
 
   const handleUpdateMenu = async (menu) => {
@@ -773,7 +797,22 @@ export function MenuTab({ restaurantId, token }) {
         {/* Right: menu items (selected menu’s categories + items editor) */}
         <section className="order-1 min-w-0 w-full space-y-3 pb-6 md:order-2 md:pl-2">
           {menus.length === 0 && (
-            <p className="text-owner-muted">No menus available yet.</p>
+            <div className="space-y-4">
+              <p className="text-owner-muted">No menus yet. Import a PDF to create one, or add dishes after you have a menu.</p>
+              <MenuPdfImport
+                token={token}
+                restaurantId={restaurantId}
+                menu={null}
+                ensureMenu={ensureMenuForImport}
+                fileInputRef={pdfFileInputRef}
+                showToast={showToast}
+                onImported={() => {
+                  setCategoriesRefreshTrigger((t) => t + 1);
+                  setItemsRefreshTrigger((t) => t + 1);
+                  loadMenus({ soft: true });
+                }}
+              />
+            </div>
           )}
           {menus.length > 0 && selectedMenu && (
             <MenuSection
@@ -804,6 +843,15 @@ export function MenuTab({ restaurantId, token }) {
               onDeleteCategory={handleDeleteCategory}
               onImageError={(msg) => showToast(msg, "error")}
               imageCacheBust={imageCacheBust}
+              restaurantId={restaurantId}
+              showToast={showToast}
+              pdfFileInputRef={pdfFileInputRef}
+              ensureMenu={ensureMenuForImport}
+              onPdfImported={() => {
+                setCategoriesRefreshTrigger((t) => t + 1);
+                setItemsRefreshTrigger((t) => t + 1);
+                loadMenus({ soft: true });
+              }}
             />
           )}
         </section>
@@ -920,6 +968,25 @@ export function MenuTab({ restaurantId, token }) {
                       </svg>
                     </span>
                     Add sub
+                  </button>
+                </li>
+              )}
+              {(selectedMenu || menus.length === 0) && (
+                <li>
+                  <button
+                    type="button"
+                    className="touch-manipulation flex w-full min-h-[48px] items-center gap-3 px-4 py-3 text-left text-sm font-medium text-owner-charcoal hover:bg-owner-paper active:bg-owner-paper"
+                    onClick={() => {
+                      setMobileSheet(null);
+                      pdfFileInputRef.current?.click();
+                    }}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-owner-paper text-owner-muted">
+                      <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        <path d="M14 3h7v7M21 3l-9 9M5 11v10h10" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    Import from PDF
                   </button>
                 </li>
               )}
@@ -1138,6 +1205,11 @@ function MenuSection({
   onDeleteCategory,
   onImageError,
   imageCacheBust = 0,
+  restaurantId,
+  showToast,
+  pdfFileInputRef,
+  ensureMenu,
+  onPdfImported,
 }) {
   const [categories, setCategories] = useState([]);
   const [loadingCat, setLoadingCat] = useState(true);
@@ -1218,6 +1290,19 @@ function MenuSection({
             </div>
           </>
         )}
+      </div>
+
+      <div className="border-t border-owner-border px-0 py-3 md:px-6">
+        <MenuPdfImport
+          key={`${restaurantId}-${menu.id}`}
+          token={token}
+          restaurantId={restaurantId}
+          menu={menu}
+          fileInputRef={pdfFileInputRef}
+          ensureMenu={ensureMenu}
+          showToast={showToast}
+          onImported={onPdfImported}
+        />
       </div>
 
       <div className="border-t border-owner-border px-0 py-3 md:px-6 md:py-6">

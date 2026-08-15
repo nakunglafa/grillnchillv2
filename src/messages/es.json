@@ -1,0 +1,90 @@
+{
+    "nav":  {
+                "home":  "Inicio",
+                "locations":  "Ubicaciones",
+                "menu":  "Menú",
+                "reserve":  "Reservar",
+                "takeaway":  "Para llevar",
+                "cart":  "Carrito",
+                "login":  "Entrar",
+                "orders":  "Mis pedidos"
+            },
+    "home":  {
+                 "eyebrow":  "Lisboa",
+                 "supporting":  "Dos restaurantes en Lisboa para comida y cena, más una pastelería — elige un local para pedir, ver el menú o reservar mesa.",
+                 "ctaLocations":  "Nuestras ubicaciones",
+                 "locationsTitle":  "Nuestras ubicaciones",
+                 "locationsIntro":  "Praça do Chile es conocida por eventos y grandes reservas. Intendente es fine dining con live grill. La Bakery son pasteles y dulces.",
+                 "openLocation":  "Abrir ubicación"
+             },
+    "checkout":  {
+                     "title":  "Pago",
+                     "takeawayOnly":  "Solo para llevar",
+                     "when":  "Cuándo",
+                     "asap":  "Lo antes posible",
+                     "schedule":  "Programar",
+                     "placeOrder":  "Pedir",
+                     "scheduleOrder":  "Programar para llevar"
+                 },
+    "menu":  {
+                 "closedBannerTitle":  "Cocina cerrada para pedidos inmediatos",
+                 "closedBannerBody":  "Aún puede añadir artículos y programar un pedido para más tarde."
+             },
+    "common":  {
+                   "addressSoon":  "Dirección pronto",
+                   "closed":  "Cerrado",
+                   "prev":  "Ant.",
+                   "next":  "Sig."
+               },
+    "days":  {
+                 "monday":  "Lunes",
+                 "tuesday":  "Martes",
+                 "wednesday":  "Miércoles",
+                 "thursday":  "Jueves",
+                 "friday":  "Viernes",
+                 "saturday":  "Sábado",
+                 "sunday":  "Domingo"
+             },
+    "location":  {
+                     "viewMenu":  "Ver menú completo",
+                     "bookVisit":  "Reservar visita",
+                     "reserveTable":  "Reservar mesa",
+                     "allLocations":  "Todas las ubicaciones",
+                     "historyFallback":  "Nuestra historia",
+                     "testimonialsTitle":  "Testimonios",
+                     "testimonialsIntro":  "Palabras de quienes han comido con nosotros.",
+                     "detailsTitle":  "Detalles",
+                     "address":  "Dirección",
+                     "phone":  "Teléfono",
+                     "email":  "Email",
+                     "hours":  "Horario",
+                     "hoursSoon":  "Horario próximamente.",
+                     "nearbyTitle":  "Cerca de {name}",
+                     "nearbyIntro":  "Lugares de interés a poca distancia de {venue}.",
+                     "openInMaps":  "Abrir en Maps →",
+                     "eventsEyebrow":  "Praça do Chile",
+                     "eventsTitle":  "Eventos privados y grupos",
+                     "eventsBody":  "Organice comidas o cenas en Grill N Chill Praça do Chile — cumpleaños, comidas de equipo y comedores privados. Llámenos o reserve online.",
+                     "callEnquire":  "Llamar",
+                     "emailUs":  "Escribirnos",
+                     "eventEmailSubject":  "Consulta de evento privado — Praça do Chile",
+                     "otherLocations":  "Otras ubicaciones",
+                     "menuArrow":  "Menú →",
+                     "visitBakery":  "Visitar la pastelería",
+                     "reserveYourTable":  "Reserve su mesa",
+                     "visitBakeryBody":  "Pase por un café y bollería fresca, o mire primero el menú.",
+                     "reserveBody":  "Reserve comida o cena en este Grill N Chill.",
+                     "bookShort":  "Reservar",
+                     "reserveShort":  "Reservar",
+                     "reviewsTitle":  "Lo que dicen los clientes",
+                     "favoritesTitle":  "Favoritos en {venue}",
+                     "favoritesIntro":  "Una muestra de las primeras categorías del menú — abra el menú completo para pedir.",
+                     "fullMenu":  "Menú completo →",
+                     "guest":  "Cliente",
+                     "bakeryFallbackIntro":  "Café y pastelería — café, bollería y snacks ligeros en Lisboa.",
+                     "restaurantFallbackIntro":  "Restaurante de comida y cena en Lisboa — grill, platos para compartir y menú completo.",
+                     "everyDay":  "Todos los días",
+                     "openDays":  "{count} días a la semana",
+                     "hoursRange":  "{open} – {close}"
+                 }
+}

@@ -7,7 +7,6 @@ import { toArray } from "@/lib/owner-utils";
 import { formatCurrencyEUR as formatPrice } from "@/lib/format-currency";
 import { useCart } from "@/context/CartContext";
 import { useOrderingHours } from "@/context/OrderingHoursContext";
-import { OrderTypeModal } from "@/components/OrderTypeModal";
 
 function sortBySortOrder(a, b) {
   const ao = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER;
@@ -363,24 +362,15 @@ function SpecialMenuSection({ specialMenu, addItem, orderingEnabled, searchTerm 
 }
 
 export function MenuClient({ restaurant, menus, specialMenuLists }) {
-  const { addItem, setOrderType } = useCart();
+  const { addItem } = useCart();
   const { orderingAccepting, openingSlots } = useOrderingHours();
   const showOrderingClosedBanner =
     Array.isArray(openingSlots) && openingSlots.length > 0 && !orderingAccepting;
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
-  const [orderTypeModalOpen, setOrderTypeModalOpen] = useState(true);
   const mobileCategoryRefs = useRef({});
-
-  function handleOrderTypeSelect(type) {
-    setOrderType(type);
-    setOrderTypeModalOpen(false);
-  }
-
-  function handleOrderTypeClose() {
-    // Keep current/saved choice (defaults to pickup); browsing stays unblocked
-    setOrderTypeModalOpen(false);
-  }
+  /** Closed now: still allow cart; checkout uses schedule-for-later. */
+  const canOrderItems = true;
 
   // sidebar: top-level categories (in order) for quick jumps + filtering UI
   const buildSidebar = (menu) => {
@@ -513,11 +503,6 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
 
   return (
     <div className="relative min-h-screen bg-[#0a0908] text-white">
-      <OrderTypeModal
-        open={orderTypeModalOpen}
-        onSelect={handleOrderTypeSelect}
-        onClose={handleOrderTypeClose}
-      />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[min(40vh,420px)] bg-[radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(197,157,95,0.09),transparent_55%)]"
         aria-hidden
@@ -527,10 +512,10 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
         {showOrderingClosedBanner && (
           <div className="mx-auto mb-4 max-w-4xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-center sm:px-5">
             <p className="font-sans text-xs font-semibold uppercase tracking-[0.12em] text-amber-200/95">
-              Ordering paused
+              Kitchen closed for ASAP takeaway
             </p>
             <p className="mt-1 font-sans text-sm text-white/75">
-              Orders can only be placed during opening hours. The menu below is for browsing only right now.
+              You can still add items and schedule a takeaway order for later during opening hours.
             </p>
           </div>
         )}
@@ -642,7 +627,7 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                     key={sm.id ?? sm.name ?? "special-menu"}
                     specialMenu={sm}
                     addItem={addItem}
-                    orderingEnabled={orderingAccepting}
+                    orderingEnabled={canOrderItems}
                     searchTerm={searchTerm}
                   />
                 ))}
@@ -666,7 +651,7 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                           <CategorySection
                             category={category}
                             addItem={addItem}
-                            orderingEnabled={orderingAccepting}
+                            orderingEnabled={canOrderItems}
                             searchTerm={searchTerm}
                           />
                         </div>

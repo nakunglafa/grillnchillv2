@@ -2,6 +2,8 @@
  * Configured Grill N Chill locations from env (Digitallisbon restaurant IDs).
  */
 
+import { localizedPath } from "@/lib/i18n";
+
 const FALLBACK_SHORT = ["Praça do Chile", "Intendente", "Bakery"];
 const FALLBACK_SLUGS = ["praca-do-chile", "intendente", "bakery"];
 const VENUE_TYPES = ["restaurant", "restaurant", "bakery"];
@@ -48,14 +50,14 @@ const NEARBY_BY_SLUG = {
       mapsUrl: "https://www.google.com/maps/search/?api=1&query=Pra%C3%A7a+do+Chile+Lisbon",
     },
     {
+      name: "Alameda",
+      blurb: "A short walk toward Alameda metro — easy pickup for cakes and custom orders.",
+      mapsUrl: "https://www.google.com/maps/search/?api=1&query=Alameda+Lisbon+metro",
+    },
+    {
       name: "Arroios",
       blurb: "Quiet residential streets and local shops just around the corner.",
       mapsUrl: "https://www.google.com/maps/search/?api=1&query=Arroios+Lisbon",
-    },
-    {
-      name: "Avenida Almirante Reis",
-      blurb: "A short walk for a stroll after coffee and cake.",
-      mapsUrl: "https://www.google.com/maps/search/?api=1&query=Avenida+Almirante+Reis+Lisbon",
     },
   ],
 };
@@ -66,13 +68,13 @@ const SEO_BY_SLUG = {
   intendente:
     "Grill N Chill Intendente — lunch and dinner restaurant in Lisbon. Live menu, hours and table reservations near Largo do Intendente.",
   bakery:
-    "Grill N Chill Bakery — café and bakery in Lisbon. Coffee, pastries and light bites. Menu, hours and visit info.",
+    "Custom cakes and cake shop in Lisbon near Alameda, Arroios and Praça do Chile. The Bakery by Grill N Chill — ready-made cakes, birthday cakes and custom cake pickup.",
 };
 
 const AREA_BY_SLUG = {
   "praca-do-chile": ["Praça do Chile", "Arroios", "Almirante Reis", "Lisbon"],
   intendente: ["Intendente", "Martim Moniz", "Anjos", "Lisbon"],
-  bakery: ["Praça do Chile", "Arroios", "Almirante Reis", "Lisbon"],
+  bakery: ["Alameda", "Arroios", "Praça do Chile", "Lisbon"],
 };
 
 function placeIdForIndex(index) {
@@ -84,6 +86,17 @@ function placeIdForIndex(index) {
   if (keyed[index]) return keyed[index];
   if (index === 0 && process.env.GOOGLE_PLACE_ID) return process.env.GOOGLE_PLACE_ID;
   return null;
+}
+
+/** Env Place IDs are bootstrap only until Settings saves website_content.google_place_id. */
+export function getEnvGooglePlaceIdForIndex(index) {
+  return placeIdForIndex(index);
+}
+
+export function getEnvGooglePlaceIdForSlug(slug) {
+  const index = FALLBACK_SLUGS.indexOf(slug);
+  if (index < 0) return null;
+  return placeIdForIndex(index);
 }
 
 function displayNameForIndex(index) {
@@ -136,6 +149,7 @@ function readConfiguredRestaurants() {
         nearbyFallback: NEARBY_BY_SLUG[slug] || [],
         googlePlaceId: placeIdForIndex(index),
         offersPrivateEvents: slug === "praca-do-chile",
+        offersTableReservations: venueType !== "bakery",
       };
     })
     .filter(Boolean);
@@ -189,13 +203,60 @@ export function getGooglePlaceIdForSlug(slug) {
   return getRestaurantBySlug(slug)?.googlePlaceId || null;
 }
 
-/** Path helpers — accept catalog row or { slug }. */
-export function locationPath(r) {
-  const slug = typeof r === "string" ? r : r?.slug;
-  return slug ? `/${slug}` : "/";
+/**
+ * Prefer website_content Place ID; fall back to env bootstrap Place ID.
+ * @param {string} slug
+ * @param {string} [contentPlaceId]
+ */
+export function resolveLocationPlaceId(slug, contentPlaceId) {
+  const fromContent = String(contentPlaceId || "").trim();
+  if (fromContent) return fromContent;
+  return getEnvGooglePlaceIdForSlug(slug) || getGooglePlaceIdForSlug(slug) || null;
 }
 
-export function menuPath(r) {
+/** Path helpers — accept catalog row or { slug }. Optional locale prefixes the path. */
+export function locationPath(r, locale) {
   const slug = typeof r === "string" ? r : r?.slug;
-  return slug ? `/${slug}/menu` : "/menu";
+  const bare = slug ? `/${slug}` : "/";
+  return locale ? localizedPath(locale, bare) : bare;
+}
+
+export function menuPath(r, locale) {
+  const slug = typeof r === "string" ? r : r?.slug;
+  const bare = slug ? `/${slug}/menu` : "/menu";
+  return locale ? localizedPath(locale, bare) : bare;
+}
+
+/** Custom cake order form — bakery venues only. */
+export function cakeOrderPath(r, locale) {
+  const slug = typeof r === "string" ? r : r?.slug;
+  const bare = slug ? `/${slug}/order-cake` : "/bakery/order-cake";
+  return locale ? localizedPath(locale, bare) : bare;
+}
+
+export function restaurantOffersReservations(restaurantOrId) {
+  if (restaurantOrId == null) return false;
+  if (typeof restaurantOrId === "object") {
+    if (typeof restaurantOrId.offersTableReservations === "boolean") {
+      return restaurantOrId.offersTableReservations;
+    }
+    return restaurantOrId.venueType !== "bakery";
+  }
+  const row = getRestaurantById(restaurantOrId);
+  return row ? row.offersTableReservations !== false && row.venueType !== "bakery" : true;
+}
+
+export function isBakeryRestaurant(restaurantOrId) {
+  if (restaurantOrId == null) return false;
+  if (typeof restaurantOrId === "object") {
+    return restaurantOrId.venueType === "bakery";
+  }
+  return getRestaurantById(restaurantOrId)?.venueType === "bakery";
+}
+
+/** Menu item ID for custom cake createOrder (owner creates once in Menu). */
+export function getBakeryCustomCakeItemId() {
+  const raw = process.env.NEXT_PUBLIC_BAKERY_CUSTOM_CAKE_ITEM_ID;
+  const id = Number(raw);
+  return id && !Number.isNaN(id) ? id : null;
 }

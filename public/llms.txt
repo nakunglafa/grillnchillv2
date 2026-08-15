@@ -1,0 +1,30 @@
+# Grill N Chill — Lisbon (AI / LLM crawl guide)
+# Site: https://grillnchill.pt
+# Takeaway pickup only (no delivery). Table booking available at restaurants.
+
+## Brand
+Grill N Chill — Nepali, Indian and Portuguese cuisine in Lisbon, plus a bakery café.
+
+## Locations (JSON for machines)
+- Praça do Chile (events, parties, large bookings): https://grillnchill.pt/en/seo/praca-do-chile
+- Intendente (fine dining, live grill): https://grillnchill.pt/en/seo/intendente
+- Bakery (cakes & sweets): https://grillnchill.pt/en/seo/bakery
+
+Locale variants (replace `en` with pt|fr|de|nl|es):
+- https://grillnchill.pt/{locale}/seo/praca-do-chile
+- https://grillnchill.pt/{locale}/seo/intendente
+- https://grillnchill.pt/{locale}/seo/bakery
+
+## Human pages
+- Home: https://grillnchill.pt/en
+- Praça do Chile: https://grillnchill.pt/en/praca-do-chile
+- Intendente: https://grillnchill.pt/en/intendente
+- Bakery: https://grillnchill.pt/en/bakery
+- Menus: append `/menu` to a location URL
+- Book a table: https://grillnchill.pt/en/book
+
+## Locales
+en (default / x-default), pt, fr, de, nl, es — all public pages are prefixed.
+
+## Contact
+Prefer booking and takeaway via the website. See each location page for address and hours.

@@ -1,20 +1,44 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ImageUploadDropzone, MAX_IMAGE_BYTES } from "@/components/owner/ImageUploadDropzone";
+import { ImageUploadDropzone } from "@/components/owner/ImageUploadDropzone";
 import websiteContentDefaults from "@/data/website-content.json";
 import {
   getOwnerWebsiteContent,
   updateOwnerWebsiteContent,
   uploadOwnerWebsiteContentImage,
 } from "@/lib/api";
+import { MAX_WEBSITE_CONTENT_IMAGE_BYTES } from "@/lib/menu-image-crop";
 
-/** Only fields used on grillnchill.pt location pages. */
+/** Only fields used on grillnchill.pt location / book pages. */
 const IMAGE_FIELDS = [
   {
     key: "heroMainImage",
     label: "Feature image",
-    recommendation: "Wide photo for this location’s page hero. Recommended 1600×900. Max 500 KB.",
+    recommendation:
+      "Wide photo for this location’s page hero. Cropped to 16:9 (1600×900).",
+    sectionTitle: "Feature image",
+    sectionHint: "Hero background on this location’s public page. Uploads save automatically.",
+    cropAspect: 16 / 9,
+    cropOutputWidth: 1600,
+    cropOutputHeight: 900,
+    cropTitle: "Crop feature image",
+    cropDescription: "Drag to recenter and zoom so the scene fills the 16:9 frame.",
+    saveUrlMessage: "Feature image URL saved.",
+  },
+  {
+    key: "bookPageImage",
+    label: "Booking page image",
+    recommendation:
+      "Photo for the /book left column. Cropped to 2:1 (1600×800).",
+    sectionTitle: "Booking page image",
+    sectionHint: "Shown on the booking page left column. Uploads save automatically.",
+    cropAspect: 2 / 1,
+    cropOutputWidth: 1600,
+    cropOutputHeight: 800,
+    cropTitle: "Crop booking image",
+    cropDescription: "Drag to recenter and zoom so the scene fills the 2:1 frame.",
+    saveUrlMessage: "Booking page image URL saved.",
   },
 ];
 
@@ -22,6 +46,7 @@ const DEFAULT_FORM = {
   storyTitle: "",
   storyText: "",
   heroMainImage: "",
+  bookPageImage: "",
 };
 
 function apiToFormContent(content) {
@@ -30,6 +55,7 @@ function apiToFormContent(content) {
     storyTitle: content.story_title ?? content.storyTitle ?? "",
     storyText: content.story_text ?? content.storyText ?? "",
     heroMainImage: content.hero_main_image_url ?? content.heroMainImage ?? "",
+    bookPageImage: content.book_page_image_url ?? content.bookPageImage ?? "",
   };
 }
 
@@ -39,6 +65,7 @@ function formToApiContent(form, baseContent = {}) {
     story_title: form.storyTitle || "",
     story_text: form.storyText || "",
     hero_main_image_url: form.heroMainImage || "",
+    book_page_image_url: form.bookPageImage || "",
   };
 }
 
@@ -246,16 +273,16 @@ export function WebsiteContentTab({ restaurantId, token }) {
         </form>
       </section>
 
-      <section className={sectionClass}>
-        <h3 className="mb-1 text-base font-semibold text-owner-charcoal md:mb-2 md:text-xl">
-          Feature image
-        </h3>
-        <p className="mb-3 text-[11px] leading-snug text-owner-muted md:mb-4 md:text-sm md:leading-normal">
-          Hero background on this location’s public page. Uploads save automatically.
-        </p>
+      {IMAGE_FIELDS.map((field) => (
+        <section key={field.key} className={sectionClass}>
+          <h3 className="mb-1 text-base font-semibold text-owner-charcoal md:mb-2 md:text-xl">
+            {field.sectionTitle}
+          </h3>
+          <p className="mb-3 text-[11px] leading-snug text-owner-muted md:mb-4 md:text-sm md:leading-normal">
+            {field.sectionHint}
+          </p>
 
-        {IMAGE_FIELDS.map((field) => (
-          <div key={field.key} className="space-y-2">
+          <div className="space-y-2">
             <label>
               <span className={labelClass}>{field.label} (URL)</span>
               <input
@@ -274,7 +301,7 @@ export function WebsiteContentTab({ restaurantId, token }) {
                   setSaving(true);
                   setError("");
                   try {
-                    await persistForm(form, "Feature image URL saved.");
+                    await persistForm(form, field.saveUrlMessage);
                   } catch (err) {
                     setError(err?.data?.message || err?.message || "Unable to save.");
                   } finally {
@@ -293,9 +320,15 @@ export function WebsiteContentTab({ restaurantId, token }) {
                 value={uploadFiles[field.key]}
                 onChange={(file) => handleImageUpload(field.key, file)}
                 onError={setError}
-                maxBytes={MAX_IMAGE_BYTES}
+                maxBytes={MAX_WEBSITE_CONTENT_IMAGE_BYTES}
+                enableCrop
+                cropAspect={field.cropAspect}
+                cropOutputWidth={field.cropOutputWidth}
+                cropOutputHeight={field.cropOutputHeight}
+                cropTitle={field.cropTitle}
+                cropDescription={field.cropDescription}
                 accept="image/jpeg,image/png,image/jpg,image/webp"
-                dropHint="Drop or tap to upload (max 500 KB)"
+                dropHintWhenCrop="Drop or click — crop and compress; large photos are resized automatically."
               />
               <p className="mt-0.5 text-[10px] leading-snug text-owner-muted md:text-xs">
                 {field.recommendation}
@@ -312,8 +345,8 @@ export function WebsiteContentTab({ restaurantId, token }) {
               </div>
             )}
           </div>
-        ))}
-      </section>
+        </section>
+      ))}
     </div>
   );
 }

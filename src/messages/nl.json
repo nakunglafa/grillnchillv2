@@ -1,0 +1,90 @@
+{
+    "nav":  {
+                "home":  "Home",
+                "locations":  "Locaties",
+                "menu":  "Menu",
+                "reserve":  "Reserveren",
+                "takeaway":  "Afhaal",
+                "cart":  "Winkelwagen",
+                "login":  "Inloggen",
+                "orders":  "Mijn bestellingen"
+            },
+    "home":  {
+                 "eyebrow":  "Lissabon",
+                 "supporting":  "Twee restaurants in Lissabon voor lunch en diner, plus een bakkerij-café — kies een locatie om af te halen, het menu te bekijken of te reserveren.",
+                 "ctaLocations":  "Onze locaties",
+                 "locationsTitle":  "Onze locaties",
+                 "locationsIntro":  "Praça do Chile staat bekend om events en grote boekingen. Intendente is fine dining met live grill. De Bakery is taarten en zoetigheden.",
+                 "openLocation":  "Locatie openen"
+             },
+    "checkout":  {
+                     "title":  "Afrekenen",
+                     "takeawayOnly":  "Alleen afhaal",
+                     "when":  "Wanneer",
+                     "asap":  "Zo snel mogelijk",
+                     "schedule":  "Plannen",
+                     "placeOrder":  "Bestellen",
+                     "scheduleOrder":  "Afhaal plannen"
+                 },
+    "menu":  {
+                 "closedBannerTitle":  "Keuken gesloten voor directe afhaal",
+                 "closedBannerBody":  "U kunt nog items toevoegen en later afhalen plannen."
+             },
+    "common":  {
+                   "addressSoon":  "Adres volgt binnenkort",
+                   "closed":  "Gesloten",
+                   "prev":  "Vorige",
+                   "next":  "Volgende"
+               },
+    "days":  {
+                 "monday":  "Maandag",
+                 "tuesday":  "Dinsdag",
+                 "wednesday":  "Woensdag",
+                 "thursday":  "Donderdag",
+                 "friday":  "Vrijdag",
+                 "saturday":  "Zaterdag",
+                 "sunday":  "Zondag"
+             },
+    "location":  {
+                     "viewMenu":  "Volledig menu bekijken",
+                     "bookVisit":  "Bezoek boeken",
+                     "reserveTable":  "Tafel reserveren",
+                     "allLocations":  "Alle locaties",
+                     "historyFallback":  "Onze geschiedenis",
+                     "testimonialsTitle":  "Gastreviews",
+                     "testimonialsIntro":  "Woorden van mensen die bij ons hebben gegeten.",
+                     "detailsTitle":  "Gegevens",
+                     "address":  "Adres",
+                     "phone":  "Telefoon",
+                     "email":  "E-mail",
+                     "hours":  "Openingstijden",
+                     "hoursSoon":  "Openingstijden volgen binnenkort.",
+                     "nearbyTitle":  "In de buurt van {name}",
+                     "nearbyIntro":  "Bezienswaardigheden op loopafstand van {venue}.",
+                     "openInMaps":  "Open in Maps →",
+                     "eventsEyebrow":  "Praça do Chile",
+                     "eventsTitle":  "Privé-events \u0026 groepen",
+                     "eventsBody":  "Organiseer lunch of diner bij Grill N Chill Praça do Chile — verjaardagen, teamdiners en privé dining. Bel ons of reserveer online.",
+                     "callEnquire":  "Bellen",
+                     "emailUs":  "E-mailen",
+                     "eventEmailSubject":  "Aanvraag privé-event — Praça do Chile",
+                     "otherLocations":  "Andere locaties",
+                     "menuArrow":  "Menu →",
+                     "visitBakery":  "Bezoek de bakkerij",
+                     "reserveYourTable":  "Reserveer uw tafel",
+                     "visitBakeryBody":  "Kom langs voor koffie en vers gebak, of bekijk eerst het menu.",
+                     "reserveBody":  "Reserveer lunch of diner bij dit Grill N Chill.",
+                     "bookShort":  "Boeken",
+                     "reserveShort":  "Reserveren",
+                     "reviewsTitle":  "Wat gasten zeggen",
+                     "favoritesTitle":  "Favorieten bij {venue}",
+                     "favoritesIntro":  "Een voorproefje van de eerste menucategorieën — open het volledige menu om te bestellen.",
+                     "fullMenu":  "Volledig menu →",
+                     "guest":  "Gast",
+                     "bakeryFallbackIntro":  "Café en bakkerij — koffie, gebak en lichte hapjes in Lissabon.",
+                     "restaurantFallbackIntro":  "Lunch- en dinerrestaurant in Lissabon — grill, share plates en volledig menu.",
+                     "everyDay":  "Elke dag",
+                     "openDays":  "{count} dagen per week",
+                     "hoursRange":  "{open} – {close}"
+                 }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocalizedPath } from "@/lib/use-locale";
 
 /**
  * Reusable GDPR consent checkbox for forms that collect personal data
@@ -27,6 +28,7 @@ export function GdprConsent({
   variant = "dark",
   className = "",
 }) {
+  const lp = useLocalizedPath();
   const isDark = variant === "dark";
   const wrap = isDark
     ? "flex items-start gap-2.5 rounded-sm border border-white/12 bg-white/4 p-3 text-[12px] leading-snug text-white/80"
@@ -53,7 +55,7 @@ export function GdprConsent({
           only for the purpose
         </strong>{" "}
         of managing this booking / order, in accordance with the{" "}
-        <Link href="/privacy" className={linkCls} target="_blank" rel="noopener noreferrer">
+        <Link href={lp("/privacy")} className={linkCls} target="_blank" rel="noopener noreferrer">
           privacy notice
         </Link>
         . My data will not be shared with third parties or used for marketing.

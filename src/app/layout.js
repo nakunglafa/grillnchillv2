@@ -1,6 +1,4 @@
-import { Montserrat, Playfair_Display } from "next/font/google";
-import Script from "next/script";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { OwnerAwareSiteChrome } from "@/components/OwnerAwareSiteChrome";
@@ -18,6 +16,10 @@ import {
   mergeWebsiteContent,
   pickShareImage,
 } from "@/lib/website-content";
+import { publicThemeToCssVars, resolvePublicTheme } from "@/lib/site-theme";
+import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
+import Script from "next/script";
+import { Montserrat, Playfair_Display } from "next/font/google";
 
 // Max time we wait for the backend before declaring it unreachable and showing
 // the "site unavailable" page. Long enough to absorb a slow cold start, short
@@ -71,6 +73,12 @@ const siteKeywords = [
   "restaurant Praça do Chile",
   "restaurant Intendente",
   "bakery Lisbon",
+  "cake Lisbon",
+  "custom cake Lisbon",
+  "cake Alameda Lisbon",
+  "cakes Arroios",
+  "bolos Lisboa",
+  "bolo personalizado Lisboa",
   "Nepali restaurant Lisbon",
   "Portuguese cuisine Lisbon",
   "Indian restaurant Lisbon",
@@ -170,7 +178,8 @@ export const viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#241e19",
-  colorScheme: "dark",
+  /* Prevent Chrome/OS from auto-inverting the public palette */
+  colorScheme: "light",
 };
 
 export default async function RootLayout({ children }) {
@@ -181,6 +190,7 @@ export default async function RootLayout({ children }) {
   let socialLinks;
   let schemaImage = getDefaultShareImage(RESTAURANT_ID);
   let serverDown = false;
+  let theme = resolvePublicTheme(null);
 
   // Read the consent cookie on the server so the modal (and any GA scripts)
   // appear in the initial HTML — no flash of unconsented site, no double render.
@@ -219,6 +229,7 @@ export default async function RootLayout({ children }) {
     schemaImage =
       pickShareImage(websiteContent, rest?.logo_url) ||
       getDefaultShareImage(RESTAURANT_ID);
+    theme = resolvePublicTheme(websiteContent);
   } catch (err) {
     if (isServerUnreachable(err)) {
       serverDown = true;
@@ -226,15 +237,27 @@ export default async function RootLayout({ children }) {
     // Otherwise fall back silently to env / "Restaurant" defaults below.
   }
 
+  const themeStyle = publicThemeToCssVars(theme);
+
+  const headerList = await headers();
+  const pathLocale = String(headerList.get("x-pathname") || headerList.get("x-url") || "")
+    .split("/")
+    .filter(Boolean)[0];
+  const htmlLang = isLocale(pathLocale) ? pathLocale : DEFAULT_LOCALE;
+
   // Short-circuit: render only the "service unavailable" page when the API
   // can't be reached at all. We still emit <html>/<body> because Next.js
   // requires it from the root layout, but we skip the full site shell
   // (Providers, header/footer, scripts that hit the API, etc.).
   if (serverDown) {
     return (
-      <html lang="en">
+      <html lang={htmlLang} style={{ ...themeStyle, colorScheme: "light" }}>
+        <head>
+          <meta name="color-scheme" content="light" />
+        </head>
         <body
           className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
+          style={{ colorScheme: "light" }}
         >
           <ServiceUnavailable />
         </body>
@@ -243,9 +266,17 @@ export default async function RootLayout({ children }) {
   }
 
   return (
-    <html lang="en">
+    <html lang={htmlLang} style={{ ...themeStyle, colorScheme: "light" }}>
+      <head>
+        <meta name="color-scheme" content="light" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        />
+      </head>
       <body
         className={`${montserrat.variable} ${playfair.variable} font-sans antialiased text-base`}
+        style={{ colorScheme: "light" }}
       >
         <GoogleAnalytics initialConsent={initialConsent} />
         <Script
@@ -268,7 +299,7 @@ export default async function RootLayout({ children }) {
               department: CONFIGURED_RESTAURANTS.map((r) => ({
                 "@type": r.venueType === "bakery" ? "Bakery" : "Restaurant",
                 name: r.label,
-                url: `${SITE_URL}${locationPath(r)}`,
+                url: `${SITE_URL}${locationPath(r, htmlLang)}`,
                 address: r.addressFallback
                   ? {
                       "@type": "PostalAddress",

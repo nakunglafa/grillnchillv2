@@ -2,12 +2,25 @@
 
 import { useCallback, useState } from "react";
 import Cropper from "react-easy-crop";
-import { cropMenuImageToJpeg } from "@/lib/menu-image-crop";
+import { cropMenuImageToJpeg, MENU_IMAGE_JPEG_QUALITY, MENU_IMAGE_OUTPUT_SIZE } from "@/lib/menu-image-crop";
 
 /**
- * Soul & Sip–style square crop modal: drag to recenter, zoom, then JPEG compress.
+ * Crop modal: drag to recenter, zoom, then JPEG compress.
+ * Defaults match menu square crop; pass aspect / output for page-content images.
  */
-export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onConfirm }) {
+export function MenuImageCropModal({
+  isOpen,
+  imageSrc,
+  fileName,
+  onCancel,
+  onConfirm,
+  aspect = 1,
+  outputWidth,
+  outputHeight,
+  quality = MENU_IMAGE_JPEG_QUALITY,
+  title,
+  description,
+}) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -18,6 +31,9 @@ export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onCon
     setCroppedAreaPixels(pixels);
   }, []);
 
+  const outW = outputWidth ?? (aspect === 1 ? MENU_IMAGE_OUTPUT_SIZE : undefined) ?? MENU_IMAGE_OUTPUT_SIZE;
+  const outH = outputHeight ?? (aspect === 1 ? MENU_IMAGE_OUTPUT_SIZE : undefined) ?? outW;
+
   async function handleConfirm() {
     if (!imageSrc || !croppedAreaPixels) return;
 
@@ -25,7 +41,16 @@ export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onCon
     setError(null);
 
     try {
-      const file = await cropMenuImageToJpeg(imageSrc, croppedAreaPixels, fileName || "menu-image.jpg");
+      const file = await cropMenuImageToJpeg(
+        imageSrc,
+        croppedAreaPixels,
+        fileName || "image.jpg",
+        {
+          outputWidth: outW,
+          outputHeight: outH,
+          quality,
+        }
+      );
       onConfirm(file);
     } catch {
       setError("Could not crop this image. Try another photo.");
@@ -35,6 +60,15 @@ export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onCon
   }
 
   if (!isOpen || !imageSrc) return null;
+
+  const heading =
+    title ||
+    (aspect === 1 ? "Crop to square" : "Crop image");
+  const body =
+    description ||
+    (aspect === 1
+      ? "Drag to recenter and zoom so the dish fills the square."
+      : "Drag to recenter and zoom so the important part fills the frame.");
 
   return (
     <div
@@ -49,11 +83,9 @@ export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onCon
       <div className="flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-owner-border bg-owner-card shadow-2xl sm:rounded-2xl">
         <div className="shrink-0 border-b border-owner-border px-4 py-3 sm:px-6 sm:py-4">
           <h2 id="menu-image-crop-title" className="text-lg font-semibold text-owner-charcoal">
-            Crop to square
+            {heading}
           </h2>
-          <p className="mt-1 text-sm text-owner-muted">
-            Drag to recenter and zoom so the dish fills the square.
-          </p>
+          <p className="mt-1 text-sm text-owner-muted">{body}</p>
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
@@ -62,7 +94,7 @@ export function MenuImageCropModal({ isOpen, imageSrc, fileName, onCancel, onCon
               image={imageSrc}
               crop={crop}
               zoom={zoom}
-              aspect={1}
+              aspect={aspect}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}

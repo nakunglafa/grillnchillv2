@@ -13,9 +13,14 @@ import { CartDrawer } from "@/components/CartDrawer";
 import {
   getDefaultLocationSlug,
   getSlugForId,
+  getRestaurantById,
   locationPath,
   menuPath,
+  cakeOrderPath,
+  restaurantOffersReservations,
 } from "@/lib/restaurants";
+import { useLocale, useLocalizedPath } from "@/lib/use-locale";
+import { getMessages, t } from "@/lib/messages";
 
 function SocialRow({ className, socialLinks }) {
   const icon = "h-4 w-4";
@@ -88,6 +93,9 @@ function SocialRow({ className, socialLinks }) {
  */
 export function Header({ variant = "default" }) {
   const pathname = usePathname();
+  const locale = useLocale();
+  const lp = useLocalizedPath();
+  const messages = getMessages(locale);
   const { user, isAuthenticated, logout, loading } = useAuth();
   const { totalItems, hydrate } = useCart();
   const { restaurants, activeRestaurantId, setActiveRestaurantId } = useRestaurant();
@@ -151,22 +159,38 @@ export function Header({ variant = "default" }) {
   const closeMenu = () => setMenuOpen(false);
 
   const activeSlug = getSlugForId(activeRestaurantId) || getDefaultLocationSlug();
-  const activeMenuHref = activeSlug ? menuPath(activeSlug) : "/menu";
-  const activeLocationHref = activeSlug ? locationPath(activeSlug) : "/";
-
+  const activeCatalog = getRestaurantById(activeRestaurantId);
+  const offersReservations = restaurantOffersReservations(activeCatalog || activeRestaurantId);
+  const isBakeryActive = activeCatalog?.venueType === "bakery";
+  const activeMenuHref = activeSlug ? menuPath(activeSlug, locale) : lp("/menu");
+  const activeLocationHref = activeSlug ? locationPath(activeSlug, locale) : lp("/");
+  const homeHref = lp("/");
+  const locationsHref = `${lp("/")}#locations`;
+  const bookHref = lp("/book");
+  const cakeOrderHref = activeSlug ? cakeOrderPath(activeSlug, locale) : lp("/bakery/order-cake");
+  const primaryCtaHref = offersReservations ? bookHref : cakeOrderHref;
+  const primaryCtaLabel = offersReservations
+    ? t(messages, "nav.reserve", "Reserve")
+    : t(messages, "nav.orderCake", "Order cake");
+  const loginHref = lp("/login");
+  const registerHref = lp("/register");
+  const profileHref = lp("/profile");
+  const reservationsHref = lp("/reservations");
+  const ordersHref = lp("/orders");
+  const slugActivePrefix = `/${locale}/`;
   const overlay = variant === "overlay";
   const marketing = variant === "marketing";
   const siteChrome = overlay || marketing;
 
   const headerBarClass = marketing
-    ? "sticky top-0 z-50 border-b backdrop-blur-md"
+    ? "sticky top-0 z-50 border-b backdrop-blur-md pt-[env(safe-area-inset-top,0px)]"
     : overlay
-      ? "sticky top-0 z-50 border-b backdrop-blur-md"
-      : "sticky top-0 z-30 border-b backdrop-blur-xl";
+      ? "sticky top-0 z-50 border-b backdrop-blur-md pt-[env(safe-area-inset-top,0px)] max-md:backdrop-blur-none"
+      : "sticky top-0 z-30 border-b backdrop-blur-xl pt-[env(safe-area-inset-top,0px)]";
 
   const headerStyle = siteChrome
     ? {
-        backgroundColor: marketing ? "var(--site-header-bg-solid)" : "var(--site-header-bg)",
+        backgroundColor: "var(--site-header-bg-solid)",
         borderColor: "var(--site-header-border)",
         color: "var(--site-header-fg)",
       }
@@ -201,10 +225,10 @@ export function Header({ variant = "default" }) {
         className="relative mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 sm:px-5"
         style={{ minHeight: "var(--site-header-height)" }}
       >
-        <div className="flex min-w-0 items-center gap-3 lg:gap-5">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-5">
           <Link
-            href="/"
-            className="shrink-0 font-display text-xl font-semibold tracking-tight text-[color:var(--site-header-fg)] sm:text-2xl"
+            href={homeHref}
+            className="min-w-0 shrink truncate font-display text-xl font-semibold tracking-tight text-[color:var(--site-header-fg)] sm:text-2xl"
             onClick={closeMenu}
           >
             {resLoading ? (
@@ -221,9 +245,9 @@ export function Header({ variant = "default" }) {
               {restaurants.map((r) => (
                 <Link
                   key={r.id}
-                  href={locationPath(r)}
+                  href={locationPath(r, locale)}
                   onClick={() => setActiveRestaurantId(r.id)}
-                  className={locationLink(activeRestaurantId === r.id || pathname?.startsWith(`/${r.slug}`))}
+                  className={locationLink(activeRestaurantId === r.id || pathname?.startsWith(`${slugActivePrefix}${r.slug}`))}
                 >
                   {r.shortLabel || r.label}
                 </Link>
@@ -232,21 +256,21 @@ export function Header({ variant = "default" }) {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <nav className="hidden items-center gap-1 lg:flex">
-            <Link href="/" className={navLink}>
-              Home
+            <Link href={homeHref} className={navLink}>
+              {t(messages, "nav.home", "Home")}
             </Link>
-            <Link href="/#locations" className={navLink}>
-              Locations
+            <Link href={locationsHref} className={navLink}>
+              {t(messages, "nav.locations", "Locations")}
             </Link>
           </nav>
 
           <Link href={activeMenuHref} className={`hidden sm:inline-flex ${ctaSecondary}`}>
-            Menu
+            {isBakeryActive ? t(messages, "nav.shopCakes", "Shop cakes") : t(messages, "nav.menu", "Menu")}
           </Link>
-          <Link href="/book" className={`hidden sm:inline-flex ${ctaPrimary}`}>
-            Reserve
+          <Link href={primaryCtaHref} className={`hidden sm:inline-flex ${ctaPrimary}`}>
+            {primaryCtaLabel}
           </Link>
 
           {siteChrome && (
@@ -280,13 +304,13 @@ export function Header({ variant = "default" }) {
               </button>
               {accountMenuOpen && (
                 <div className={accountDrop}>
-                  <Link href="/profile" onClick={() => setAccountMenuOpen(false)} className={accountItem}>
+                  <Link href={profileHref} onClick={() => setAccountMenuOpen(false)} className={accountItem}>
                     Profile
                   </Link>
-                  <Link href="/reservations" onClick={() => setAccountMenuOpen(false)} className={accountItem}>
+                  <Link href={reservationsHref} onClick={() => setAccountMenuOpen(false)} className={accountItem}>
                     My Reservations
                   </Link>
-                  <Link href="/orders" onClick={() => setAccountMenuOpen(false)} className={accountItem}>
+                  <Link href={ordersHref} onClick={() => setAccountMenuOpen(false)} className={accountItem}>
                     My Orders
                   </Link>
                   {isOwner(user) && (
@@ -308,8 +332,8 @@ export function Header({ variant = "default" }) {
               )}
             </div>
           ) : !loading ? (
-            <Link href="/login" className={`hidden md:inline-flex ${ctaSecondary}`}>
-              Login
+            <Link href={loginHref} className={`hidden md:inline-flex ${ctaSecondary}`}>
+              {t(messages, "nav.login", "Login")}
             </Link>
           ) : null}
 
@@ -349,13 +373,13 @@ export function Header({ variant = "default" }) {
                   {restaurants.map((r) => (
                     <Link
                       key={r.id}
-                      href={locationPath(r)}
+                      href={locationPath(r, locale)}
                       onClick={() => {
                         setActiveRestaurantId(r.id);
                         closeMenu();
                       }}
                       className={`rounded-md px-3 py-2.5 text-left text-base font-medium transition-colors ${
-                        activeRestaurantId === r.id || pathname?.startsWith(`/${r.slug}`)
+                        activeRestaurantId === r.id || pathname?.startsWith(`${slugActivePrefix}${r.slug}`)
                           ? "bg-white/15 text-[color:var(--site-header-fg)]"
                           : "text-[color:var(--site-header-muted)] hover:bg-white/10"
                       }`}
@@ -371,28 +395,28 @@ export function Header({ variant = "default" }) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--site-header-muted)]">
               Navigate
             </p>
-            <Link href="/" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+            <Link href={homeHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
               Home
             </Link>
-            <Link href="/#locations" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+            <Link href={locationsHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
               Locations
             </Link>
             <Link href={activeLocationHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
               This location
             </Link>
             <Link href={activeMenuHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
-              Menu
+              {isBakeryActive ? t(messages, "nav.shopCakes", "Shop cakes") : "Menu"}
             </Link>
-            <Link href="/book" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
-              Reserve
+            <Link href={primaryCtaHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+              {primaryCtaLabel}
             </Link>
 
             <div className="mt-3 flex gap-2 border-t border-[color:var(--site-header-border)] pt-3">
               <Link href={activeMenuHref} className={`flex-1 justify-center ${ctaSecondary}`} onClick={closeMenu}>
-                Menu
+                {isBakeryActive ? t(messages, "nav.shopCakes", "Shop cakes") : "Menu"}
               </Link>
-              <Link href="/book" className={`flex-1 justify-center ${ctaPrimary}`} onClick={closeMenu}>
-                Reserve
+              <Link href={primaryCtaHref} className={`flex-1 justify-center ${ctaPrimary}`} onClick={closeMenu}>
+                {primaryCtaLabel}
               </Link>
             </div>
 
@@ -417,13 +441,13 @@ export function Header({ variant = "default" }) {
                       Owner Dashboard
                     </Link>
                   )}
-                  <Link href="/reservations" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+                  <Link href={reservationsHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
                     My Reservations
                   </Link>
-                  <Link href="/orders" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+                  <Link href={ordersHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
                     My Orders
                   </Link>
-                  <Link href="/profile" className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
+                  <Link href={profileHref} className="rounded-md px-3 py-2.5 text-base font-medium" onClick={closeMenu}>
                     Profile
                   </Link>
                   <button
@@ -439,10 +463,10 @@ export function Header({ variant = "default" }) {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <Link href="/login" className={`justify-center ${ctaSecondary}`} onClick={closeMenu}>
+                  <Link href={loginHref} className={`justify-center ${ctaSecondary}`} onClick={closeMenu}>
                     Login
                   </Link>
-                  <Link href="/register" className={`justify-center ${ctaPrimary}`} onClick={closeMenu}>
+                  <Link href={registerHref} className={`justify-center ${ctaPrimary}`} onClick={closeMenu}>
                     Sign up
                   </Link>
                 </div>

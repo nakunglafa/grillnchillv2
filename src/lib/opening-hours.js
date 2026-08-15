@@ -159,3 +159,172 @@ export function extractOpeningSlotsFromRestaurantPayload(apiPayload) {
     []
   );
 }
+
+/**
+ * @param {string} dateStr YYYY-MM-DD
+ * @returns {boolean}
+ */
+export function isDayOpenForOrdering(openingSlots, dateStr) {
+  if (!openingSlots || openingSlots.length === 0) return true;
+  return getOpeningRangesForDay(openingSlots, dateStr).length > 0;
+}
+
+/**
+ * Build YYYY-MM-DD options for the next open days (calendar horizon search).
+ * @param {unknown[]} openingSlots
+ * @param {number} [maxOpenDays=7]
+ * @param {string} [timeZone]
+ * @param {Date} [now]
+ * @returns {{ value: string, label: string }[]}
+ */
+export function buildOrderScheduleDateOptions(
+  openingSlots,
+  maxOpenDays = 7,
+  timeZone = DEFAULT_RESTAURANT_TIMEZONE,
+  now = new Date()
+) {
+  const { dateStr: today } = getZonedCalendarParts(now, timeZone);
+  const options = [];
+  let cursor = today;
+  let scanned = 0;
+  while (options.length < maxOpenDays && scanned < 21) {
+    if (isDayOpenForOrdering(openingSlots, cursor)) {
+      const [y, m, d] = cursor.split("-").map(Number);
+      const labelDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      const label = labelDate.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+      options.push({ value: cursor, label });
+    }
+    const [y, m, d] = cursor.split("-").map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d));
+    next.setUTCDate(next.getUTCDate() + 1);
+    cursor = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
+    scanned += 1;
+  }
+  return options;
+}
+
+/**
+ * 15-minute HH:mm slots inside opening ranges for a day.
+ * Past times (and within minLeadMinutes) are filtered out for "today".
+ * @param {unknown[]} openingSlots
+ * @param {string} dateStr
+ * @param {{ timeZone?: string, now?: Date, stepMinutes?: number, minLeadMinutes?: number }} [opts]
+ * @returns {string[]}
+ */
+export function getOrderScheduleTimeSlots(
+  openingSlots,
+  dateStr,
+  {
+    timeZone = DEFAULT_RESTAURANT_TIMEZONE,
+    now = new Date(),
+    stepMinutes = 15,
+    minLeadMinutes = 15,
+  } = {}
+) {
+  const ranges = getOpeningRangesForDay(openingSlots, dateStr);
+  if (!ranges.length) {
+    // No configured hours → allow full day grid (same permissive spirit as booking)
+    const slots = [];
+    for (let m = 0; m < 24 * 60; m += stepMinutes) {
+      slots.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+    }
+    return filterScheduleSlotsByLead(slots, dateStr, timeZone, now, minLeadMinutes);
+  }
+
+  const slots = [];
+  const seen = new Set();
+  for (const [openMin, closeMin] of ranges) {
+    if (closeMin > openMin) {
+      for (let m = openMin; m < closeMin; m += stepMinutes) {
+        const label = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        if (!seen.has(label)) {
+          seen.add(label);
+          slots.push(label);
+        }
+      }
+    } else {
+      // Overnight: from open to midnight, then 00:00 to close (close belongs to next calendar morning —
+      // those morning minutes are on the *next* date via prior-day window; for this date only evening+).
+      for (let m = openMin; m < 24 * 60; m += stepMinutes) {
+        const label = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        if (!seen.has(label)) {
+          seen.add(label);
+          slots.push(label);
+        }
+      }
+    }
+  }
+  // Morning portion of overnight from prior day
+  const prior = civilDateMinusOneDay(dateStr);
+  const priorRanges = getOpeningRangesForDay(openingSlots, prior);
+  for (const [openMin, closeMin] of priorRanges) {
+    if (closeMin < openMin) {
+      for (let m = 0; m < closeMin; m += stepMinutes) {
+        const label = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        if (!seen.has(label)) {
+          seen.add(label);
+          slots.push(label);
+        }
+      }
+    }
+  }
+  slots.sort();
+  return filterScheduleSlotsByLead(slots, dateStr, timeZone, now, minLeadMinutes);
+}
+
+/**
+ * @param {string[]} slots HH:mm
+ * @param {string} dateStr
+ * @param {string} timeZone
+ * @param {Date} now
+ * @param {number} minLeadMinutes
+ */
+function filterScheduleSlotsByLead(slots, dateStr, timeZone, now, minLeadMinutes) {
+  const { dateStr: today, minutes: nowMins } = getZonedCalendarParts(now, timeZone);
+  const lead = Math.max(0, Number(minLeadMinutes) || 0);
+
+  // Same calendar day: filter by minutes-from-midnight + lead
+  if (dateStr === today) {
+    const minMins = nowMins + lead;
+    return slots.filter((hhmm) => parseTimeToMinutes(hhmm) >= minMins);
+  }
+
+  // Multi-day lead (e.g. custom cake 48h): compare wall-clock datetimes
+  if (lead <= 24 * 60) {
+    // Within ~1 day past "today", any future date is fine once lead < 1 day beyond today
+    const [ty, tm, td] = today.split("-").map(Number);
+    const [dy, dm, dd] = dateStr.split("-").map(Number);
+    const todayUtc = Date.UTC(ty, tm - 1, td);
+    const dateUtc = Date.UTC(dy, dm - 1, dd);
+    const dayDiff = Math.round((dateUtc - todayUtc) / (24 * 60 * 60 * 1000));
+    if (dayDiff > 1) return slots;
+    if (dayDiff < 0) return [];
+    // Tomorrow with lead that spills past midnight: require slot >= (nowMins + lead - 1440)
+    const spill = nowMins + lead - 24 * 60;
+    if (spill <= 0) return slots;
+    return slots.filter((hhmm) => parseTimeToMinutes(hhmm) >= spill);
+  }
+
+  // Long lead (48h+): earliest allowed = now + lead
+  const earliest = new Date(now.getTime() + lead * 60 * 1000);
+  const { dateStr: earliestDate, minutes: earliestMins } = getZonedCalendarParts(earliest, timeZone);
+  if (dateStr < earliestDate) return [];
+  if (dateStr > earliestDate) return slots;
+  return slots.filter((hhmm) => parseTimeToMinutes(hhmm) >= earliestMins);
+}
+
+/**
+ * Build ISO-like local datetime string for API (Europe/Lisbon wall clock).
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {string} timeStr HH:mm
+ * @returns {string} e.g. 2026-08-10 19:30:00
+ */
+export function formatScheduledForPayload(dateStr, timeStr) {
+  const t = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+  return `${dateStr} ${t}`;
+}

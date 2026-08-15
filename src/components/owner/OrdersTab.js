@@ -8,6 +8,12 @@ import { toArray, getOrderLineItems, getLineItemDisplayName, getLineItemRowTotal
 import { formatCurrencyEUROrDash as formatPrice } from "@/lib/format-currency";
 import { EstimatedReadyMinutesForm } from "@/components/owner/EstimatedReadyMinutesForm";
 import { printOrderKitchenReceipt } from "@/lib/order-receipt-print";
+import {
+  parseCustomCakeFlavorSize,
+  parseCustomCakeSampleUrl,
+  stripCustomCakeSampleLine,
+} from "@/lib/cake-order";
+import { deleteCakeSampleFile, resolveCakeSampleDisplayUrl } from "@/lib/cake-sample";
 
 // API-supported status values (confirmed = accept, rejected = reject)
 const STATUS_OPTIONS = [
@@ -29,6 +35,33 @@ const ORDER_VIEW = {
   FINISHED: "finished",
   ALL: "all",
 };
+
+function CakeSamplePreview({ url }) {
+  const [visible, setVisible] = useState(true);
+  if (!url || !visible) return null;
+  return (
+    <div className="rounded-md border border-owner-action/30 bg-owner-action/5 p-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">
+        Sample cake image
+      </p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 flex items-start gap-3 text-xs font-medium text-owner-action hover:underline"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Customer cake sample"
+          className="h-20 w-20 shrink-0 rounded-md object-cover ring-1 ring-owner-border"
+          onError={() => setVisible(false)}
+        />
+        <span className="pt-1">Open sample</span>
+      </a>
+    </div>
+  );
+}
 
 function orderStatusValue(o) {
   return String(o.status ?? o.order_status ?? "").toLowerCase();
@@ -86,7 +119,7 @@ function formatOrderDateTime(order) {
   });
 }
 
-export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
+export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh, isBakery = false }) {
   const { token } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,12 +157,23 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
   const activeCount = rawOrders.filter((o) => !FINISHED_STATUSES.has(orderStatusValue(o))).length;
   const finishedCount = rawOrders.filter((o) => FINISHED_STATUSES.has(orderStatusValue(o))).length;
 
-  const displayOrders =
+  const displayOrdersBase =
     orderView === ORDER_VIEW.ACTIVE
       ? rawOrders.filter((o) => !FINISHED_STATUSES.has(orderStatusValue(o)))
       : orderView === ORDER_VIEW.FINISHED
         ? rawOrders.filter((o) => FINISHED_STATUSES.has(orderStatusValue(o)))
         : rawOrders;
+
+  const displayOrders = isBakery
+    ? [...displayOrdersBase].sort((a, b) => {
+        const sa = a.scheduled_for ?? a.scheduledFor ?? "";
+        const sb = b.scheduled_for ?? b.scheduledFor ?? "";
+        if (sa && sb) return String(sa).localeCompare(String(sb));
+        if (sa) return -1;
+        if (sb) return 1;
+        return 0;
+      })
+    : displayOrdersBase;
 
   useEffect(() => {
     if (ordersProp != null && Array.isArray(ordersProp)) {
@@ -152,6 +196,11 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
       }
     }
 
+    const orderBefore = (ordersProp != null && Array.isArray(ordersProp) ? ordersProp : orders).find(
+      (o) => o.id === orderId
+    );
+    const notesBefore = orderBefore?.delivery_instructions ?? orderBefore?.notes ?? "";
+
     let fifthParam;
     if (newStatus === "cancelled") {
       fifthParam = cancellationReason;
@@ -167,6 +216,9 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
     );
     try {
       await updateOrderStatus(token, restaurantId, orderId, newStatus, fifthParam);
+      if (FINISHED_STATUSES.has(newStatus)) {
+        void deleteCakeSampleFile(token, notesBefore);
+      }
       if (onRefresh) onRefresh();
       else loadOrders(true, true);
     } catch (err) {
@@ -290,9 +342,35 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
             const itemsList = getOrderLineItems(order);
             const notes = order.delivery_instructions ?? order.notes ?? "";
             const typeLabel =
-              orderType === "delivery" ? "Delivery" : orderType === "pickup" ? "Pickup" : orderType || "—";
+              orderType === "delivery"
+                ? "Delivery"
+                : orderType === "pickup"
+                  ? isBakery
+                    ? "Pickup"
+                    : "Takeaway"
+                  : orderType || "—";
+            const isCustomCake = isBakery && String(notes).includes("[Custom cake order]");
+            const sampleImageUrl = isCustomCake
+              ? resolveCakeSampleDisplayUrl(parseCustomCakeSampleUrl(notes))
+              : "";
+            const notesForDisplay = sampleImageUrl ? stripCustomCakeSampleLine(notes) : notes;
+            const cakeMeta = isCustomCake ? parseCustomCakeFlavorSize(notes) : { flavor: "", size: "" };
             const statusValue = order.status ?? order.order_status ?? "";
             const bannerClass = getStatusBannerClasses(statusValue);
+            const scheduledRaw = order.scheduled_for ?? order.scheduledFor;
+            let scheduledLabel = null;
+            if (scheduledRaw) {
+              const d = new Date(scheduledRaw);
+              if (!Number.isNaN(d.getTime())) {
+                scheduledLabel = d.toLocaleString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              }
+            }
 
             return (
               <li
@@ -341,7 +419,8 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                         value={statusValue}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (v === "confirmed" || v === "preparing") {
+                          // Cake orders already have a scheduled pickup time — no ASAP estimate dialog.
+                          if (!isBakery && (v === "confirmed" || v === "preparing")) {
                             setEstimateDialog({ orderId: order.id, newStatus: v });
                             return;
                           }
@@ -419,6 +498,12 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Type</span>
                         <span className="mx-1.5 text-owner-border">·</span>
                         <span className="font-medium">{typeLabel}</span>
+                        {!isBakery && scheduledLabel ? (
+                          <span className="ml-2 text-owner-action">· Scheduled {scheduledLabel}</span>
+                        ) : null}
+                        {!isBakery && !scheduledLabel ? (
+                          <span className="ml-2 text-owner-muted">· ASAP</span>
+                        ) : null}
                       </p>
                       {isDelivery && (order.delivery_address || order.delivery_address_line_1) ? (
                         <p className="text-owner-muted">
@@ -427,12 +512,27 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                           <span>{order.delivery_address || order.delivery_address_line_1}</span>
                         </p>
                       ) : null}
-                      {notes ? (
-                        <p className="text-owner-muted line-clamp-4" title={notes}>
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Notes</span>
+                      {isBakery && scheduledLabel ? (
+                        <p className="rounded-md bg-owner-action/10 px-2 py-1.5 text-xs font-semibold text-owner-action">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">Pickup</span>
                           <span className="mx-1.5 text-owner-border">·</span>
-                          {notes}
+                          {scheduledLabel}
                         </p>
+                      ) : null}
+                      {notesForDisplay ? (
+                        <p
+                          className={`${isCustomCake || isBakery ? "whitespace-pre-wrap rounded-md border border-owner-action/30 bg-owner-action/5 p-2 text-owner-charcoal" : "text-owner-muted line-clamp-4"}`}
+                          title={notesForDisplay}
+                        >
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-owner-muted">
+                            {isCustomCake ? "Cake details" : "Notes"}
+                          </span>
+                          <span className="mx-1.5 text-owner-border">·</span>
+                          {notesForDisplay}
+                        </p>
+                      ) : null}
+                      {sampleImageUrl ? (
+                        <CakeSamplePreview url={sampleImageUrl} />
                       ) : null}
                     </div>
 
@@ -459,6 +559,20 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
                             );
                           })}
                         </ul>
+                      ) : isCustomCake && (cakeMeta.flavor || cakeMeta.size) ? (
+                        <ul className="mt-2 space-y-2 text-xs">
+                          <li className="flex flex-col gap-0.5 border-b border-owner-border/35 pb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                            <span className="min-w-0 block text-owner-charcoal leading-snug">
+                              <span className="font-medium">
+                                {[cakeMeta.flavor, cakeMeta.size].filter(Boolean).join(" · ")}
+                              </span>
+                              <span className="text-owner-muted">{" · "}× 1</span>
+                            </span>
+                            <span className="shrink-0 tabular-nums text-[11px] text-owner-muted sm:pt-0.5">
+                              {formatPrice(order.total_amount ?? order.total)}
+                            </span>
+                          </li>
+                        </ul>
                       ) : (
                         <p className="mt-1.5 text-xs text-owner-muted">No line items</p>
                       )}
@@ -470,7 +584,7 @@ export function OrdersTab({ restaurantId, orders: ordersProp, onRefresh }) {
           })}
         </ul>
       )}
-      {estimateDialog && (
+      {estimateDialog && !isBakery && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="owner-animate-modal-backdrop absolute inset-0 bg-black/50" aria-hidden />
           <div className="owner-animate-modal-center relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-owner-border bg-owner-card p-4 shadow-xl">

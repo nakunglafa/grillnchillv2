@@ -5,9 +5,16 @@ import { ESTIMATED_READY_PRESETS, normalizeEstimatedReadyMinutes } from "@/lib/o
 
 /**
  * Pick optional customer-facing wait time for `confirmed` / `preparing` order PATCH.
- * @param {{ onConfirm: (minutes: number | null) => void, onCancel?: () => void, disabled?: boolean, className?: string }} props
+ * @param {{ onConfirm: (minutes: number | null) => void, onCancel?: () => void, disabled?: boolean, className?: string, title?: string, hint?: string }} props
  */
-export function EstimatedReadyMinutesForm({ onConfirm, onCancel, disabled, className = "" }) {
+export function EstimatedReadyMinutesForm({
+  onConfirm,
+  onCancel,
+  disabled,
+  className = "",
+  title = "Estimated ready time",
+  hint = "Optional. Sent to the API as estimated_ready_minutes (customer email and order view).",
+}) {
   const [mode, setMode] = useState("preset");
   const [presetVal, setPresetVal] = useState(20);
   const [customStr, setCustomStr] = useState("");
@@ -42,10 +49,8 @@ export function EstimatedReadyMinutesForm({ onConfirm, onCancel, disabled, class
 
   return (
     <div className={className}>
-      <p className="text-sm font-semibold text-owner-charcoal">Estimated ready time</p>
-      <p className="mt-0.5 text-xs text-owner-muted">
-        Optional. Sent to the API as estimated_ready_minutes (customer email and order view).
-      </p>
+      <p className="text-sm font-semibold text-owner-charcoal">{title}</p>
+      <p className="mt-0.5 text-xs text-owner-muted">{hint}</p>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {ESTIMATED_READY_PRESETS.map((m) => (
