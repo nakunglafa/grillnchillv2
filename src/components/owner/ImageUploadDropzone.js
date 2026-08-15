@@ -26,7 +26,7 @@ export function validateImageSize(file, maxBytes = MAX_IMAGE_BYTES) {
 
 /**
  * Image upload with drag-and-drop.
- * When enableCrop is true: pick up to 20 MB → crop modal → JPEG ≤ maxBytes.
+ * When enableCrop is true: pick up to 20 MB → crop modal → JPEG compressed under maxBytes.
  *
  * @param {boolean} [enableCrop]
  * @param {number} [cropAspect]
@@ -102,7 +102,10 @@ export function ImageUploadDropzone({
         return;
       }
       setCropFileName(file.name || "image.jpg");
-      setCropSrc(URL.createObjectURL(file));
+      setCropSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(file);
+      });
       return;
     }
 
@@ -138,9 +141,16 @@ export function ImageUploadDropzone({
   };
 
   function handleCropConfirm(file) {
-    const err = validateImageSize(file, maxBytes);
-    if (err) {
-      onError(err);
+    // Crop modal already compressed under maxBytes; accept best effort if still slightly over.
+    if (!(file instanceof File)) {
+      onError("Could not process this image. Try another photo.");
+      closeCrop();
+      return;
+    }
+    if (file.size > maxBytes * 1.05) {
+      onError(
+        `Could not compress this image under ${(maxBytes / (1024 * 1024)).toFixed(1)} MB. Try a simpler photo.`
+      );
       closeCrop();
       return;
     }
@@ -199,7 +209,9 @@ export function ImageUploadDropzone({
         />
         <span className="text-zinc-600 dark:text-zinc-400">{hint}</span>
         {value instanceof File && (
-          <span className="font-medium text-emerald-600 dark:text-emerald-400">{value.name}</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            {value.name} ({Math.max(1, Math.round(value.size / 1024))} KB)
+          </span>
         )}
       </div>
 
@@ -215,6 +227,7 @@ export function ImageUploadDropzone({
           outputWidth={cropOutputWidth}
           outputHeight={cropOutputHeight}
           quality={cropQuality}
+          maxBytes={maxBytes}
           title={cropTitle}
           description={cropDescription}
         />

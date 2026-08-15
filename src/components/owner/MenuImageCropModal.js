@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from "react";
 import Cropper from "react-easy-crop";
-import { cropMenuImageToJpeg, MENU_IMAGE_JPEG_QUALITY, MENU_IMAGE_OUTPUT_SIZE } from "@/lib/menu-image-crop";
+import { cropMenuImageToJpegUnderMax, MENU_IMAGE_JPEG_QUALITY, MENU_IMAGE_OUTPUT_SIZE, MAX_MENU_IMAGE_OUTPUT_BYTES } from "@/lib/menu-image-crop";
 
 /**
- * Crop modal: drag to recenter, zoom, then JPEG compress.
+ * Crop modal: drag to recenter, zoom, then JPEG compress under maxBytes.
  * Defaults match menu square crop; pass aspect / output for page-content images.
  */
 export function MenuImageCropModal({
@@ -18,6 +18,7 @@ export function MenuImageCropModal({
   outputWidth,
   outputHeight,
   quality = MENU_IMAGE_JPEG_QUALITY,
+  maxBytes = MAX_MENU_IMAGE_OUTPUT_BYTES,
   title,
   description,
 }) {
@@ -41,7 +42,7 @@ export function MenuImageCropModal({
     setError(null);
 
     try {
-      const file = await cropMenuImageToJpeg(
+      const file = await cropMenuImageToJpegUnderMax(
         imageSrc,
         croppedAreaPixels,
         fileName || "image.jpg",
@@ -49,6 +50,7 @@ export function MenuImageCropModal({
           outputWidth: outW,
           outputHeight: outH,
           quality,
+          maxBytes,
         }
       );
       onConfirm(file);

@@ -637,15 +637,22 @@ export function MenuClient({ restaurant, menus, specialMenuLists }) {
                   ? menu.categories
                   : toArray(menu.categories || menu);
                 const sortedCategories = [...categories].sort(sortBySortOrder);
+                const term = normalizeText(searchTerm);
+                const visibleCategories = !term
+                  ? sortedCategories
+                  : sortedCategories.filter((category) =>
+                      CategorySectionPreviewMatches(category, term)
+                    );
+                if (visibleCategories.length === 0) return null;
                 return (
                   <section
                     key={menu.id ?? menu.name ?? `menu-${idx}`}
                     className="overflow-hidden bg-white/[0.03] shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
                   >
                     <div className="divide-y divide-white/10">
-                      {sortedCategories.map((category) => (
+                      {visibleCategories.map((category) => (
                         <div
-                          key={category.id ?? category.name ?? Math.random()}
+                          key={category.id ?? category.name ?? `cat-${category.id}`}
                           className="px-3 py-3.5 md:px-5 md:py-5"
                         >
                           <CategorySection

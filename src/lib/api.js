@@ -488,6 +488,16 @@ export async function deleteItem(token, itemId) {
   return apiFetch(`/owner/items/${itemId}`, { method: "DELETE", token });
 }
 
+/** Delete stored image for a menu item (keeps the item). */
+export async function deleteItemImage(token, itemId) {
+  return apiFetch(`/owner/items/${itemId}/image`, { method: "DELETE", token });
+}
+
+/** Delete stored image for a category (keeps the category). */
+export async function deleteCategoryImage(token, categoryId) {
+  return apiFetch(`/owner/categories/${categoryId}/image`, { method: "DELETE", token });
+}
+
 export async function reorderCategoryItems(token, categoryId, payload) {
   return apiFetch(`/owner/categories/${categoryId}/items/reorder`, {
     method: "PUT",

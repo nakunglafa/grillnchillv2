@@ -14,6 +14,8 @@ import {
   createItemForCategory,
   updateItem,
   deleteItem,
+  deleteItemImage,
+  deleteCategoryImage,
   reorderMenuCategories,
   reorderCategoryItems,
 } from "@/lib/api";
@@ -21,6 +23,22 @@ import { toArray } from "@/lib/owner-utils";
 import { Toast } from "@/components/Toast";
 import { ImageUploadDropzone, MAX_MENU_IMAGE_BYTES } from "@/components/owner/ImageUploadDropzone";
 import { MenuPdfImport } from "@/components/owner/MenuPdfImport";
+
+/** Stable preview URL for a File; revokes on change/unmount. */
+function FilePreviewImage({ file, alt = "", className = "" }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    if (!(file instanceof File)) {
+      setSrc("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  if (!src) return null;
+  return <img src={src} alt={alt} className={className} />;
+}
 
 /** Flatten API categories when they come as main[] with nested .children so all categories are in one list and findable by id. */
 function flattenCategories(arr) {
@@ -347,6 +365,14 @@ export function MenuTab({ restaurantId, token }) {
     }
     try {
       if (imageFile instanceof File && imageFile.size > 0) {
+        if (category.image_url) {
+          try {
+            await deleteCategoryImage(token, category.id);
+          } catch (delErr) {
+            // Continue with upload if backend already replaces; surface soft warning only when delete fails hard.
+            console.warn("Could not delete previous category image:", delErr?.message || delErr);
+          }
+        }
         const fd = new FormData();
         fd.append("_method", "PATCH");
         fd.append("name", name);
@@ -493,6 +519,13 @@ export function MenuTab({ restaurantId, token }) {
     }
     try {
       if (imageFile) {
+        if (item.image_url) {
+          try {
+            await deleteItemImage(token, item.id);
+          } catch (delErr) {
+            console.warn("Could not delete previous item image:", delErr?.message || delErr);
+          }
+        }
         const fd = new FormData();
         fd.append("_method", "PATCH");
         fd.append("name", data.name?.trim() || item.name);
@@ -681,7 +714,7 @@ export function MenuTab({ restaurantId, token }) {
                       maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
                       accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                      dropHint="Drop or click (max 2MB)"
+                      dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
                     />
                     <button
                       type="submit"
@@ -778,7 +811,7 @@ export function MenuTab({ restaurantId, token }) {
                         maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
                         accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                        dropHint="Drop or click (max 2MB)"
+                        dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
                       />
                       <button
                         type="submit"
@@ -1073,7 +1106,7 @@ export function MenuTab({ restaurantId, token }) {
                 maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
                 accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                dropHint="Drop or click (max 2MB)"
+                dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
               />
               <button
                 type="submit"
@@ -1162,7 +1195,7 @@ export function MenuTab({ restaurantId, token }) {
                 maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
                 accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                dropHint="Drop or click (max 2MB)"
+                dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
               />
               <button
                 type="submit"
@@ -1614,15 +1647,19 @@ function CategorySection({
           <div className="space-y-3">
             {(editCatData._imageFile || category.image_url) && (
               <div className="flex items-center gap-3">
-                <img
-                  src={
-                    editCatData._imageFile
-                      ? URL.createObjectURL(editCatData._imageFile)
-                      : imageUrl(category.image_url)
-                  }
-                  alt={category.name}
-                  className="h-16 w-16 rounded-lg object-cover"
-                />
+                {editCatData._imageFile instanceof File ? (
+                  <FilePreviewImage
+                    file={editCatData._imageFile}
+                    alt={category.name}
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                ) : (
+                  <img
+                    src={imageUrl(category.image_url)}
+                    alt={category.name}
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                )}
                 <span className="text-sm text-zinc-500">
                   {editCatData._imageFile ? "New image (preview)" : "Current image"}
                 </span>
@@ -1701,7 +1738,7 @@ function CategorySection({
               maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
               accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-              dropHint="Drop image or click (max 2 MB). JPEG, PNG, JPG, GIF, SVG."
+              dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
             />
             <div className="flex gap-2">
               <button
@@ -1820,15 +1857,19 @@ function CategorySection({
                         <div className="space-y-3 pb-0.5">
                         {(editData._imageFile || item.image_url) && (
                           <div className="flex items-center gap-3">
-                            <img
-                              src={
-                                editData._imageFile
-                                  ? URL.createObjectURL(editData._imageFile)
-                                  : imageUrl(item.image_url)
-                              }
-                              alt={item.name}
-                              className="h-12 w-12 rounded-lg object-cover"
-                            />
+                            {editData._imageFile instanceof File ? (
+                              <FilePreviewImage
+                                file={editData._imageFile}
+                                alt={item.name}
+                                className="h-12 w-12 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={imageUrl(item.image_url)}
+                                alt={item.name}
+                                className="h-12 w-12 rounded-lg object-cover"
+                              />
+                            )}
                             <span className="text-xs text-owner-muted">
                               {editData._imageFile ? "New image (preview)" : "Current image"}
                             </span>
@@ -2009,7 +2050,7 @@ function CategorySection({
                           maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
                           accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-                          dropHint="Drop image or click (max 2 MB)."
+                          dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
                         />
                         <div className="flex flex-wrap gap-3 py-1">
                           <label className="flex items-center gap-1.5">
@@ -2448,7 +2489,7 @@ function CategorySection({
               maxBytes={MAX_MENU_IMAGE_BYTES}
                       enableCrop
               accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
-              dropHint="Drop image or click (max 2 MB)."
+              dropHintWhenCrop="Drop or click - crop to square; large photos are resized automatically."
             />
             <div className="flex flex-wrap gap-3 py-1">
               <label className="flex items-center gap-1.5">

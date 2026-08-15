@@ -266,10 +266,10 @@ export function Header({ variant = "default" }) {
             </Link>
           </nav>
 
-          <Link href={activeMenuHref} className={`hidden sm:inline-flex ${ctaSecondary}`}>
+          <Link href={activeMenuHref} className={`hidden md:inline-flex ${ctaSecondary}`}>
             {isBakeryActive ? t(messages, "nav.shopCakes", "Shop cakes") : t(messages, "nav.menu", "Menu")}
           </Link>
-          <Link href={primaryCtaHref} className={`hidden sm:inline-flex ${ctaPrimary}`}>
+          <Link href={primaryCtaHref} className={`hidden md:inline-flex ${ctaPrimary}`}>
             {primaryCtaLabel}
           </Link>
 
