@@ -15,6 +15,8 @@ import {
 } from "@/lib/website-content";
 import { buildHrefLangAlternates, DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getBranchCopy } from "@/lib/branch-copy";
+import { JsonLd } from "@/components/JsonLd";
+import { buildMenuJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
@@ -128,13 +130,26 @@ export default async function LocationMenuPage({ params }) {
   }
 
   return (
-    <LocationMenuClient
-      catalog={catalog}
-      restaurant={restaurant}
-      menus={menus}
-      specialMenuLists={specialMenuLists}
-      error={error}
-      backHref={locationPath(catalog, locale)}
-    />
+    <>
+      <JsonLd
+        id="menu-schema"
+        data={buildMenuJsonLd({
+          catalog,
+          restaurant,
+          menus,
+          locale,
+          path: menuPath(catalog, locale),
+          locationUrl: `${SITE_URL}${locationPath(catalog, locale)}`,
+        })}
+      />
+      <LocationMenuClient
+        catalog={catalog}
+        restaurant={restaurant}
+        menus={menus}
+        specialMenuLists={specialMenuLists}
+        error={error}
+        backHref={locationPath(catalog, locale)}
+      />
+    </>
   );
 }

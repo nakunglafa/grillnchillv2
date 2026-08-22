@@ -53,12 +53,6 @@ export default function sitemap() {
           priority: 0.92,
         });
       }
-      entries.push({
-        url: `${SITE_URL}${localizedPath(locale, `/seo/${r.slug}`)}`,
-        lastModified: now,
-        changeFrequency: "weekly",
-        priority: 0.4,
-      });
     }
   }
 

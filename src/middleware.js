@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getLocaleFromAcceptLanguage,
+  DEFAULT_LOCALE,
   isLocale,
   isLocaleExemptPath,
   stripLocaleFromPathname,
@@ -20,8 +20,10 @@ export function middleware(request) {
   if (isLocale(first)) {
     if (segments[1] && isLocale(segments[1])) {
       const url = request.nextUrl.clone();
-      url.pathname = `/${segments[0]}/${segments.slice(2).join("/")}`.replace(/\/$/, "") || `/${segments[0]}`;
-      return NextResponse.redirect(url);
+      url.pathname =
+        `/${segments[0]}/${segments.slice(2).join("/")}`.replace(/\/$/, "") ||
+        `/${segments[0]}`;
+      return NextResponse.redirect(url, 308);
     }
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-pathname", pathname);
@@ -30,18 +32,19 @@ export function middleware(request) {
     });
   }
 
-  const locale = getLocaleFromAcceptLanguage(request.headers.get("accept-language"));
+  // Always prefix with the default locale. Do not negotiate Accept-Language:
+  // a language-dependent 307 makes `/` an unstable redirect, which Google
+  // reports as "Page with redirect" and will not index.
   const rest = stripLocaleFromPathname(pathname);
-  const nextPath = rest === "/" ? `/${locale}` : `/${locale}${rest}`;
+  const nextPath = rest === "/" ? `/${DEFAULT_LOCALE}` : `/${DEFAULT_LOCALE}${rest}`;
 
-  // Guard: never redirect to the same path (avoids ERR_TOO_MANY_REDIRECTS)
   if (nextPath === pathname) {
     return NextResponse.next();
   }
 
   const url = request.nextUrl.clone();
   url.pathname = nextPath;
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, 308);
 }
 
 export const config = {

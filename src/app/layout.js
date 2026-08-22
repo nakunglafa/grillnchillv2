@@ -6,11 +6,9 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CookieConsentGate } from "@/components/CookieConsentGate";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
-import {
-  CONFIGURED_RESTAURANTS,
-  getDefaultRestaurantId,
-  locationPath,
-} from "@/lib/restaurants";
+import { getDefaultRestaurantId } from "@/lib/restaurants";
+import { JsonLd } from "@/components/JsonLd";
+import { buildOrganizationNode, buildWebsiteNode } from "@/lib/json-ld";
 import {
   extractWebsiteContentFromPayload,
   getDefaultShareImage,
@@ -19,7 +17,6 @@ import {
 } from "@/lib/website-content";
 import { publicThemeToCssVars, resolvePublicTheme } from "@/lib/site-theme";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
-import Script from "next/script";
 import { Montserrat, Playfair_Display } from "next/font/google";
 
 // Max time we wait for the backend before declaring it unreachable and showing
@@ -117,9 +114,6 @@ function buildSiteMetadata(shareImageUrl) {
     keywords: siteKeywords,
     applicationName: BRAND_NAME,
     category: "restaurant",
-    alternates: {
-      canonical: "/",
-    },
     openGraph: {
       title: siteTitle,
       description: siteDescription,
@@ -288,58 +282,19 @@ export default async function RootLayout({ children }) {
         style={{ colorScheme: "light" }}
       >
         <GoogleAnalytics initialConsent={initialConsent} />
-        <Script
-          id="organization-schema"
-          type="application/ld+json"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: BRAND_NAME,
-              url: SITE_URL,
-              description: siteDescription,
-              logo: schemaImage || restaurantMeta?.logo_url || undefined,
-              knowsAbout: [
-                "Nepali cuisine",
-                "Indian cuisine",
-                "Portuguese cuisine",
-                "Best Nepali restaurant Lisbon",
-                "Indian restaurant Lisbon",
-                "Alameda",
-                "Arroios",
-              ],
-              areaServed: [
-                { "@type": "City", name: "Lisbon" },
-                { "@type": "Place", name: "Alameda" },
-                { "@type": "Place", name: "Arroios" },
-                { "@type": "Place", name: "Praça do Chile" },
-                { "@type": "Place", name: "Intendente" },
-              ],
-              sameAs: [
-                socialLinks?.instagram,
-                socialLinks?.facebook,
-                socialLinks?.x,
-                socialLinks?.tripadvisor,
-              ].filter(Boolean),
-              department: CONFIGURED_RESTAURANTS.map((r) => ({
-                "@type": r.venueType === "bakery" ? "Bakery" : "Restaurant",
-                name: r.label,
-                url: `${SITE_URL}${locationPath(r, htmlLang)}`,
-                servesCuisine:
-                  r.venueType === "bakery"
-                    ? ["Bakery", "Café", "Pastries"]
-                    : ["Nepali", "Indian", "Portuguese", "Grill"],
-                address: r.addressFallback
-                  ? {
-                      "@type": "PostalAddress",
-                      streetAddress: r.addressFallback,
-                      addressLocality: "Lisbon",
-                      addressCountry: "PT",
-                    }
-                  : undefined,
-              })),
-            }),
+        <JsonLd
+          id="site-schema"
+          data={{
+            "@context": "https://schema.org",
+            "@graph": [
+              buildOrganizationNode({
+                locale: htmlLang,
+                schemaImage: schemaImage || restaurantMeta?.logo_url,
+                socialLinks,
+                description: siteDescription,
+              }),
+              buildWebsiteNode(htmlLang),
+            ],
           }}
         />
         <OwnerAwareSiteChrome restaurantName={restaurantName} socialLinks={socialLinks}>

@@ -5,14 +5,18 @@ import { buildHrefLangAlternates, DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getMessages, t } from "@/lib/messages";
 import {
   CONFIGURED_RESTAURANTS,
+  getDefaultRestaurantId,
   locationPath,
 } from "@/lib/restaurants";
 import {
   extractWebsiteContentFromPayload,
+  getDefaultShareImage,
   getFeatureImage,
   mergeWebsiteContent,
   resolveMediaUrl,
 } from "@/lib/website-content";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbList, buildHomeItemList } from "@/lib/json-ld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
@@ -186,8 +190,9 @@ export async function generateMetadata({ params }) {
     seo.description
   );
   const path = `/${locale}`;
+  const shareImage = getDefaultShareImage(getDefaultRestaurantId());
   return {
-    title: seo.title,
+    title: { absolute: seo.title },
     description: seo.description || fallbackDescription,
     keywords: seo.keywords,
     alternates: {
@@ -201,11 +206,15 @@ export async function generateMetadata({ params }) {
       siteName: BRAND,
       locale: OG_LOCALE[locale] || "en_GB",
       type: "website",
+      images: shareImage
+        ? [{ url: shareImage, width: 1200, height: 630, alt: seo.title }]
+        : undefined,
     },
     twitter: {
       card: "summary_large_image",
       title: seo.title,
       description: seo.description,
+      images: shareImage ? [shareImage] : undefined,
     },
   };
 }
@@ -214,5 +223,20 @@ export default async function HomePage({ params }) {
   const { locale: raw } = await params;
   const locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
   const heroSlides = await loadHeroSlides(locale);
-  return <HomePageClient heroSlides={heroSlides} />;
+  const homeUrl = `${SITE_URL}/${locale}`;
+  return (
+    <>
+      <JsonLd
+        id="home-schema"
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            buildHomeItemList(locale, heroSlides),
+            breadcrumbList([{ name: BRAND, item: homeUrl }]),
+          ],
+        }}
+      />
+      <HomePageClient heroSlides={heroSlides} />
+    </>
+  );
 }

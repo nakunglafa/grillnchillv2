@@ -1,22 +1,39 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import {
+  buildHrefLangAlternates,
+  DEFAULT_LOCALE,
+  isLocale,
+  localizedPath,
+} from "@/lib/i18n";
 
 const RESTAURANT_NAME =
   process.env.NEXT_PUBLIC_RESTAURANT_NAME ||
   process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX ||
   "Grill N Chill";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const PLATFORM_PRIVACY_URL = "https://restaurant.digitallisbon.pt/privacy";
 const PLATFORM_CONTROLLER = "Krishna Bahadur Thapa";
 const PLATFORM_CONTACT = "[email protected]";
 
-export const metadata = {
-  title: "Privacy notice",
-  description:
-    "How we collect, use, and protect your personal data when you book a table, place an order, or create an account.",
-  alternates: { canonical: "/privacy" },
-};
+export async function generateMetadata({ params }) {
+  const { locale: raw } = await params;
+  const locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
+  const path = localizedPath(locale, "/privacy");
+  return {
+    title: "Privacy notice",
+    description:
+      "How we collect, use, and protect your personal data when you book a table, place an order, or create an account.",
+    alternates: {
+      canonical: path,
+      languages: buildHrefLangAlternates(SITE_URL, "/privacy"),
+    },
+  };
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage({ params }) {
+  const { locale: raw } = await params;
+  const locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
   return (
     <div className="relative min-h-screen bg-[#0a0908] text-white">
       <div
@@ -290,7 +307,7 @@ export default function PrivacyPage() {
         </div>
 
         <Link
-          href="/"
+          href={localizedPath(locale, "/")}
           className="mt-10 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent transition-colors hover:text-accent-hover"
         >
           <svg

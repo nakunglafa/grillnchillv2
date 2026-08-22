@@ -3,12 +3,15 @@ import {
   getRestaurantBySlug,
   LOCATION_SLUGS,
   cakeOrderPath,
+  locationPath,
 } from "@/lib/restaurants";
 import { getRestaurant } from "@/lib/api";
 import { CakeOrderClient } from "@/components/CakeOrderClient";
 import { extractBakeryCakes } from "@/lib/cake-order";
 import { getBranchCopy } from "@/lib/branch-copy";
 import { buildHrefLangAlternates, DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
+import { JsonLd } from "@/components/JsonLd";
+import { buildCakeOrderJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
@@ -102,12 +105,15 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function OrderCakePage({ params }) {
-  const { slug } = await params;
+  const { slug, locale: rawLocale } = await params;
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const catalog = getRestaurantBySlug(slug);
   if (!catalog || catalog.venueType !== "bakery") {
     notFound();
   }
 
+  const pageSeo = ORDER_CAKE_SEO[locale] || ORDER_CAKE_SEO.en;
+  const path = cakeOrderPath(catalog, locale);
   let restaurantName = catalog.label;
   let cakes = [];
   try {
@@ -122,6 +128,20 @@ export default async function OrderCakePage({ params }) {
   }
 
   return (
-    <CakeOrderClient catalog={catalog} restaurantName={restaurantName} cakes={cakes} />
+    <>
+      <JsonLd
+        id="cake-order-schema"
+        data={buildCakeOrderJsonLd({
+          catalog,
+          restaurantName,
+          cakes,
+          locale,
+          path,
+          locationUrl: `${SITE_URL}${locationPath(catalog, locale)}`,
+          description: pageSeo.description,
+        })}
+      />
+      <CakeOrderClient catalog={catalog} restaurantName={restaurantName} cakes={cakes} />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import {
   getRestaurantBySlug,
   LOCATION_SLUGS,
+  cakeOrderPath,
   locationPath,
   menuPath,
 } from "@/lib/restaurants";
@@ -17,6 +18,11 @@ import {
 import { getBranchCopy } from "@/lib/branch-copy";
 import { buildHrefLangAlternates, isLocale, DEFAULT_LOCALE } from "@/lib/i18n";
 import { openingSlotsToSchema } from "@/lib/schema-hours";
+import {
+  breadcrumbList,
+  ORGANIZATION_ID,
+  postalAddressFromString,
+} from "@/lib/json-ld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
@@ -167,11 +173,21 @@ function buildJsonLd({
   const name = restaurant?.name || catalog.label;
   const schemaType = catalog.venueType === "bakery" ? "Bakery" : "Restaurant";
   const url = `${SITE_URL}${path}`;
-  const address =
-    restaurant?.address || catalog.addressFallback || undefined;
   const mapsUrl = mapsUrlFromPlaceId(catalog.googlePlaceId);
   const description = copy?.seoDescription || catalog.seoDescription;
   const hours = openingSlotsToSchema(openingSlots);
+  const bookUrl = catalog.offersTableReservations
+    ? `${SITE_URL}/${locale}/book`
+    : undefined;
+  const cakeOrderUrl =
+    catalog.venueType === "bakery"
+      ? `${SITE_URL}${cakeOrderPath(catalog, locale)}`
+      : undefined;
+  const potentialAction = bookUrl
+    ? { "@type": "ReserveAction", target: bookUrl }
+    : cakeOrderUrl
+      ? { "@type": "OrderAction", target: cakeOrderUrl }
+      : undefined;
 
   const localBusiness = {
     "@type": schemaType,
@@ -182,14 +198,12 @@ function buildJsonLd({
     telephone: restaurant?.phone || undefined,
     email: restaurant?.email || undefined,
     image: absUrl(featureImage || restaurant?.logo_url || restaurant?.logoUrl),
-    address: address
-      ? {
-          "@type": "PostalAddress",
-          streetAddress: address,
-          addressLocality: "Lisbon",
-          addressCountry: "PT",
-        }
-      : undefined,
+    address: postalAddressFromString(
+      restaurant?.address || catalog.addressFallback
+    ),
+    parentOrganization: { "@id": ORGANIZATION_ID },
+    priceRange: catalog.venueType === "bakery" ? "€" : "€€",
+    acceptsReservations: Boolean(catalog.offersTableReservations),
     areaServed: (catalog.areaServed || []).map((a) => ({
       "@type": "Place",
       name: a,
@@ -213,25 +227,13 @@ function buildJsonLd({
             worstRating: 1,
           }
         : undefined,
+    potentialAction,
   };
 
-  const breadcrumb = {
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: homeUrl,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: catalog.shortLabel || name,
-        item: url,
-      },
-    ],
-  };
+  const breadcrumb = breadcrumbList([
+    { name: "Home", item: homeUrl },
+    { name: catalog.shortLabel || name, item: url },
+  ]);
 
   const graph = [localBusiness, breadcrumb];
 

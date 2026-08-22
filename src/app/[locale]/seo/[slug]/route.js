@@ -95,6 +95,7 @@ export async function GET(_request, { params }) {
       headers: {
         "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
         "Content-Type": "application/json; charset=utf-8",
+        "X-Robots-Tag": "noindex, nofollow",
       },
     }
   );
