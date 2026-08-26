@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getDefaultLocationSlug, menuPath } from "@/lib/restaurants";
 
+export const dynamic = "force-dynamic";
+
 /** Legacy flat /menu → default location menu (server redirect for SEO). */
 export default async function MenuRedirectPage({ params }) {
   const { locale: raw } = await params;

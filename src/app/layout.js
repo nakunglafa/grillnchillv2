@@ -191,12 +191,16 @@ export default async function RootLayout({ children }) {
   let serverDown = false;
   let theme = resolvePublicTheme(null);
 
-  // Read the consent cookie on the server so the modal (and any GA scripts)
-  // appear in the initial HTML — no flash of unconsented site, no double render.
-  const cookieStore = await cookies();
-  const rawConsent = cookieStore.get("cookie_consent")?.value ?? null;
-  const initialConsent =
-    rawConsent === "all" || rawConsent === "essential" ? rawConsent : null;
+  // cookies()/headers() need a request store. During `next build` prerender
+  // that store is missing and Next 16 throws workUnitAsyncStorage.
+  const isPrerender = process.env.NEXT_PHASE === "phase-production-build";
+  let initialConsent = null;
+  if (!isPrerender) {
+    const cookieStore = await cookies();
+    const rawConsent = cookieStore.get("cookie_consent")?.value ?? null;
+    initialConsent =
+      rawConsent === "all" || rawConsent === "essential" ? rawConsent : null;
+  }
   try {
     // Race the API call against a hard timeout so a hung/dead backend can't
     // make every request block until Next.js' own timeout fires.
@@ -238,11 +242,16 @@ export default async function RootLayout({ children }) {
 
   const themeStyle = publicThemeToCssVars(theme);
 
-  const headerList = await headers();
-  const pathLocale = String(headerList.get("x-pathname") || headerList.get("x-url") || "")
-    .split("/")
-    .filter(Boolean)[0];
-  const htmlLang = isLocale(pathLocale) ? pathLocale : DEFAULT_LOCALE;
+  let htmlLang = DEFAULT_LOCALE;
+  if (!isPrerender) {
+    const headerList = await headers();
+    const pathLocale = String(
+      headerList.get("x-pathname") || headerList.get("x-url") || ""
+    )
+      .split("/")
+      .filter(Boolean)[0];
+    htmlLang = isLocale(pathLocale) ? pathLocale : DEFAULT_LOCALE;
+  }
 
   // Short-circuit: render only the "service unavailable" page when the API
   // can't be reached at all. We still emit <html>/<body> because Next.js

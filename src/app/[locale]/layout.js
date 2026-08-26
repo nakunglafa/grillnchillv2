@@ -1,9 +1,5 @@
 import { notFound } from "next/navigation";
-import { isLocale, LOCALES } from "@/lib/i18n";
-
-export function generateStaticParams() {
-  return LOCALES.map((locale) => ({ locale }));
-}
+import { isLocale } from "@/lib/i18n";
 
 export default async function LocaleLayout({ children, params }) {
   const { locale } = await params;

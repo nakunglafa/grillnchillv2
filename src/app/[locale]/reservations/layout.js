@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata() {
   const title = "My Reservations";
   const description =

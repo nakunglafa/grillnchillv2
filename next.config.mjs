@@ -1,5 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Parent /www/wwwroot/grillnchill.pt also has a lockfile; pin this app as root
+  // so Turbopack does not prerender against the wrong Next.js copy.
+  turbopack: {
+    root: projectRoot,
+  },
+  outputFileTracingRoot: projectRoot,
   trailingSlash: false,
   async redirects() {
     return [
