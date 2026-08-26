@@ -44,6 +44,18 @@ export function middleware(request) {
 
   const url = request.nextUrl.clone();
   url.pathname = nextPath;
+
+  // Google reads the site name from the domain root (https://grillnchill.pt/),
+  // not from /en. A redirect here made Google skip our WebSite schema and keep
+  // the old "Digital Lisbon" label. Serve the English homepage at / instead.
+  if (pathname === "/") {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", nextPath);
+    return NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
+    });
+  }
+
   return NextResponse.redirect(url, 308);
 }
 

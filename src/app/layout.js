@@ -8,7 +8,7 @@ import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getRestaurant } from "@/lib/api";
 import { getDefaultRestaurantId } from "@/lib/restaurants";
 import { JsonLd } from "@/components/JsonLd";
-import { buildOrganizationNode, buildWebsiteNode } from "@/lib/json-ld";
+import { BRAND_NAME, buildOrganizationNode, buildWebsiteNode } from "@/lib/json-ld";
 import {
   extractWebsiteContentFromPayload,
   getDefaultShareImage,
@@ -45,10 +45,6 @@ function isServerUnreachable(err) {
 
 const RESTAURANT_ID = String(getDefaultRestaurantId() ?? "2");
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
-const BRAND_NAME =
-  process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
-  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX?.trim() ||
-  "Grill N Chill";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",

@@ -4,10 +4,17 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchil
   /\/$/,
   ""
 );
-export const BRAND_NAME =
-  process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
-  process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX?.trim() ||
-  "Grill N Chill";
+function publicBrandName() {
+  const raw = (
+    process.env.NEXT_PUBLIC_RESTAURANT_NAME ||
+    process.env.NEXT_PUBLIC_RESTAURANT_NAME_PREFIX ||
+    "Grill N Chill"
+  ).trim();
+  if (!raw || /digital\s*lisbon|digitallisbon/i.test(raw)) return "Grill N Chill";
+  return raw;
+}
+
+export const BRAND_NAME = publicBrandName();
 
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
@@ -57,6 +64,7 @@ export function buildOrganizationNode({
     "@type": "Organization",
     "@id": ORGANIZATION_ID,
     name: BRAND_NAME,
+    alternateName: ["Grill N Chill Lisbon", "GrillnChill"],
     url: SITE_URL,
     description,
     logo: schemaImage || undefined,
@@ -95,10 +103,15 @@ export function buildWebsiteNode(locale = "en") {
   return {
     "@type": "WebSite",
     "@id": WEBSITE_ID,
-    url: `${SITE_URL}/${locale}`,
     name: BRAND_NAME,
+    alternateName: ["Grill N Chill Lisbon", "GrillnChill"],
+    url: `${SITE_URL}/`,
     inLanguage: locale,
-    publisher: { "@id": ORGANIZATION_ID },
+    publisher: {
+      "@id": ORGANIZATION_ID,
+      "@type": "Organization",
+      name: BRAND_NAME,
+    },
   };
 }
 
