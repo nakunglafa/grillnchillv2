@@ -11,6 +11,11 @@ const nextConfig = {
     root: projectRoot,
   },
   outputFileTracingRoot: projectRoot,
+  // Low-CPU hosts (5 workers) hit a Next 16 race on /_global-error; retry helps.
+  experimental: {
+    staticGenerationRetryCount: 3,
+    staticGenerationMaxConcurrency: 2,
+  },
   trailingSlash: false,
   async redirects() {
     return [

@@ -192,14 +192,16 @@ export default async function RootLayout({ children }) {
   let theme = resolvePublicTheme(null);
 
   // cookies()/headers() need a request store. During `next build` prerender
-  // that store is missing and Next 16 throws workUnitAsyncStorage.
-  const isPrerender = process.env.NEXT_PHASE === "phase-production-build";
+  // (including internal /_global-error) that store is missing and Next 16
+  // throws workUnitAsyncStorage — never call them without a safe fallback.
   let initialConsent = null;
-  if (!isPrerender) {
+  try {
     const cookieStore = await cookies();
     const rawConsent = cookieStore.get("cookie_consent")?.value ?? null;
     initialConsent =
       rawConsent === "all" || rawConsent === "essential" ? rawConsent : null;
+  } catch {
+    /* prerender / missing request store */
   }
   try {
     // Race the API call against a hard timeout so a hung/dead backend can't
@@ -243,7 +245,7 @@ export default async function RootLayout({ children }) {
   const themeStyle = publicThemeToCssVars(theme);
 
   let htmlLang = DEFAULT_LOCALE;
-  if (!isPrerender) {
+  try {
     const headerList = await headers();
     const pathLocale = String(
       headerList.get("x-pathname") || headerList.get("x-url") || ""
@@ -251,6 +253,8 @@ export default async function RootLayout({ children }) {
       .split("/")
       .filter(Boolean)[0];
     htmlLang = isLocale(pathLocale) ? pathLocale : DEFAULT_LOCALE;
+  } catch {
+    /* prerender / missing request store */
   }
 
   // Short-circuit: render only the "service unavailable" page when the API
