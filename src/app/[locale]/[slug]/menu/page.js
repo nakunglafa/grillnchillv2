@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import {
   getRestaurantBySlug,
-  LOCATION_SLUGS,
   menuPath,
   locationPath,
 } from "@/lib/restaurants";
@@ -18,6 +17,9 @@ import { getBranchCopy } from "@/lib/branch-copy";
 import { JsonLd } from "@/components/JsonLd";
 import { buildMenuJsonLd } from "@/lib/json-ld";
 
+/** Live restaurant/menu API uses cache: "no-store" — must not be SSG. */
+export const dynamic = "force-dynamic";
+
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
   process.env.NEXT_PUBLIC_RESTAURANT_NAME?.trim() ||
@@ -28,10 +30,6 @@ function absUrl(pathOrUrl) {
   if (!pathOrUrl) return undefined;
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
   return `${SITE_URL}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
-}
-
-export function generateStaticParams() {
-  return LOCATION_SLUGS.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }) {

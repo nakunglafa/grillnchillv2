@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import {
   getRestaurantBySlug,
-  LOCATION_SLUGS,
   cakeOrderPath,
   locationPath,
 } from "@/lib/restaurants";
@@ -12,6 +11,9 @@ import { getBranchCopy } from "@/lib/branch-copy";
 import { buildHrefLangAlternates, DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { JsonLd } from "@/components/JsonLd";
 import { buildCakeOrderJsonLd } from "@/lib/json-ld";
+
+/** Live restaurant/menu API uses cache: "no-store" — must not be SSG. */
+export const dynamic = "force-dynamic";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grillnchill.pt").replace(/\/$/, "");
 const BRAND =
@@ -56,12 +58,6 @@ const ORDER_CAKE_SEO = {
       "Encarga un pastel personalizado para recoger cerca de Alameda, Arroios y Praça do Chile. Elige sabor y tamaño en The Bakery by Grill N Chill.",
   },
 };
-
-export function generateStaticParams() {
-  return LOCATION_SLUGS.filter((slug) => getRestaurantBySlug(slug)?.venueType === "bakery").map(
-    (slug) => ({ slug })
-  );
-}
 
 export async function generateMetadata({ params }) {
   const { slug, locale: rawLocale } = await params;
